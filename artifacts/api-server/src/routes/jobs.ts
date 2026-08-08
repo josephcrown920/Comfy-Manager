@@ -46,7 +46,7 @@ function buildJobOutput(job: typeof jobsTable.$inferSelect, outputs: typeof outp
 }
 
 router.get("/jobs", async (req, res): Promise<void> => {
-  const params = RefreshJobParams.safeParse(req.params);
+  const params = ListJobsQueryParams.safeParse(req.query);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
@@ -188,48 +188,19 @@ router.post("/jobs", async (req, res): Promise<void> => {
     // ComfyUI unreachable — job stays pending
   }
 
-  const [job] = await db
-    .select()
-    .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id))
-    .limit(1);
+  const [newJobRow] = await db
+    .insert(jobsTable)
+    .values({
+      workflowId,
+      workflowName: workflow.name,
+      status: initialStatus as "pending" | "running",
+      params: params as Record<string, unknown>,
+      comfyPromptId,
+      progress: 0,
+    })
+    .returning();
 
-  if (!job) {
-    res.status(404).json({ error: "Job not found" });
-    return;
-  }
-
-  await db.delete(outputsTable).where(eq(outputsTable.jobId, job.id));
-  await db.delete(jobsTable).where(eq(jobsTable.id, job.id));
-
-  res.sendStatus(204);
-  DeleteJobResponse.parse(undefined);
-});
-
-router.post("/jobs/:id/refresh", async (req, res): Promise<void> => {
-  const params = RefreshJobParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  const [job] = await db
-    .select()
-    .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id))
-    .limit(1);
-
-  if (!job) {
-    res.status(404).json({ error: "Job not found" });
-    return;
-  }
-
-  const outputs = await db
-    .select()
-    .from(outputsTable)
-    .where(eq(outputsTable.jobId, job.id));
-
-  res.json(GetJobResponse.parse(buildJobOutput(job, outputs)));
+  res.json(CreateJobResponse.parse(buildJobOutput(newJobRow!, [])));
 });
 
 router.delete("/jobs/:id", async (req, res): Promise<void> => {

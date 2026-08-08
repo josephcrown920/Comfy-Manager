@@ -368,10 +368,3 @@ export const UploadFileResponse = zod.object({
   "subfolder": zod.string(),
   "type": zod.string()
 })
-
-
-export const UploadFileResponse = zod.object({
-  "name": zod.string(),
-  "subfolder": zod.string(),
-  "type": zod.string()
-})
