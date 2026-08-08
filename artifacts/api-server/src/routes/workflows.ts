@@ -211,6 +211,29 @@ const WORKFLOWS = [
     ],
   },
   {
+    id: "custom-workflow",
+    name: "Custom Workflow",
+    description:
+      "Paste your own ComfyUI API-format workflow JSON and run it directly — supports any nodes or extensions installed on your server.",
+    category: "custom",
+    icon: "Code",
+    estimatedTime: "varies",
+    params: [
+      {
+        key: "workflow_json",
+        label: "Workflow JSON",
+        type: "text",
+        description: "Paste your ComfyUI API-format workflow JSON here (export from ComfyUI with 'Save (API format)')",
+        required: true,
+        defaultValue: null,
+        options: null,
+        min: null,
+        max: 999999,
+        accept: null,
+      },
+    ],
+  },
+  {
     id: "img2vid-stable-video",
     name: "Image to Video",
     description:

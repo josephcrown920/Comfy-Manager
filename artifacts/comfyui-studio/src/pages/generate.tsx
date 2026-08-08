@@ -15,8 +15,11 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUpload } from "@/components/ui/file-upload";
-import { ArrowLeft, Play, LayoutGrid } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, Play, LayoutGrid, Code, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const CUSTOM_WORKFLOW_ID = "custom-workflow";
 
 export default function Generate() {
   const [location, setLocation] = useLocation();
@@ -32,6 +35,10 @@ export default function Generate() {
     if (!categoryFilter) return workflows;
     return workflows.filter(w => w.category === categoryFilter);
   }, [workflows, categoryFilter]);
+
+  if (selectedWorkflowId === CUSTOM_WORKFLOW_ID) {
+    return <CustomWorkflowForm onBack={() => setSelectedWorkflowId(null)} />;
+  }
 
   if (selectedWorkflowId) {
     return <WorkflowForm 
@@ -89,6 +96,135 @@ export default function Generate() {
            No workflows found for this category.
          </div>
       )}
+    </div>
+  );
+}
+
+function CustomWorkflowForm({ onBack }: { onBack: () => void }) {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const createJob = useCreateJob();
+  const [workflowJson, setWorkflowJson] = useState("");
+  const [jsonError, setJsonError] = useState<string | null>(null);
+
+  const validateJson = (value: string): boolean => {
+    if (!value.trim()) {
+      setJsonError("Workflow JSON is required.");
+      return false;
+    }
+    try {
+      const parsed = JSON.parse(value);
+      if (typeof parsed !== "object" || Array.isArray(parsed) || parsed === null) {
+        setJsonError("Workflow JSON must be an object (the ComfyUI API-format prompt graph).");
+        return false;
+      }
+      setJsonError(null);
+      return true;
+    } catch (err: any) {
+      setJsonError(`Invalid JSON: ${err.message}`);
+      return false;
+    }
+  };
+
+  const handleChange = (value: string) => {
+    setWorkflowJson(value);
+    if (jsonError) validateJson(value);
+  };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateJson(workflowJson)) return;
+
+    createJob.mutate(
+      { data: { workflowId: CUSTOM_WORKFLOW_ID, params: { workflow_json: workflowJson } } },
+      {
+        onSuccess: () => {
+          toast({ title: "Job created successfully!" });
+          setLocation("/jobs");
+        },
+        onError: (err: any) => {
+          toast({ title: "Failed to create job", description: err.message, variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="animate-in slide-in-from-right-8 duration-300">
+      <Button variant="ghost" className="mb-6 -ml-4 text-muted-foreground" onClick={onBack}>
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back to Templates
+      </Button>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
+        <Card className="border-border">
+          <CardHeader className="bg-secondary/30 border-b">
+            <CardTitle className="text-2xl flex items-center gap-2">
+              <Code className="h-6 w-6 text-primary" />
+              Custom Workflow
+            </CardTitle>
+            <CardDescription>
+              Paste your ComfyUI API-format workflow JSON and run it directly on your server.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6">
+            <Alert className="mb-6 border-primary/30 bg-primary/5">
+              <AlertCircle className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-sm">
+                Export your workflow from ComfyUI using <strong>Save (API format)</strong> in the settings menu, then paste the resulting JSON below. The workflow is submitted unchanged to your ComfyUI server.
+              </AlertDescription>
+            </Alert>
+
+            <form id="custom-workflow-form" onSubmit={onSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-base">
+                  Workflow JSON <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  value={workflowJson}
+                  onChange={(e) => handleChange(e.target.value)}
+                  placeholder={'{\n  "1": {\n    "class_type": "KSampler",\n    "inputs": { ... }\n  }\n}'}
+                  className={`font-mono text-xs min-h-[400px] resize-y ${jsonError ? "border-destructive" : ""}`}
+                  spellCheck={false}
+                />
+                {jsonError && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {jsonError}
+                  </p>
+                )}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="sticky top-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Ready?</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                type="submit"
+                form="custom-workflow-form"
+                size="lg"
+                className="w-full text-base py-6 shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:shadow-[0_0_30px_rgba(var(--primary),0.5)] transition-all"
+                disabled={createJob.isPending}
+              >
+                {createJob.isPending ? "Starting Job..." : (
+                  <>
+                    <Play className="mr-2 h-5 w-5 fill-current" />
+                    Run Workflow
+                  </>
+                )}
+              </Button>
+              <div className="text-xs text-muted-foreground text-center">
+                This job will be added to your queue.
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

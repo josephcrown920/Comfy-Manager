@@ -81,7 +81,7 @@ export const ListWorkflowsResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "description": zod.string(),
-  "category": zod.enum(['lip-sync', 'motion-control', 'video-generation', 'image-generation']),
+  "category": zod.enum(['lip-sync', 'motion-control', 'video-generation', 'image-generation', 'custom']),
   "icon": zod.string().nullish(),
   "estimatedTime": zod.string().nullish(),
   "params": zod.array(zod.object({
@@ -111,7 +111,7 @@ export const GetWorkflowResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "description": zod.string(),
-  "category": zod.enum(['lip-sync', 'motion-control', 'video-generation', 'image-generation']),
+  "category": zod.enum(['lip-sync', 'motion-control', 'video-generation', 'image-generation', 'custom']),
   "icon": zod.string().nullish(),
   "estimatedTime": zod.string().nullish(),
   "params": zod.array(zod.object({
@@ -314,13 +314,6 @@ export const GetRecentOutputsResponseItem = zod.object({
 })
 export const GetRecentOutputsResponse = zod.array(GetRecentOutputsResponseItem)
 
-/**
- * @summary Upload a file and forward it to ComfyUI
- */
-export const UploadFileBody = zod.object({
-  "file": zod.instanceof(File).describe('The file to upload (image or audio)')
-})
-
 
 /**
  * @summary Get per-workflow model assignments and fallbacks
@@ -363,8 +356,17 @@ export const UpdateModelAssignmentsResponse = zod.object({
 })
 
 
+/**
+ * @summary Upload a file and forward it to ComfyUI
+ */
+export const UploadFileBody = zod.object({
+  "file": zod.instanceof(File).describe('The file to upload (image or audio)')
+})
+
 export const UploadFileResponse = zod.object({
   "name": zod.string(),
   "subfolder": zod.string(),
   "type": zod.string()
 })
+
+

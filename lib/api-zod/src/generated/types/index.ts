@@ -30,8 +30,7 @@ export * from './outputOutputType';
 export * from './settings';
 export * from './settingsInput';
 export * from './uploadedFile';
-// UploadFileBody is exported as a Zod schema from ../api.ts — skip the plain interface to avoid collision
-// export * from './uploadFileBody';
+// uploadFileBody intentionally excluded — UploadFileBody is exported as a Zod schema from generated/api.ts
 export * from './workflowModelAssignment';
 export * from './workflowParam';
 export * from './workflowParamType';

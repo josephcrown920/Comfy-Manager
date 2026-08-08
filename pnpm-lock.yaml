@@ -173,9 +173,6 @@ importers:
       '@types/multer':
         specifier: ^2.2.0
         version: 2.2.0
-      '@types/ws':
-        specifier: ^8.18.1
-        version: 8.18.1
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
@@ -219,6 +216,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.5
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       esbuild:
         specifier: 0.27.3
         version: 0.27.3

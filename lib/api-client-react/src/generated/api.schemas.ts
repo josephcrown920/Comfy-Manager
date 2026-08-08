@@ -93,6 +93,7 @@ export const WorkflowTemplateCategory = {
   'motion-control': 'motion-control',
   'video-generation': 'video-generation',
   'image-generation': 'image-generation',
+  custom: 'custom',
 } as const;
 
 export interface WorkflowTemplate {
@@ -240,3 +241,4 @@ export type UploadFileBody = {
   /** The file to upload (image or audio) */
   file: Blob;
 };
+

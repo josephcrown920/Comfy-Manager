@@ -127,13 +127,70 @@ router.post("/jobs", async (req, res): Promise<void> => {
   }
 
   const { workflowId, params } = parsed.data;
+
+  // Custom workflow: pass raw JSON directly to ComfyUI unchanged
+  if (workflowId === "custom-workflow") {
+    const rawJson = (params as Record<string, unknown>).workflow_json;
+    if (!rawJson || typeof rawJson !== "string") {
+      res.status(400).json({ error: "workflow_json is required for custom workflows" });
+      return;
+    }
+
+    let comfyPrompt: Record<string, unknown>;
+    try {
+      const parsed: unknown = JSON.parse(rawJson);
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        res.status(400).json({ error: "workflow_json must be a ComfyUI API-format prompt object (not an array or primitive)" });
+        return;
+      }
+      comfyPrompt = parsed as Record<string, unknown>;
+    } catch {
+      res.status(400).json({ error: "workflow_json is not valid JSON" });
+      return;
+    }
+
+    const comfyUrl = await getComfyUrl();
+    let comfyPromptId: string | null = null;
+    let initialStatus = "pending";
+
+    try {
+      const promptRes = await fetchComfy(comfyUrl, "/prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: comfyPrompt }),
+      });
+      if (promptRes.ok) {
+        const data = (await promptRes.json()) as { prompt_id?: string };
+        comfyPromptId = data.prompt_id ?? null;
+        initialStatus = "running";
+      }
+    } catch {
+      // ComfyUI unreachable — job stays pending
+    }
+
+    const [newJobRow] = await db
+      .insert(jobsTable)
+      .values({
+        workflowId,
+        workflowName: "Custom Workflow",
+        status: initialStatus as "pending" | "running",
+        params: params as Record<string, unknown>,
+        comfyPromptId,
+        progress: 0,
+      })
+      .returning();
+
+    res.json(CreateJobResponse.parse(buildJobOutput(newJobRow!, [])));
+    return;
+  }
+
   const workflow = WORKFLOWS.find((w) => w.id === workflowId);
   if (!workflow) {
     res.status(400).json({ error: "Unknown workflow: " + workflowId });
     return;
   }
 
-    const comfyUrl = await getComfyUrl();
+  const comfyUrl = await getComfyUrl();
   const assignments = await getModelAssignments();
 
   // Resolve checkpoint: per-workflow setting > global setting > param > default
