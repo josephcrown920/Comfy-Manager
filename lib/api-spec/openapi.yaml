@@ -302,6 +302,38 @@ paths:
                 items:
                   $ref: "#/components/schemas/Output"
 
+  /model-assignments:
+    get:
+      operationId: getModelAssignments
+      tags: [settings]
+      summary: Get per-workflow model assignments and fallbacks
+      responses:
+        "200":
+          description: Model assignments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelAssignments"
+    put:
+      operationId: updateModelAssignments
+      tags: [settings]
+      summary: Save per-workflow model assignments and fallbacks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelAssignmentsInput"
+      responses:
+        "200":
+          description: Updated model assignments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelAssignments"
+        "400":
+          description: Invalid request
+
   /files/proxy-upload:
     post:
       operationId: proxyUpload
@@ -539,6 +571,38 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    WorkflowModelAssignment:
+      type: object
+      properties:
+        checkpoint:
+          type: string
+          description: Primary checkpoint model name
+        checkpointFallback:
+          type: string
+          description: Fallback checkpoint model name if primary is unavailable
+
+    ModelAssignments:
+      type: object
+      required: [global, workflows]
+      properties:
+        global:
+          $ref: "#/components/schemas/WorkflowModelAssignment"
+        workflows:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/WorkflowModelAssignment"
+
+    ModelAssignmentsInput:
+      type: object
+      required: [global, workflows]
+      properties:
+        global:
+          $ref: "#/components/schemas/WorkflowModelAssignment"
+        workflows:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/WorkflowModelAssignment"
 
     ProxyUploadInput:
       type: object

@@ -316,6 +316,47 @@ export const GetRecentOutputsResponse = zod.array(GetRecentOutputsResponseItem)
 
 
 /**
+ * @summary Get per-workflow model assignments and fallbacks
+ */
+export const GetModelAssignmentsResponse = zod.object({
+  "global": zod.object({
+  "checkpoint": zod.string().optional().describe('Primary checkpoint model name'),
+  "checkpointFallback": zod.string().optional().describe('Fallback checkpoint model name if primary is unavailable')
+}),
+  "workflows": zod.record(zod.string(), zod.object({
+  "checkpoint": zod.string().optional().describe('Primary checkpoint model name'),
+  "checkpointFallback": zod.string().optional().describe('Fallback checkpoint model name if primary is unavailable')
+}))
+})
+
+
+/**
+ * @summary Save per-workflow model assignments and fallbacks
+ */
+export const UpdateModelAssignmentsBody = zod.object({
+  "global": zod.object({
+  "checkpoint": zod.string().optional().describe('Primary checkpoint model name'),
+  "checkpointFallback": zod.string().optional().describe('Fallback checkpoint model name if primary is unavailable')
+}),
+  "workflows": zod.record(zod.string(), zod.object({
+  "checkpoint": zod.string().optional().describe('Primary checkpoint model name'),
+  "checkpointFallback": zod.string().optional().describe('Fallback checkpoint model name if primary is unavailable')
+}))
+})
+
+export const UpdateModelAssignmentsResponse = zod.object({
+  "global": zod.object({
+  "checkpoint": zod.string().optional().describe('Primary checkpoint model name'),
+  "checkpointFallback": zod.string().optional().describe('Fallback checkpoint model name if primary is unavailable')
+}),
+  "workflows": zod.record(zod.string(), zod.object({
+  "checkpoint": zod.string().optional().describe('Primary checkpoint model name'),
+  "checkpointFallback": zod.string().optional().describe('Fallback checkpoint model name if primary is unavailable')
+}))
+})
+
+
+/**
  * @summary Proxy metadata about an uploaded file reference
  */
 export const ProxyUploadBody = zod.object({

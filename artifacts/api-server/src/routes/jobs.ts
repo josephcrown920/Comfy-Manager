@@ -15,8 +15,9 @@ import {
 } from "@workspace/api-zod";
 import { eq, desc, sql, and, gte } from "drizzle-orm";
 import { WORKFLOWS } from "./workflows";
-import { getComfyUrl, } from "./settings";
+import { getComfyUrl } from "./settings";
 import { fetchComfy } from "./comfy";
+import { getModelAssignments } from "./model-assignments";
 
 const router: IRouter = Router();
 
@@ -133,9 +134,40 @@ router.post("/jobs", async (req, res): Promise<void> => {
   }
 
   const comfyUrl = await getComfyUrl();
+  const assignments = await getModelAssignments();
+
+  // Resolve checkpoint: per-workflow setting > global setting > param > default
+  const wfAssignment = assignments.workflows[workflowId];
+  const primaryCheckpoint =
+    wfAssignment?.checkpoint ||
+    assignments.global.checkpoint ||
+    String((params as Record<string, unknown>).checkpoint ?? "v1-5-pruned-emaonly.safetensors");
+  const fallbackCheckpoint =
+    wfAssignment?.checkpointFallback ||
+    assignments.global.checkpointFallback ||
+    "";
+
+  // If a fallback is configured, check whether primary is available; use fallback if not
+  let resolvedCheckpoint = primaryCheckpoint;
+  if (fallbackCheckpoint && primaryCheckpoint) {
+    try {
+      const modelsRes = await fetchComfy(comfyUrl, "/api/models/checkpoints");
+      if (modelsRes.ok) {
+        const available = (await modelsRes.json()) as unknown;
+        if (Array.isArray(available) && !available.includes(primaryCheckpoint)) {
+          resolvedCheckpoint = fallbackCheckpoint;
+        }
+      }
+    } catch {
+      // Cannot verify availability — proceed with primary
+    }
+  }
 
   // Build a simple ComfyUI API prompt for the workflow
-  const comfyPrompt = buildComfyPrompt(workflowId, params as Record<string, unknown>);
+  const comfyPrompt = buildComfyPrompt(workflowId, {
+    ...(params as Record<string, unknown>),
+    checkpoint: resolvedCheckpoint,
+  });
 
   let comfyPromptId: string | null = null;
   let initialStatus = "pending";

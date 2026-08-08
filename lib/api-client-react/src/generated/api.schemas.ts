@@ -178,6 +178,27 @@ export interface JobStats {
   todayCount: number;
 }
 
+export interface WorkflowModelAssignment {
+  /** Primary checkpoint model name */
+  checkpoint?: string;
+  /** Fallback checkpoint model name if primary is unavailable */
+  checkpointFallback?: string;
+}
+
+export type ModelAssignmentsWorkflows = {[key: string]: WorkflowModelAssignment};
+
+export interface ModelAssignments {
+  global: WorkflowModelAssignment;
+  workflows: ModelAssignmentsWorkflows;
+}
+
+export type ModelAssignmentsInputWorkflows = {[key: string]: WorkflowModelAssignment};
+
+export interface ModelAssignmentsInput {
+  global: WorkflowModelAssignment;
+  workflows: ModelAssignmentsInputWorkflows;
+}
+
 export interface ProxyUploadInput {
   name: string;
   subfolder: string;

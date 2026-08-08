@@ -6,6 +6,7 @@ import workflowsRouter from "./workflows";
 import jobsRouter from "./jobs";
 import outputsRouter from "./outputs";
 import filesRouter from "./files";
+import modelAssignmentsRouter from "./model-assignments";
 import { getComfyUrl } from "./settings";
 
 const router: IRouter = Router();
@@ -17,6 +18,7 @@ router.use(workflowsRouter);
 router.use(jobsRouter);
 router.use(outputsRouter);
 router.use(filesRouter);
+router.use(modelAssignmentsRouter);
 
 // Proxy ComfyUI view requests (for serving generated images/videos)
 router.get("/comfy/view", async (req, res): Promise<void> => {

@@ -29,6 +29,8 @@ import type {
   JobStats,
   ListJobsParams,
   ListOutputsParams,
+  ModelAssignments,
+  ModelAssignmentsInput,
   Output,
   ProxyUploadInput,
   Settings,
@@ -1285,6 +1287,154 @@ export function useGetRecentOutputs<TData = Awaited<ReturnType<typeof getRecentO
 
 
 
+
+export const getGetModelAssignmentsUrl = () => {
+
+
+
+
+  return `/api/model-assignments`
+}
+
+/**
+ * @summary Get per-workflow model assignments and fallbacks
+ */
+export const getModelAssignments = async ( options?: Parameters<typeof customFetch>[1]): Promise<ModelAssignments> => {
+
+  return customFetch<ModelAssignments>(getGetModelAssignmentsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetModelAssignmentsQueryKey = () => {
+    return [
+    `/api/model-assignments`
+    ] as const;
+    }
+
+
+export const getGetModelAssignmentsQueryOptions = <TData = Awaited<ReturnType<typeof getModelAssignments>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getModelAssignments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetModelAssignmentsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getModelAssignments>>> = ({ signal }) => getModelAssignments({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getModelAssignments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetModelAssignmentsQueryResult = NonNullable<Awaited<ReturnType<typeof getModelAssignments>>>
+export type GetModelAssignmentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get per-workflow model assignments and fallbacks
+ */
+
+export function useGetModelAssignments<TData = Awaited<ReturnType<typeof getModelAssignments>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getModelAssignments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetModelAssignmentsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateModelAssignmentsUrl = () => {
+
+
+
+
+  return `/api/model-assignments`
+}
+
+/**
+ * @summary Save per-workflow model assignments and fallbacks
+ */
+export const updateModelAssignments = async (modelAssignmentsInput: ModelAssignmentsInput, options?: Parameters<typeof customFetch>[1]): Promise<ModelAssignments> => {
+
+  return customFetch<ModelAssignments>(getUpdateModelAssignmentsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(modelAssignmentsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateModelAssignmentsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModelAssignments>>, TError,{data: BodyType<ModelAssignmentsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateModelAssignments>>, TError,{data: BodyType<ModelAssignmentsInput>}, TContext> => {
+
+const mutationKey = ['updateModelAssignments'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateModelAssignments>>, {data: BodyType<ModelAssignmentsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateModelAssignments(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateModelAssignmentsMutationResult = NonNullable<Awaited<ReturnType<typeof updateModelAssignments>>>
+    export type UpdateModelAssignmentsMutationBody = BodyType<ModelAssignmentsInput>
+    export type UpdateModelAssignmentsMutationError = ErrorType<void>
+
+    /**
+ * @summary Save per-workflow model assignments and fallbacks
+ */
+export const useUpdateModelAssignments = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModelAssignments>>, TError,{data: BodyType<ModelAssignmentsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateModelAssignments>>,
+        TError,
+        {data: BodyType<ModelAssignmentsInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateModelAssignmentsMutationOptions(options));
+    }
 
 export const getProxyUploadUrl = () => {
 
