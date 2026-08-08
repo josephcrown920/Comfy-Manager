@@ -314,6 +314,13 @@ export const GetRecentOutputsResponseItem = zod.object({
 })
 export const GetRecentOutputsResponse = zod.array(GetRecentOutputsResponseItem)
 
+/**
+ * @summary Upload a file and forward it to ComfyUI
+ */
+export const UploadFileBody = zod.object({
+  "file": zod.instanceof(File).describe('The file to upload (image or audio)')
+})
+
 
 /**
  * @summary Get per-workflow model assignments and fallbacks
@@ -356,19 +363,15 @@ export const UpdateModelAssignmentsResponse = zod.object({
 })
 
 
-/**
- * @summary Proxy metadata about an uploaded file reference
- */
-export const ProxyUploadBody = zod.object({
-  "name": zod.string(),
-  "subfolder": zod.string(),
-  "type": zod.string()
-})
-
-export const ProxyUploadResponse = zod.object({
+export const UploadFileResponse = zod.object({
   "name": zod.string(),
   "subfolder": zod.string(),
   "type": zod.string()
 })
 
 
+export const UploadFileResponse = zod.object({
+  "name": zod.string(),
+  "subfolder": zod.string(),
+  "type": zod.string()
+})

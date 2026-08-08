@@ -46,7 +46,7 @@ function buildJobOutput(job: typeof jobsTable.$inferSelect, outputs: typeof outp
 }
 
 router.get("/jobs", async (req, res): Promise<void> => {
-  const params = ListJobsQueryParams.safeParse(req.query);
+  const params = RefreshJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
@@ -133,7 +133,7 @@ router.post("/jobs", async (req, res): Promise<void> => {
     return;
   }
 
-  const comfyUrl = await getComfyUrl();
+    const comfyUrl = await getComfyUrl();
   const assignments = await getModelAssignments();
 
   // Resolve checkpoint: per-workflow setting > global setting > param > default
@@ -189,22 +189,25 @@ router.post("/jobs", async (req, res): Promise<void> => {
   }
 
   const [job] = await db
-    .insert(jobsTable)
-    .values({
-      workflowId,
-      workflowName: workflow.name,
-      status: initialStatus,
-      params,
-      comfyPromptId,
-      progress: 0,
-    })
-    .returning();
+    .select()
+    .from(jobsTable)
+    .where(eq(jobsTable.id, params.data.id))
+    .limit(1);
 
-  res.status(201).json(CreateJobResponse.parse(buildJobOutput(job, [])));
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  await db.delete(outputsTable).where(eq(outputsTable.jobId, job.id));
+  await db.delete(jobsTable).where(eq(jobsTable.id, job.id));
+
+  res.sendStatus(204);
+  DeleteJobResponse.parse(undefined);
 });
 
-router.get("/jobs/:id", async (req, res): Promise<void> => {
-  const params = GetJobParams.safeParse(req.params);
+router.post("/jobs/:id/refresh", async (req, res): Promise<void> => {
+  const params = RefreshJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
@@ -230,7 +233,7 @@ router.get("/jobs/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/jobs/:id", async (req, res): Promise<void> => {
-  const params = DeleteJobParams.safeParse(req.params);
+  const params = RefreshJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
@@ -344,13 +347,178 @@ router.post("/jobs/:id/refresh", async (req, res): Promise<void> => {
   res.json(RefreshJobResponse.parse(buildJobOutput(updated, outputs)));
 });
 
-// Simple ComfyUI prompt builder — returns a minimal API workflow JSON
+/**
+ * Build a ComfyUI API-format prompt graph for the given workflow.
+ *
+ * Each workflow-specific builder wires uploaded file references (returned by
+ * /api/files/upload) into the appropriate ComfyUI loader nodes so that
+ * face_image, source_image, and audio_file inputs are actually consumed.
+ *
+ * Audio files are stored in the `audio/` subfolder by the upload endpoint, so
+ * their ComfyUI path is `audio/<filename>` (subfolder prefix + name).
+ */
 function buildComfyPrompt(
   workflowId: string,
   params: Record<string, unknown>
 ): Record<string, unknown> {
-  // Generic passthrough prompt — real workflow JSON depends on user's ComfyUI setup
-  // This sends the params as metadata; users can customize workflows on their ComfyUI
+  switch (workflowId) {
+    case "lip-sync-basic":
+      return buildLipSyncPrompt(params);
+    case "motion-control-animatediff":
+      return buildMotionControlPrompt(params);
+    case "img2vid-stable-video":
+      return buildImg2VidPrompt(params);
+    case "video-generation-txt2vid":
+      return buildTxt2VidPrompt(params);
+    default:
+      return buildGenericPrompt(workflowId, params);
+  }
+}
+
+/**
+ * Lip Sync — SadTalker-style graph.
+ * Requires the SadTalker ComfyUI extension (comfyui-sadtalker or similar).
+ * face_image  → LoadImage → SadTalker (portrait input)
+ * audio_file  → VHS_LoadAudio → SadTalker (audio input)
+ */
+function buildLipSyncPrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const faceImage = String(params.face_image ?? "");
+  const audioFile = String(params.audio_file ?? "");
+  // Audio files are stored under the `audio/` subfolder by the upload endpoint
+  const audioPath = audioFile.startsWith("audio/") ? audioFile : `audio/${audioFile}`;
+
+  return {
+    "1": {
+      class_type: "LoadImage",
+      inputs: { image: faceImage, upload: "image" },
+    },
+    "2": {
+      class_type: "VHS_LoadAudio",
+      inputs: { audio: audioPath, start_time: 0.0, duration: 0.0 },
+    },
+    "3": {
+      class_type: "SadTalker",
+      inputs: {
+        source_image: ["1", 0],
+        driven_audio: ["2", 0],
+        checkpoint: String(params.sadtalker_model ?? "SadTalker_V0.0.2_256.safetensors"),
+        size: 256,
+        expression_scale: 1.0,
+        still_mode: false,
+        preprocess: "crop",
+      },
+    },
+    "4": {
+      class_type: "VHS_VideoCombine",
+      inputs: {
+        images: ["3", 0],
+        frame_rate: 25,
+        loop_count: 0,
+        filename_prefix: "lip-sync",
+        format: "video/h264-mp4",
+        save_output: true,
+      },
+    },
+  };
+}
+export default router;
+
+/**
+ * Image to Video — Stable Video Diffusion.
+ * source_image → LoadImage → SVD_img2vid_Conditioning → VideoLinearCFGGuidance
+ */
+function buildImg2VidPrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const sourceImage = String(params.source_image ?? "");
+  const motionBucketId = Number(params.motion_bucket_id ?? 127);
+  const fps = Number(params.fps ?? 6);
+  const numFrames = Number(params.num_frames ?? 25);
+
+  return {
+    "1": {
+      class_type: "LoadImage",
+      inputs: { image: sourceImage, upload: "image" },
+    },
+    "2": {
+      class_type: "ImageScale",
+      inputs: { image: ["1", 0], upscale_method: "lanczos", width: 1024, height: 576, crop: "center" },
+    },
+    "3": {
+      class_type: "ImageToMask",
+      inputs: { image: ["2", 0], channel: "red" },
+    },
+    "4": {
+      class_type: "SVD_img2vid_Conditioning",
+      inputs: {
+        clip_vision: ["5", 0],
+        init_image: ["2", 0],
+        vae: ["5", 2],
+        width: 1024,
+        height: 576,
+        video_frames: numFrames,
+        motion_bucket_id: motionBucketId,
+        fps: fps,
+        augmentation_level: 0.0,
+      },
+    },
+    "5": {
+      class_type: "ImageOnlyCheckpointLoader",
+      inputs: { ckpt_name: "svd_xt.safetensors" },
+    },
+    "6": {
+      class_type: "VideoLinearCFGGuidance",
+      inputs: { model: ["5", 0], min_cfg: 1.0 },
+    },
+    "7": {
+      class_type: "KSamplerSelect",
+      inputs: { sampler_name: "euler" },
+    },
+    "8": {
+      class_type: "SamplerCustom",
+      inputs: {
+        model: ["6", 0],
+        add_noise: true,
+        noise_seed: Math.floor(Math.random() * 1e9),
+        cfg: 2.5,
+        positive: ["4", 0],
+        negative: ["4", 1],
+        sampler: ["7", 0],
+        sigmas: ["9", 0],
+        latent_image: ["4", 2],
+      },
+    },
+    "9": {
+      class_type: "BasicScheduler",
+      inputs: { model: ["6", 0], scheduler: "karras", steps: 20, denoise: 1.0 },
+    },
+    "10": {
+      class_type: "VAEDecode",
+      inputs: { samples: ["8", 0], vae: ["5", 2] },
+    },
+    "11": {
+      class_type: "VHS_VideoCombine",
+      inputs: {
+        images: ["10", 0],
+        frame_rate: fps,
+        loop_count: 0,
+        filename_prefix: "img2vid",
+        format: "video/h264-mp4",
+        save_output: true,
+      },
+    },
+  };
+}
+
+/**
+ * Text to Video — generic KSampler-based txt2vid graph.
+ */
+function buildTxt2VidPrompt(params: Record<string, unknown>): Record<string, unknown> {
+  return buildGenericPrompt("video-generation-txt2vid", params);
+}
+
+/**
+ * Fallback generic prompt used for unknown workflow IDs.
+ */
+function buildGenericPrompt(workflowId: string, params: Record<string, unknown>): Record<string, unknown> {
   return {
     "1": {
       class_type: "KSampler",
@@ -406,4 +574,84 @@ function buildComfyPrompt(
   };
 }
 
-export default router;
+/**
+ * Motion Control (AnimateDiff) — animates a still image.
+ * Requires AnimateDiff-Evolved ComfyUI extension.
+ * source_image → LoadImage → SVD/AnimateDiff conditioning pipeline
+ */
+function buildMotionControlPrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const sourceImage = String(params.source_image ?? "");
+  const motionPreset = String(params.motion_preset ?? "zoom-in");
+  const motionStrength = Number(params.motion_strength ?? 50) / 100;
+  const numFrames = Number(params.num_frames ?? 16);
+  const prompt = String(params.prompt ?? `${motionPreset} camera motion`);
+
+  return {
+    "1": {
+      class_type: "LoadImage",
+      inputs: { image: sourceImage, upload: "image" },
+    },
+    "2": {
+      class_type: "CheckpointLoaderSimple",
+      inputs: { ckpt_name: "v1-5-pruned-emaonly.safetensors" },
+    },
+    "3": {
+      class_type: "ADE_LoadAnimateDiffModel",
+      inputs: { model_name: "mm_sd_v15_v2.ckpt" },
+    },
+    "4": {
+      class_type: "ADE_UseEvolvedSampling",
+      inputs: {
+        model: ["2", 0],
+        m_models: ["3", 0],
+        context_options: ["5", 0],
+      },
+    },
+    "5": {
+      class_type: "ADE_StandardStaticContextOptions",
+      inputs: { context_length: numFrames, context_stride: 1, context_overlap: 4, closed_loop: false },
+    },
+    "6": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: prompt, clip: ["2", 1] },
+    },
+    "7": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: "blurry, low quality, distorted", clip: ["2", 1] },
+    },
+    "8": {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["1", 0], vae: ["2", 2] },
+    },
+    "9": {
+      class_type: "KSampler",
+      inputs: {
+        seed: Math.floor(Math.random() * 1e9),
+        steps: 20,
+        cfg: 7.5,
+        sampler_name: "euler",
+        scheduler: "normal",
+        denoise: motionStrength,
+        model: ["4", 0],
+        positive: ["6", 0],
+        negative: ["7", 0],
+        latent_image: ["8", 0],
+      },
+    },
+    "10": {
+      class_type: "VAEDecode",
+      inputs: { samples: ["9", 0], vae: ["2", 2] },
+    },
+    "11": {
+      class_type: "VHS_VideoCombine",
+      inputs: {
+        images: ["10", 0],
+        frame_rate: 8,
+        loop_count: 0,
+        filename_prefix: `motion-control-${motionPreset}`,
+        format: "video/h264-mp4",
+        save_output: true,
+      },
+    },
+  };
+}

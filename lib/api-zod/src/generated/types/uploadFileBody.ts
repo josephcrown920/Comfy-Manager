@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ProxyUploadInput {
-  name: string;
-  subfolder: string;
-  type: string;
-}
+export type UploadFileBody = {
+  /** The file to upload (image or audio) */
+  file: Blob;
+};

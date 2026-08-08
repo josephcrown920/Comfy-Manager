@@ -199,12 +199,6 @@ export interface ModelAssignmentsInput {
   workflows: ModelAssignmentsInputWorkflows;
 }
 
-export interface ProxyUploadInput {
-  name: string;
-  subfolder: string;
-  type: string;
-}
-
 export interface UploadedFile {
   name: string;
   subfolder: string;
@@ -242,3 +236,7 @@ export const ListOutputsType = {
   audio: 'audio',
 } as const;
 
+export type UploadFileBody = {
+  /** The file to upload (image or audio) */
+  file: Blob;
+};

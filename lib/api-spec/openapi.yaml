@@ -334,26 +334,36 @@ paths:
         "400":
           description: Invalid request
 
-  /files/proxy-upload:
+  /files/upload:
     post:
-      operationId: proxyUpload
+      operationId: uploadFile
       tags: [files]
-      summary: Proxy metadata about an uploaded file reference
+      summary: Upload a file and forward it to ComfyUI
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: "#/components/schemas/ProxyUploadInput"
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to upload (image or audio)
       responses:
         "200":
-          description: Uploaded file reference
+          description: Uploaded file reference returned by ComfyUI
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/UploadedFile"
         "400":
-          description: Invalid request
+          description: No file provided or parse error
+        "413":
+          description: File too large (limit is 100 MB)
+        "502":
+          description: ComfyUI upstream unreachable or returned an error
 
 components:
   schemas:
@@ -603,17 +613,6 @@ components:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/WorkflowModelAssignment"
-
-    ProxyUploadInput:
-      type: object
-      required: [name, subfolder, type]
-      properties:
-        name:
-          type: string
-        subfolder:
-          type: string
-        type:
-          type: string
 
     UploadedFile:
       type: object

@@ -27,10 +27,11 @@ export * from './modelAssignmentsInputWorkflows';
 export * from './modelAssignmentsWorkflows';
 export * from './output';
 export * from './outputOutputType';
-export * from './proxyUploadInput';
 export * from './settings';
 export * from './settingsInput';
 export * from './uploadedFile';
+// UploadFileBody is exported as a Zod schema from ../api.ts — skip the plain interface to avoid collision
+// export * from './uploadFileBody';
 export * from './workflowModelAssignment';
 export * from './workflowParam';
 export * from './workflowParamType';
