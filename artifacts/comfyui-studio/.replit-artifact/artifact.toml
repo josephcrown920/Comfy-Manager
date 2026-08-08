@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "ComfyUI Studio"
+description = "A beginner-friendly web frontend for ComfyUI. Lets users connect to their ComfyUI server and run pre-built workflow templates for lip sync, motion control, and video generation — with simple forms instead of complex node graphs. Includes a job queue, real-time progress tracking, and an output gallery."
+version = "1.0.0"
+id = "artifacts/comfyui-studio"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25323
+
+[services.development]
+run = "pnpm --filter @workspace/comfyui-studio run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/comfyui-studio", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/comfyui-studio/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25323"
+BASE_PATH = "/"

@@ -3,20 +3,32 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ComfyUI Studio API — proxy and orchestration layer for a ComfyUI server
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: settings
+    description: Server configuration
+  - name: comfy
+    description: ComfyUI server proxy
+  - name: workflows
+    description: Workflow templates
+  - name: jobs
+    description: Generation jobs
+  - name: outputs
+    description: Generated outputs gallery
+  - name: files
+    description: File uploads
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +36,528 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get current server settings
+      responses:
+        "200":
+          description: Settings object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    put:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update server settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsInput"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  /comfy/status:
+    get:
+      operationId: getComfyStatus
+      tags: [comfy]
+      summary: Check ComfyUI server reachability and system stats
+      responses:
+        "200":
+          description: Server status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComfyStatus"
+
+  /comfy/models:
+    get:
+      operationId: getComfyModels
+      tags: [comfy]
+      summary: List available models from ComfyUI server
+      responses:
+        "200":
+          description: Available models grouped by type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComfyModels"
+
+  /comfy/queue:
+    get:
+      operationId: getComfyQueue
+      tags: [comfy]
+      summary: Get current ComfyUI queue state
+      responses:
+        "200":
+          description: Queue state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComfyQueue"
+
+  /workflows:
+    get:
+      operationId: listWorkflows
+      tags: [workflows]
+      summary: List all available workflow templates
+      responses:
+        "200":
+          description: List of workflow templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkflowTemplate"
+
+  /workflows/{id}:
+    get:
+      operationId: getWorkflow
+      tags: [workflows]
+      summary: Get a workflow template with its parameter schema
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Workflow template detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowTemplate"
+        "404":
+          description: Not found
+
+  /jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List all generation jobs
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, completed, failed, cancelled]
+        - name: workflowId
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 50
+      responses:
+        "200":
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+    post:
+      operationId: createJob
+      tags: [jobs]
+      summary: Submit a new generation job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobInput"
+      responses:
+        "201":
+          description: Created job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "400":
+          description: Invalid request
+
+  /jobs/stats:
+    get:
+      operationId: getJobStats
+      tags: [jobs]
+      summary: Get job statistics for the dashboard
+      responses:
+        "200":
+          description: Job statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobStats"
+
+  /jobs/{id}:
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Get a job by ID including status and output
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Job detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteJob
+      tags: [jobs]
+      summary: Cancel or delete a job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /jobs/{id}/refresh:
+    post:
+      operationId: refreshJob
+      tags: [jobs]
+      summary: Poll ComfyUI for updated status of a running job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Updated job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          description: Not found
+
+  /outputs:
+    get:
+      operationId: listOutputs
+      tags: [outputs]
+      summary: List all generated output files (gallery)
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [image, video, audio]
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 50
+      responses:
+        "200":
+          description: List of outputs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Output"
+
+  /outputs/recent:
+    get:
+      operationId: getRecentOutputs
+      tags: [outputs]
+      summary: Get the most recent outputs for the dashboard
+      responses:
+        "200":
+          description: Recent outputs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Output"
+
+  /files/proxy-upload:
+    post:
+      operationId: proxyUpload
+      tags: [files]
+      summary: Proxy metadata about an uploaded file reference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProxyUploadInput"
+      responses:
+        "200":
+          description: Uploaded file reference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadedFile"
+        "400":
+          description: Invalid request
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    Settings:
+      type: object
+      required: [comfyUrl, updatedAt]
+      properties:
+        comfyUrl:
+          type: string
+          description: URL of the ComfyUI server (e.g. http://localhost:8188)
+        updatedAt:
+          type: string
+          format: date-time
+
+    SettingsInput:
+      type: object
+      required: [comfyUrl]
+      properties:
+        comfyUrl:
+          type: string
+
+    ComfyStatus:
+      type: object
+      required: [connected]
+      properties:
+        connected:
+          type: boolean
+        serverUrl:
+          type: ["string", "null"]
+        gpuName:
+          type: ["string", "null"]
+        gpuVram:
+          type: ["string", "null"]
+        ramUsed:
+          type: ["string", "null"]
+        ramTotal:
+          type: ["string", "null"]
+        queueRemaining:
+          type: ["number", "null"]
+        error:
+          type: ["string", "null"]
+
+    ComfyModels:
+      type: object
+      required: [checkpoints, loras, vaes, controlnets]
+      properties:
+        checkpoints:
+          type: array
+          items:
+            type: string
+        loras:
+          type: array
+          items:
+            type: string
+        vaes:
+          type: array
+          items:
+            type: string
+        controlnets:
+          type: array
+          items:
+            type: string
+
+    ComfyQueue:
+      type: object
+      required: [queueRunning, queuePending]
+      properties:
+        queueRunning:
+          type: number
+        queuePending:
+          type: number
+        runningItems:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    WorkflowParam:
+      type: object
+      required: [key, label, type]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [text, number, file, select, slider]
+        description:
+          type: ["string", "null"]
+        required:
+          type: boolean
+        defaultValue:
+          type: ["string", "null"]
+        options:
+          type: ["array", "null"]
+          items:
+            type: string
+        min:
+          type: ["number", "null"]
+        max:
+          type: ["number", "null"]
+        accept:
+          type: ["string", "null"]
+          description: File accept string e.g. image/*,video/*,audio/*
+
+    WorkflowTemplate:
+      type: object
+      required: [id, name, description, category, params]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [lip-sync, motion-control, video-generation, image-generation]
+        icon:
+          type: ["string", "null"]
+        estimatedTime:
+          type: ["string", "null"]
+        params:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowParam"
+
+    Job:
+      type: object
+      required: [id, workflowId, workflowName, status, params, createdAt]
+      properties:
+        id:
+          type: number
+        workflowId:
+          type: string
+        workflowName:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        params:
+          type: object
+          additionalProperties: true
+        comfyPromptId:
+          type: ["string", "null"]
+        progress:
+          type: ["number", "null"]
+          description: 0-100
+        errorMessage:
+          type: ["string", "null"]
+        outputs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Output"
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+
+    JobInput:
+      type: object
+      required: [workflowId, params]
+      properties:
+        workflowId:
+          type: string
+        params:
+          type: object
+          additionalProperties: true
+
+    JobStats:
+      type: object
+      required: [total, pending, running, completed, failed, todayCount]
+      properties:
+        total:
+          type: number
+        pending:
+          type: number
+        running:
+          type: number
+        completed:
+          type: number
+        failed:
+          type: number
+        todayCount:
+          type: number
+
+    Output:
+      type: object
+      required: [id, jobId, filename, outputType, comfyUrl, createdAt]
+      properties:
+        id:
+          type: number
+        jobId:
+          type: number
+        filename:
+          type: string
+        outputType:
+          type: string
+          enum: [image, video, audio]
+        comfyUrl:
+          type: string
+          description: Proxied URL to fetch the file from ComfyUI
+        thumbnailUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    ProxyUploadInput:
+      type: object
+      required: [name, subfolder, type]
+      properties:
+        name:
+          type: string
+        subfolder:
+          type: string
+        type:
+          type: string
+
+    UploadedFile:
+      type: object
+      required: [name, subfolder, type]
+      properties:
+        name:
+          type: string
+        subfolder:
+          type: string
+        type:
+          type: string

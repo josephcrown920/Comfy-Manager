@@ -1,10 +1,11 @@
-# [Project name]
+# ComfyUI Studio
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A beginner-friendly web frontend for ComfyUI. Connect your ComfyUI server and run pre-built workflow templates for lip sync, motion control, and video generation — without touching the node graph.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/comfyui-studio run dev` — run the frontend (port from $PORT)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -14,6 +15,7 @@ _Replace the heading above with the project's name, and this line with one sente
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Frontend: React 19 + Vite + Tailwind CSS + shadcn/ui + wouter
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
@@ -22,15 +24,26 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — OpenAPI contract (source of truth)
+- `lib/db/src/schema/` — Drizzle table definitions (settings, jobs, outputs)
+- `artifacts/api-server/src/routes/` — Express route handlers
+- `artifacts/comfyui-studio/src/` — React frontend (pages, components)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- ComfyUI server URL is stored in the `settings` DB table and configurable from the Settings page
+- All ComfyUI API calls go through the backend proxy (avoids CORS issues from the browser)
+- Workflow templates are code-defined (not DB) — 4 built-in templates: lip sync, motion control, text-to-video, image-to-video
+- Jobs track ComfyUI `prompt_id` and poll for updates via the `/jobs/:id/refresh` endpoint
+- Generated output files are served via `/api/comfy/view` which proxies to the ComfyUI `/view` endpoint
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Dashboard** — server status, job stats, quick-start buttons, recent outputs gallery
+- **Generate** — pick a workflow template, fill a simple form, submit to ComfyUI
+- **Jobs** — track all generation jobs with status, progress, and delete capability
+- **Gallery** — masonry grid of all output files with lightbox preview
+- **Settings** — configure ComfyUI server URL and test connection
 
 ## User preferences
 
@@ -38,7 +51,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Orval generates `zod.int()` for `type: integer` fields, but the installed zod (v3.x) doesn't support it — use `type: number` in the OpenAPI spec instead
+- After adding new DB schema files, run `pnpm run typecheck:libs` before typechecking artifacts (otherwise the exports won't be visible)
+- The ComfyUI workflow JSON sent by the backend is a generic KSampler pipeline — users running specialized workflows (AnimateDiff, SadTalker, etc.) will need to customize it for their setup
 
 ## Pointers
 
