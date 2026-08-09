@@ -5,9 +5,11 @@
  * ComfyUI Studio API — proxy and orchestration layer for a ComfyUI server
  * OpenAPI spec version: 0.1.0
  */
+import type { SavedGpu } from './savedGpu';
 
 export interface Settings {
   /** URL of the ComfyUI server (e.g. http://localhost:8188) */
   comfyUrl: string;
   updatedAt: Date;
+  savedGpus: SavedGpu[];
 }

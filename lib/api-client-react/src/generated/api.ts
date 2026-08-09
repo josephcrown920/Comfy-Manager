@@ -23,6 +23,7 @@ import type {
   ComfyModels,
   ComfyQueue,
   ComfyStatus,
+  DeleteSavedGpu200,
   DeleteSavedWorkflow200,
   HealthStatus,
   Job,
@@ -34,6 +35,8 @@ import type {
   ModelAssignmentsInput,
   NodeValidation,
   Output,
+  SavedGpu,
+  SavedGpuInput,
   SavedWorkflow,
   SavedWorkflowInput,
   Settings,
@@ -1439,6 +1442,148 @@ export const useUpdateModelAssignments = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateModelAssignmentsMutationOptions(options));
+    }
+
+export const getAddSavedGpuUrl = () => {
+
+
+
+
+  return `/api/settings/gpus`
+}
+
+/**
+ * @summary Save a GPU endpoint URL under a label for one-click switching
+ */
+export const addSavedGpu = async (savedGpuInput: SavedGpuInput, options?: Parameters<typeof customFetch>[1]): Promise<SavedGpu> => {
+
+  return customFetch<SavedGpu>(getAddSavedGpuUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(savedGpuInput)
+  }
+);}
+
+
+
+
+
+export const getAddSavedGpuMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addSavedGpu>>, TError,{data: BodyType<SavedGpuInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addSavedGpu>>, TError,{data: BodyType<SavedGpuInput>}, TContext> => {
+
+const mutationKey = ['addSavedGpu'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addSavedGpu>>, {data: BodyType<SavedGpuInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  addSavedGpu(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddSavedGpuMutationResult = NonNullable<Awaited<ReturnType<typeof addSavedGpu>>>
+    export type AddSavedGpuMutationBody = BodyType<SavedGpuInput>
+    export type AddSavedGpuMutationError = ErrorType<void>
+
+    /**
+ * @summary Save a GPU endpoint URL under a label for one-click switching
+ */
+export const useAddSavedGpu = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addSavedGpu>>, TError,{data: BodyType<SavedGpuInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addSavedGpu>>,
+        TError,
+        {data: BodyType<SavedGpuInput>},
+        TContext
+      > => {
+      return useMutation(getAddSavedGpuMutationOptions(options));
+    }
+
+export const getDeleteSavedGpuUrl = (id: number,) => {
+
+
+
+
+  return `/api/settings/gpus/${id}`
+}
+
+/**
+ * @summary Remove a saved GPU endpoint
+ */
+export const deleteSavedGpu = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<DeleteSavedGpu200> => {
+
+  return customFetch<DeleteSavedGpu200>(getDeleteSavedGpuUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteSavedGpuMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSavedGpu>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSavedGpu>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteSavedGpu'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSavedGpu>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteSavedGpu(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteSavedGpuMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSavedGpu>>>
+
+    export type DeleteSavedGpuMutationError = ErrorType<void>
+
+    /**
+ * @summary Remove a saved GPU endpoint
+ */
+export const useDeleteSavedGpu = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSavedGpu>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteSavedGpu>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteSavedGpuMutationOptions(options));
     }
 
 export const getValidateComfyNodesUrl = () => {

@@ -334,6 +334,52 @@ paths:
         "400":
           description: Invalid request
 
+  /settings/gpus:
+    post:
+      operationId: addSavedGpu
+      tags: [settings]
+      summary: Save a GPU endpoint URL under a label for one-click switching
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavedGpuInput"
+      responses:
+        "201":
+          description: Saved GPU endpoint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedGpu"
+        "400":
+          description: Invalid request
+
+  /settings/gpus/{id}:
+    delete:
+      operationId: deleteSavedGpu
+      tags: [settings]
+      summary: Remove a saved GPU endpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+        "404":
+          description: Not found
+
   /comfy/validate-nodes:
     post:
       operationId: validateComfyNodes
@@ -456,7 +502,7 @@ components:
 
     Settings:
       type: object
-      required: [comfyUrl, updatedAt]
+      required: [comfyUrl, updatedAt, savedGpus]
       properties:
         comfyUrl:
           type: string
@@ -464,6 +510,33 @@ components:
         updatedAt:
           type: string
           format: date-time
+        savedGpus:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavedGpu"
+
+    SavedGpu:
+      type: object
+      required: [id, label, url]
+      properties:
+        id:
+          type: number
+        label:
+          type: string
+        url:
+          type: string
+
+    SavedGpuInput:
+      type: object
+      required: [label, url]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 50
+        url:
+          type: string
+          minLength: 1
 
     SettingsInput:
       type: object

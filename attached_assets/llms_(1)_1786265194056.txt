@@ -1,0 +1,312 @@
+# HeyGen Documentation
+
+## About HeyGen
+
+HeyGen is an AI video creation platform — avatars, voice cloning, lip-sync translation, and agentic video workflows. The product is used by 85,000+ companies for marketing, L&D, sales, and global communications. This file indexes the *developer* surface; for the consumer/marketing surface (use cases, pricing, blog), see:
+
+- [HeyGen — product site](https://www.heygen.com): Homepage, product overview, pricing, blog.
+- [www.heygen.com/llms.txt](https://www.heygen.com/llms.txt): Machine-readable index of the marketing site, including links to MCP, API pricing, and use-case pages.
+
+## Start here if you are an AI agent
+
+If you are an AI coding agent (Claude Code, Codex, Cursor, Gemini CLI, etc.) acting on a user's behalf, read [For AI Agents](https://developers.heygen.com/docs/for-ai-agents.md) **before** the API reference. It defines the auth-detection ladder you must follow and the failure mode to avoid (writing curl scripts that can't run because auth was never verified).
+
+Priority order — **API key first**:
+
+1. **CLI with an API key** — if `heygen` is on PATH and `heygen auth status` returns an API-key account (or `HEYGEN_API_KEY` is set), drive the workflow via [`heygen` commands](https://developers.heygen.com/commands.md). Best default for scripting, batches, and repeatable pipelines.
+2. **HeyGen API with an API key** — direct HTTPS calls to `api.heygen.com` with the `X-Api-Key` header. Require `HEYGEN_API_KEY` in the environment, then follow the [Quick Start](https://developers.heygen.com/docs/quick-start.md). Never ask the user to paste an API key into chat.
+3. **OAuth (MCP or `heygen auth login --oauth`)** — trial-scale only. If the user is new and wants to test a one-off feature, OAuth is the fastest path to a few small generations: `mcp__heygen__*` tools ([MCP Overview](https://developers.heygen.com/mcp/overview.md)) or CLI OAuth, both billed against the user's HeyGen subscription credits. For anything at scale — batches, pipelines, production traffic — switch to an [API key](https://developers.heygen.com/docs/api-key.md): higher limits, API billing, and key rotation.
+
+Recommended: install the official agent skills from [`heygen-com/skills`](https://github.com/heygen-com/skills) — see [`INSTALL_FOR_AGENTS.md`](https://github.com/heygen-com/skills/blob/master/INSTALL_FOR_AGENTS.md) and the [Skills docs](https://developers.heygen.com/skills/overview.md).
+
+## Getting Started
+
+- [For AI Agents](https://developers.heygen.com/docs/for-ai-agents.md): Agent-first onboarding — auth detection, skills install path, and rules for agents generating HeyGen videos on a user's behalf.
+- [Quick Start](https://developers.heygen.com/docs/quick-start.md): Get from zero to a generated video in minutes — auth, create, poll.
+- [Stripe Projects](https://developers.heygen.com/docs/stripe-projects.md): Fund API usage with a Stripe-backed project wallet — for agents provisioning on a user's behalf.
+- [Discord](https://developers.heygen.com/docs/discord.md): Join the HeyGen developer community on Discord for direct access to engineers, PMs, and other developers.
+- [Slack Integration](https://developers.heygen.com/docs/slack.md): Generate HeyGen videos from Slack — connect, prompt, and share.
+- [Changelog](https://developers.heygen.com/changelog.md): Product updates and announcements for the HeyGen API and developer platform.
+
+## Authentication
+
+**Two auth models.** An **API key** ([generate and secure one here](https://developers.heygen.com/docs/api-key.md)) authenticates the CLI and raw API, bills to API plans, and is the right choice for production, batches, and anything repeatable. **OAuth** (MCP and CLI `--oauth`) authenticates as the user's web account and draws on subscription credits — convenient for a new user's first few small test generations, sized for trial rather than scale.
+
+- [API Key](https://developers.heygen.com/docs/api-key.md): Generate, rotate, and secure your HeyGen API key. Verify it with `GET /v3/users/me`.
+
+## Account & Billing
+
+- [Get Current User](https://developers.heygen.com/user-profile.md): Retrieve the authenticated user's profile, credit balance, and plan tier — useful for in-app credit displays and account UIs.
+- [Self-Serve Pricing](https://developers.heygen.com/docs/pricing.md): Per-operation pricing for self-serve API plans.
+- [Enterprise Pricing](https://developers.heygen.com/docs/enterprise-pricing.md): Pricing model overview for HeyGen Enterprise contracts.
+- [Enterprise Billing — Dollar-Based](https://developers.heygen.com/docs/enterprise-pricing-dollar-base.md): HeyGen offers two Enterprise billing models depending on your contract. Your account team will help you choose the right fit.
+- [Usage Limits](https://developers.heygen.com/docs/usage-limits.md): Rate limits, concurrency, and quota behavior across HeyGen API endpoints.
+
+## Errors & Versioning
+
+- [Error Codes](https://developers.heygen.com/docs/error-codes.md): Error codes, HTTP status codes, and troubleshooting for the HeyGen API.
+- [Endpoint Version Comparison](https://developers.heygen.com/endpoint-version-comparison.md): v1/v2 vs v3 endpoint coverage and migration guidance.
+
+## Video Agent
+
+- [Prompting Guide](https://developers.heygen.com/docs/prompting-guide.md): Write Video Agent prompts that land on the first cut — duration, style paragraphs, and scene-by-scene scripts.
+- [Prompt to Video](https://developers.heygen.com/docs/video-agent.md): Create videos from a text prompt with full control over avatar, voice, style, and file inputs.
+- [Styles & References](https://developers.heygen.com/docs/styles-and-references.md): Browse and apply curated visual styles to Video Agent videos.
+- [Upload Assets](https://developers.heygen.com/docs/upload-assets.md): Upload images, video, audio, and PDFs to use as file inputs in Video Agent and other endpoints.
+- [Interactive Sessions](https://developers.heygen.com/docs/interactive-sessions.md): Review storyboards, send follow-up messages, and iterate with the Video Agent before generating.
+- [Video Agent Styles (CLI Recipe)](https://developers.heygen.com/video-agent-with-styles.md): Pick a visual style — cinematic, handmade, retro — and let the Video Agent handle the rest.
+- [Writing Effective Video Prompts](https://developers.heygen.com/writing-effective-video-prompts.md): What actually works when prompting Video Agent — based on real experiments, not theory.
+
+## Direct Video Generation
+
+**Recommended request defaults for `POST /v3/videos`:** set `aspect_ratio: "auto"` (matches the source footage or image, falling back to `16:9`) and `resolution: "1080p"`. Both are supported on the `avatar` and `image` video types. Cinematic Avatar (`type: "cinematic_avatar"`) supports `16:9`/`9:16`/`1:1` only — no `auto` — at `720p` or `1080p`. The `studio` type composes multiple whole-frame scenes with global output settings.
+
+- [Models](https://developers.heygen.com/models.md): Avatar types (digital twin, photo, studio, image, prompt) and rendering engines (Avatar III, IV, V) with capabilities, supported features, and migration guidance.
+- [Avatar V](https://developers.heygen.com/avatar-v.md): Avatar V is HeyGen's highest-fidelity v3 rendering engine, using cross-reference-driven animation for the most natural motion and lip-sync. Opt-in per look.
+- [Avatar IV](https://developers.heygen.com/avatar-iv.md): Avatar IV is the default HeyGen v3 rendering engine — the broadest avatar support, arbitrary image animation, motion_prompt, and expressiveness control.
+- [Avatar III](https://developers.heygen.com/avatar-iii.md): Avatar III is HeyGen's v3 rendering engine built around a dedicated photo-to-video pipeline, with a higher-quality re-engineered model for photo avatars and video avatars (digital twins and studio avatars).
+- [Live Avatar](https://developers.heygen.com/live-avatar.md): Real-time, conversational avatars via the LiveAvatar API. Full docs at docs.liveavatar.com.
+- [Digital Twin](https://developers.heygen.com/generate-avatar-video.md): A Digital Twin is a lifelike avatar trained from real video footage of a person. Once created, you can make it speak any script in any supported voice — no camera or studio required.
+- [Photo Avatar](https://developers.heygen.com/photo-avatar.md): A Photo Avatar is created from a single still image of a person. HeyGen animates the face, syncs lip movements to your script, and produces a realistic talking-head video — all from one photo.
+- [Cinematic Avatar](https://developers.heygen.com/cinematic-avatar.md): Camera-directed avatar videos (`type: "cinematic_avatar"`) — multi-shot prompts, cinematic motion, and scene direction on top of avatar speech.
+- [Image to Video](https://developers.heygen.com/image-to-video.md): Animate a person in any image directly into a lip-synced talking video — no avatar creation step. Ideal for one-off videos and rapid prototyping.
+- [Audio to Video](https://developers.heygen.com/audio-to-video.md): Bring your own audio — a voice memo, a podcast segment, a dubbed track — and lip-sync it onto your avatar, digital twin, or any image with one HeyGen API call.
+- [Photo to Video (CLI Recipe)](https://developers.heygen.com/photo-to-video.md): Turn a single headshot into a talking avatar video — upload, create, voice, render. All from the CLI.
+- [Transparent Background Videos](https://developers.heygen.com/transparent-background-videos.md): Render avatar videos with a transparent background (WebM) for compositing into your own scenes and players.
+- [Assets](https://developers.heygen.com/assets.md): Upload files for use across the HeyGen API.
+- [Batch Videos](https://developers.heygen.com/batch-videos.md): Submit up to 100 video creation requests in a single call. Queue avatar, image, cinematic avatar, and studio videos together, then poll one batch id for per-item progress.
+- [Batch Video Translations](https://developers.heygen.com/batch-video-translations.md): Submit up to 100 video translation requests in a single call. Fan one source video out to many languages, then poll one batch id for per-item progress.
+- [Batch Lipsyncs](https://developers.heygen.com/batch-lipsyncs.md): Submit up to 100 lipsync requests in a single call. Re-sync many videos to new audio tracks together, then poll one batch id for per-item progress.
+- [Batch Assets](https://developers.heygen.com/batch-assets.md): Upload up to 100 files in one batch: request presigned S3 slots in a single call, PUT the bytes in parallel, then finalize and poll one batch id.
+
+## Avatars
+
+- [Create Avatar](https://developers.heygen.com/docs/create-avatar.md): Create a new avatar from your own footage, images, or a text description. Returns an avatar_item (the look) and an avatar_group (the character identity). The look ID is what you pass as avatar_id when creating videos.
+- [Avatar Consent](https://developers.heygen.com/docs/avatar-consent.md): How HeyGen verifies that the person in a digital twin agreed to be cloned. Covers the three increasing levels of consent access (record via webcam, upload a consent video, skip consent) and the POST /v3/avatars/{group_id}/consent flow.
+- [Avatar Groups](https://developers.heygen.com/docs/avatars.md): List avatar groups (characters) with cursor-based pagination. Each group contains one or more looks (outfits/styles) — use the Avatar Looks endpoint to browse them.
+- [Avatar Looks](https://developers.heygen.com/docs/avatar-looks.md): List avatar looks (outfits/styles) with cursor-based pagination and filtering. Each look has a unique ID that you pass as avatar_id to POST /v3/videos or POST /v3/video-agents.
+
+## Voices
+
+- [Voices Overview](https://developers.heygen.com/docs/voices/overview.md): Browse available voices, design custom voices with AI, and use them in your videos.
+- [Browse Voices](https://developers.heygen.com/docs/voices/search-voices.md): Search and list available voices with filtering and cursor-based pagination. Use a voice_id from this endpoint when creating speech or videos.
+- [Design a Voice](https://developers.heygen.com/docs/voices/design-voices.md): Can't find a pre-built voice that fits? Describe the voice you want and HeyGen returns up to 3 matching options. Pick the one that fits best and use its voice_id directly in video creation or text-to-speech.
+- [Text to Speech](https://developers.heygen.com/docs/voices/speech.md): If you want to generate audio from text without creating a video, HeyGen offers a dedicated TTS engine called Starfish. Pass a script and a compatible voice ID — get back an audio file URL.
+- [Design a Custom Voice (CLI Recipe)](https://developers.heygen.com/design-a-voice.md): Describe the voice you want in plain English — tone, accent, personality — and get a custom voice for any video.
+
+## Tools
+
+- [AI Clipping](https://developers.heygen.com/ai-clipping.md): Turn a long-form video into short highlight clips via POST /v3/ai-clipping — target durations, portrait/landscape/square framing, virality scores. Captions burn in by default; set output_settings.captions to false for clean footage.
+- [Background music](https://developers.heygen.com/background-music.md): Semantically search HeyGen's background-music catalog with a natural-language description ("upbeat lofi hip-hop") and get ranked tracks with pre-signed download URLs.
+- [Sound effects](https://developers.heygen.com/sound-effects.md): Semantically search HeyGen's sound-effects catalog with a natural-language description ("whoosh for a scene change") via GET /v3/audio/sounds with type=sound_effects. Returns ranked SFX with pre-signed download URLs.
+- [Filler word removal](https://developers.heygen.com/filler-word-removal.md): Remove filler words ("um", "uh") and overlong silences from a finished video via POST /v3/filler-word-removals — one cleaned cut back, with num_cuts and reduction_pct statistics. $0.01/sec of source video (0.01 credits/sec Enterprise), 1-minute minimum, auto-refunded when nothing changes.
+
+## Lipsync
+
+- [Lipsync — Speed](https://developers.heygen.com/lipsync-speed.md): Replace or dub audio on an existing video with fast audio-only lip-sync.
+- [Lipsync — Precision](https://developers.heygen.com/lipsync-precision.md): Replace or dub audio on an existing video with high-accuracy avatar-inference lip-sync.
+
+## Video Translation
+
+- [Video Translation — Speed](https://developers.heygen.com/docs/video-translate.md): Fast video translation with voice cloning and lip-sync across 30+ languages.
+- [Video Translation — Precision](https://developers.heygen.com/docs/video-translation-precision.md): Higher-quality video translation with editable proofread sessions before final render.
+
+## On Brand
+
+- [On Brand](https://developers.heygen.com/docs/on-brand.md): Which endpoints accept a brand kit and which accept a brand glossary — Video Agent takes brand_kit_id; Studio, Templates, and Video Translation take brand_glossary_id.
+- [Brand Kits](https://developers.heygen.com/docs/brand-kits.md): Apply saved brand colors, fonts, and logos to Video Agent output by passing brand_kit_id. Read-only over the API via GET /v3/brand-kits.
+- [Brand Glossary](https://developers.heygen.com/docs/brand-glossary.md): Map custom terms to pronunciations so product names and numbers are spoken correctly in generated speech and kept intact through translation.
+
+## Webhooks
+
+- [Webhooks](https://developers.heygen.com/docs/webhooks.md): Register and manage webhook endpoints to receive real-time notifications from HeyGen.
+- [Webhook Events](https://developers.heygen.com/docs/webhook-events.md): Understand the event types HeyGen can deliver and browse your event history.
+
+## CLI
+
+The `heygen` CLI is the recommended agent surface: full API coverage, JSON output for scripting, and API-key auth for scale (`heygen auth login --api-key`, or set `HEYGEN_API_KEY`). OAuth login (`heygen auth login --oauth`) is available for a new user's first small test generations against subscription credits.
+
+- [CLI Overview](https://developers.heygen.com/cli.md): Get from zero to a generated video in minutes — right from your terminal.
+- [Commands](https://developers.heygen.com/commands.md): Complete command reference for the HeyGen CLI, organized by resource.
+- [Output Modes](https://developers.heygen.com/output-modes.md): How the CLI formats output for agents, scripts, and humans.
+- [Features](https://developers.heygen.com/features.md): Common flags, error handling, pagination, async polling, and CLI behaviors.
+- [Examples](https://developers.heygen.com/examples.md): Practical recipes for videos, TTS, avatars, translation, webhooks, and scripting.
+
+## Agent Skills
+
+- [Skills Overview](https://developers.heygen.com/skills/overview.md): Official HeyGen skills for AI coding agents — what they are and which workflows they cover.
+- [Install Skills](https://developers.heygen.com/skills/install.md): Install the official skills across Claude Code, Cursor, Codex, Gemini CLI, and other agents.
+- [heygen-video Skill](https://developers.heygen.com/skills/heygen-video.md): Guided video generation (v3 only) with frame checks and prompt engineering.
+- [heygen-avatar Skill](https://developers.heygen.com/skills/heygen-avatar.md): Create and manage avatars and looks from an agent workflow.
+- [heygen-translate Skill](https://developers.heygen.com/skills/heygen-translate.md): Translate videos across languages from an agent workflow.
+
+## MCP
+
+MCP is OAuth-based and bills subscription credits — the fastest path for a new user to test a one-off generation from an AI host. For scale, move the workflow to the CLI or raw API with an API key.
+
+- [MCP Overview](https://developers.heygen.com/mcp/overview.md): MCP setup overview — endpoint URL, OAuth flow, supported hosts, and the full tool reference.
+- [Claude Code](https://developers.heygen.com/mcp/claude-code.md): Connect HeyGen to Claude Code via the remote MCP endpoint — config, OAuth, and HeyGen skills setup.
+- [Claude Web](https://developers.heygen.com/mcp/claude-web.md): Generate AI avatar videos directly within Claude using HeyGen's remote MCP server.
+- [Codex CLI](https://developers.heygen.com/mcp/codex-cli.md): Connect HeyGen to OpenAI Codex CLI via the remote MCP endpoint. Covers the required `--url` flag, OAuth login, and the two setup errors it produces.
+- [Cursor](https://developers.heygen.com/mcp/cursor.md): Connect HeyGen to Cursor via the remote MCP endpoint.
+- [Gemini CLI](https://developers.heygen.com/mcp/gemini-cli.md): Connect HeyGen's Video Agent to Gemini CLI to generate AI avatar videos directly from your terminal.
+- [Grok](https://developers.heygen.com/mcp/grok.md): Connect HeyGen to Grok via the remote MCP endpoint.
+- [Lovable](https://developers.heygen.com/mcp/lovable.md): Generate HeyGen videos from Lovable apps via the remote MCP endpoint.
+- [Manus](https://developers.heygen.com/mcp/manus.md): HeyGen's Video Agent is available as a native tool connection in Manus — agents can script, render, and deliver videos, including on automated schedules.
+- [OpenAI](https://developers.heygen.com/mcp/open-ai.md): Connect HeyGen to OpenAI agents and assistants via the remote MCP endpoint.
+- [Superhuman](https://developers.heygen.com/mcp/superhuman.md): Generate HeyGen videos from any web page using the HeyGen agent in Superhuman Go.
+
+## Cookbook (Use-Case Workflows)
+
+- [Cookbook Overview](https://developers.heygen.com/overview.md): The API docs show you how to call the endpoints. The cookbook shows you what to build.
+- [Showcase](https://developers.heygen.com/showcase.md): Real projects built with the HeyGen API. Get inspired, then build your own.
+- [Social Media Content Pipeline](https://developers.heygen.com/social-media-content-pipeline.md): Batch-generate short-form videos for TikTok, Reels, and Shorts — no camera, no mic, no editing.
+- [Personalized Sales Outreach](https://developers.heygen.com/personalized-sales-outreach.md): Generate personalized video messages for prospects at scale — from CRM data to inbox.
+- [Training & Onboarding Videos](https://developers.heygen.com/training-and-onboarding-videos.md): Convert training docs, policies, and SOPs into engaging video — and keep them in sync when materials change.
+- [Product Demo Videos](https://developers.heygen.com/product-demo-videos.md): Generate product demos from screenshots and specs — and regenerate when your product changes.
+- [Multilingual Content](https://developers.heygen.com/multilingual-content.md): Create one video, translate it into 10+ languages with lip-sync — reach a global audience.
+- [Content Repurposing](https://developers.heygen.com/content-repurposing.md): Turn blog posts, articles, and newsletters into video — reach audiences that don't read.
+- [Real Estate Listing Videos](https://developers.heygen.com/real-estate-listing-videos.md): Turn property photos and listing data into narrated tour videos — for a fraction of traditional production costs.
+- [E-commerce Product Videos](https://developers.heygen.com/e-commerce-product-videos.md): Generate product videos from catalog data at scale — because product pages with video consistently outperform those without.
+- [Automated Broadcast](https://developers.heygen.com/automated-broadcast.md): Build a pipeline that generates and distributes video content on a schedule — daily news, weekly updates, recurring series.
+- [Docs to Video](https://developers.heygen.com/docs-to-video.md): Auto-generate video walkthroughs when your documentation changes — in CI/CD or on demand.
+- [Personalized Greetings & Recognition](https://developers.heygen.com/personalized-greetings-and-recognition.md): Generate personalized birthday, welcome, and recognition videos at scale — make every person feel valued.
+
+## Video Composition
+
+- [Introduction to Hyperframes](https://developers.heygen.com/hyperframes-overview.md): What Hyperframes is — a code-driven video framework that turns HTML compositions into rendered video. Covers core concepts (compositions, data attributes, variables, deterministic rendering) and the ways to render.
+- [Hyperframes Cloud Rendering](https://developers.heygen.com/hyperframes.md): Render an HTML project bundle to video on HeyGen's infrastructure via POST /v3/hyperframes/renders — upload a zip, inject runtime variables, poll or use webhooks, download the MP4/WebM/MOV.
+- [Hyperframes Use Cases](https://developers.heygen.com/hyperframes-heygen.md): Combine an avatar video, background music, and sound effects into one finished video by compositing them in a Hyperframes render — wires POST /v3/videos, GET /v3/audio/sounds, and POST /v3/hyperframes/renders into a single pipeline.
+- [HeyGen Studio](https://developers.heygen.com/studio-videos.md): Compose avatar clips, images, and video footage into one rendered MP4 with a single POST /v3/videos call (type: "studio") — 1–50 whole-frame scenes, global aspect ratio/resolution/captions, all-or-nothing render.
+- [HeyGen Studio Template](https://developers.heygen.com/templates.md): Discover HeyGen Studio templates and read their variable schema over the API — list API-ready templates, inspect the variables each exposes, and fill them to generate on-brand videos at scale.
+- [Building a Studio Template](https://developers.heygen.com/templates-guide.md): Design a reusable template in the HeyGen Studio editor — named variables, scenes, and the settings that make it API-ready.
+- [Motion Graphics from a Prompt](https://developers.heygen.com/motion-graphics.md): Generate animated title cards, product launches, and visual content — no After Effects, no React, just HTML.
+- [Data Visualization Videos](https://developers.heygen.com/data-to-video.md): Turn datasets, metrics, and algorithms into animated videos — charts that move, dashboards that update, patterns that evolve.
+- [Automated Video Pipeline](https://developers.heygen.com/automated-pipeline.md): Generate videos programmatically from data — in CI/CD, on a schedule, or triggered by events.
+
+## API Reference
+
+Auto-generated from the OpenAPI spec. Resource families are grouped below.
+
+### Videos
+
+- [Create Video](https://developers.heygen.com/reference/create-video.md): Creates a video from a HeyGen avatar, an arbitrary image, a cinematic-avatar prompt, or a studio scene composition (type: avatar | image | cinematic_avatar | studio). Supports scripts or pre-recorded audio for lip-sync, and the Avatar III, IV, and V engines via the 'engine' field (Avatar IV by default).
+- [Get Video](https://developers.heygen.com/reference/get-video.md): Returns details for a video including status, video_url, thumbnail_url, duration, and failure info if applicable.
+- [List Videos](https://developers.heygen.com/reference/list-videos.md): Returns a paginated list of all videos in the account. Filterable by folder_id or title substring.
+- [Delete Video](https://developers.heygen.com/reference/delete-video.md): Permanently deletes a video and its associated files. This action cannot be undone.
+
+### Templates
+
+- [List Templates](https://developers.heygen.com/reference/list-templates.md): Returns a paginated list of API-ready HeyGen Studio templates in the workspace.
+- [Get Template](https://developers.heygen.com/reference/get-template.md): Returns a template's variable schema (with current defaults) and its scenes.
+- [Generate Video from Template](https://developers.heygen.com/reference/generate-video-from-template.md): Renders a video from a template by replacing its variables (text, image, video, audio, character, voice).
+
+### AI Clipping
+
+- [Create AI Clipping](https://developers.heygen.com/reference/create-ai-clipping.md): Starts a clipping job for a source video — target durations, aspect ratio, captions (on by default), and an optional editorial prompt. Returns an ai_clipping_id.
+- [Get AI Clipping](https://developers.heygen.com/reference/get-ai-clipping.md): Returns job status, live progress, and produced clips with virality scores and presigned URLs.
+- [List AI Clipping](https://developers.heygen.com/reference/list-ai-clipping.md): Returns a paginated list of clipping jobs.
+- [Delete AI Clipping](https://developers.heygen.com/reference/delete-ai-clipping.md): Permanently deletes a clipping job and its clips.
+
+### Filler Word Removal
+
+- [Create Filler Word Removal](https://developers.heygen.com/reference/create-filler-word-removal.md): Submits a video (URL or asset_id) for filler-word and silence removal. Returns a filler_word_removal_id immediately (202); the job runs asynchronously.
+- [Get Filler Word Removal](https://developers.heygen.com/reference/get-filler-word-removal.md): Returns job status, progress, and — once completed — the presigned URL of the cleaned video plus removal statistics (num_cuts, reduction_pct, durations).
+
+### Batches
+
+- [Create Video Batch](https://developers.heygen.com/reference/create-video-batch.md): Submits up to 100 video creation payloads in one call and returns a single batch_id.
+- [Get Video Batch](https://developers.heygen.com/reference/get-video-batch.md): Returns aggregate batch status and per-item video ids.
+- [Create Video Translation Batch](https://developers.heygen.com/reference/create-video-translation-batch.md): Submits up to 100 translation payloads in one call; multi-language payloads expand to one item per language.
+- [Create Lipsync Batch](https://developers.heygen.com/reference/create-lipsync-batch.md): Submits up to 100 lipsync payloads in one call.
+- [Create Asset Upload Batch](https://developers.heygen.com/reference/create-asset-upload-batch.md): Presigns up to 100 direct-to-S3 upload slots in one call; finalize with the complete-batch endpoint.
+- [Bulk Video Statuses](https://developers.heygen.com/reference/bulk-video-statuses.md): Checks up to 100 video ids (or a whole batch) in one request. Companion endpoints exist for translations, lipsyncs, and assets.
+
+### Video Agent
+
+- [Create Video Agent Session](https://developers.heygen.com/reference/create-video-agent-session.md): One-shot video generation from a prompt — agent handles scripting, avatar selection, scene composition, and rendering. Supports generate (fire-and-forget) and chat (multi-turn) modes.
+- [Get Video Agent Session](https://developers.heygen.com/reference/get-video-agent-session.md): Returns the current status, progress, video_id, and recent chat messages for a session.
+- [List Video Agent Sessions](https://developers.heygen.com/reference/list-video-agent-sessions.md): Returns a paginated list of video agent sessions for the authenticated user, sorted newest-first.
+- [List Session Videos](https://developers.heygen.com/reference/list-session-videos.md): Returns all videos produced within a Video Agent session, sorted newest-first.
+- [List Video Agent Styles](https://developers.heygen.com/reference/list-video-agent-styles.md): Returns curated visual style templates available for Video Agent sessions. Each style controls scene composition, pacing, and aesthetics. Supports tag filtering (e.g. 'cinematic', 'retro-tech').
+- [Get Session Resource](https://developers.heygen.com/reference/get-session-resource.md): Returns a single session resource (image, video, draft, avatar, voice, etc.) by its resource_id.
+- [Send Message or Request Revision](https://developers.heygen.com/reference/send-message-or-request-revision.md): Sends a follow-up message to an existing session. Use to answer agent questions, add context, or request edits to a generated video. Only valid for sessions created in chat mode.
+- [Stop Video Agent Session](https://developers.heygen.com/reference/stop-video-agent-session.md): Halts an active agent run at its next checkpoint. Partial results are preserved.
+
+### HyperFrames
+
+- [Create HyperFrames Render](https://developers.heygen.com/reference/create-hyperframes-render.md): Renders an HTML composition bundle to video on HeyGen infrastructure; returns a render_id to poll.
+- [Get HyperFrames Render](https://developers.heygen.com/reference/get-hyperframes-render.md): Returns render status and the finished video download URL.
+
+### Avatars
+
+- [Create Avatar](https://developers.heygen.com/reference/create-avatar.md): Creates a new avatar from an image, video footage, or a text prompt. Supports photo, digital_twin, and prompt types. Avatar training is asynchronous.
+- [Create Avatar Consent](https://developers.heygen.com/reference/create-avatar-consent.md): Initiates the consent flow for an avatar group and returns a URL for the user to complete approval in their browser. Required before a private avatar can be used for video generation.
+- [Get Avatar Group](https://developers.heygen.com/reference/get-avatar-group.md): Returns details for a specific avatar group including name, gender, preview URLs, looks count, and training status.
+- [List Avatar Groups](https://developers.heygen.com/reference/list-avatar-groups.md): Returns a paginated list of avatar groups (characters). Each group contains one or more looks. Filterable by ownership.
+- [Get Avatar Look](https://developers.heygen.com/reference/get-avatar-look.md): Returns details for a specific avatar look including supported engines, preferred orientation, preview URLs, and training status.
+- [List Avatar Looks](https://developers.heygen.com/reference/list-avatar-looks.md): Returns a paginated list of avatar looks (outfits, poses, styles). Filterable by group_id, avatar_type, and ownership. The look id is the avatar_id to pass when creating a video.
+- [Update Avatar Look](https://developers.heygen.com/reference/update-avatar-look.md): Updates the display name of an avatar look. Only supported for photo avatar and digital twin look types.
+
+### Voices
+
+- [List Voices](https://developers.heygen.com/reference/list-voices.md): Returns a paginated list of voices, filterable by type, engine, language, and gender. Use engine=starfish for voices compatible with the TTS endpoint.
+- [Get Voice](https://developers.heygen.com/reference/get-voice.md): Returns details for a specific voice, including clone workflow status when available. Use this to poll a voice clone until its status is 'complete'.
+- [Clone a Voice](https://developers.heygen.com/reference/clone-a-voice.md): Creates a voice clone from an audio file. Returns a voice_clone_id that can be polled via GET /v3/voices/{voice_clone_id} until the status is 'complete'. The resulting voice can be used with POST /v3/voices/speech and POST /v3/videos.
+- [Design a Voice](https://developers.heygen.com/reference/design-a-voice.md): Returns up to 3 voices matching a natural language description (e.g. 'warm, confident female narrator'). Use the seed parameter to get different batches of results.
+- [Generate Speech](https://developers.heygen.com/reference/generate-speech.md): Synthesize speech audio from text using a specified voice. The voice must support the starfish engine — use GET /v3/voices?engine=starfish to find compatible voices. Supports plain text and SSML. Speed range: 0.5–2.0x. Returns a URL to the generated audio file along with duration and optional word-level timestamps.
+
+### Lipsync
+
+- [Create Lipsync](https://developers.heygen.com/reference/create-lipsync.md): Replaces the audio on an existing video and re-animates the speaker's lip movements to match the new audio. Use mode: 'speed' for fast output or 'precision' for high-quality lip-sync.
+- [Get Lipsync](https://developers.heygen.com/reference/get-lipsync.md): Returns details for a lipsync job including status, video_url, caption_url, and failure info if applicable.
+- [List Lipsyncs](https://developers.heygen.com/reference/list-lipsyncs.md): Returns a paginated list of all lipsync jobs in the account.
+- [Update Lipsync](https://developers.heygen.com/reference/update-lipsync.md): Updates the display title of a lipsync job.
+- [Delete Lipsync](https://developers.heygen.com/reference/delete-lipsync.md): Permanently deletes a lipsync job and its associated files. This action cannot be undone.
+
+### Video Translation
+
+- [Create Video Translation](https://developers.heygen.com/reference/create-video-translation.md): Translates a video into one or more target languages with voice cloning and lip-sync. Returns one video_translation_id per language. Use mode: 'speed' (default) for fast turnaround or 'precision' for higher lip-sync quality.
+- [Get Video Translation](https://developers.heygen.com/reference/get-video-translation.md): Returns details for a translation job including status, output language, video_url, and failure info if applicable.
+- [List Video Translations](https://developers.heygen.com/reference/list-video-translations.md): Returns a paginated list of all video translation jobs in the account.
+- [List Supported Translation Languages](https://developers.heygen.com/reference/list-supported-translation-languages.md): Returns all supported target language names for video translation.
+- [Update Video Translation](https://developers.heygen.com/reference/update-video-translation.md): Updates the display title of a video translation job.
+- [Delete Video Translation](https://developers.heygen.com/reference/delete-video-translation.md): Permanently deletes a video translation and its associated files. This action cannot be undone.
+
+### Proofread Sessions
+
+- [Create Proofread Session](https://developers.heygen.com/reference/create-proofread-session.md): Creates a proofread session that extracts editable subtitles from a video before final rendering.
+- [Get Proofread Session](https://developers.heygen.com/reference/get-proofread-session.md): Returns the status and details of a proofread session.
+- [Download Proofread SRT](https://developers.heygen.com/reference/download-proofread-srt.md): Returns presigned download URLs for the edited and original SRT files of a completed proofread session.
+- [Upload Proofread SRT](https://developers.heygen.com/reference/upload-proofread-srt.md): Replaces the proofread subtitles with an edited SRT file.
+- [Generate Video from Proofread](https://developers.heygen.com/reference/generate-video-from-proofread.md): Starts final video generation using the approved subtitles from a proofread session.
+
+### Webhooks
+
+- [Create Webhook Endpoint](https://developers.heygen.com/reference/create-webhook-endpoint.md): Registers an HTTPS URL to receive webhook event notifications. Returns the endpoint details and a signing secret. The signing secret is only shown at creation and rotation — store it securely.
+- [List Webhook Endpoints](https://developers.heygen.com/reference/list-webhook-endpoints.md): Returns a paginated list of registered webhook endpoints.
+- [Update Webhook Endpoint](https://developers.heygen.com/reference/update-webhook-endpoint.md): Updates the URL and/or subscribed event types for a webhook endpoint. The events array is fully replaced — include all types you want to keep.
+- [Delete Webhook Endpoint](https://developers.heygen.com/reference/delete-webhook-endpoint.md): Permanently removes a webhook endpoint. Events will no longer be delivered to this URL. This action cannot be undone.
+- [Rotate Webhook Signing Secret](https://developers.heygen.com/reference/rotate-webhook-signing-secret.md): Generates a new signing secret for a webhook endpoint and immediately invalidates the old one. Store the new secret securely — it will not be shown again.
+- [List Webhook Event Types](https://developers.heygen.com/reference/list-webhook-event-types.md): Returns all available webhook event types with human-readable descriptions.
+- [List Webhook Events](https://developers.heygen.com/reference/list-webhook-events.md): Returns a paginated history of delivered webhook events. Filterable by event_type or entity_id.
+
+### Assets
+
+- [Upload Asset](https://developers.heygen.com/reference/upload-asset.md): Uploads a file (image, video, audio, or PDF) and returns an asset_id for use in other endpoints. Max 32 MB. Supported types: png, jpeg, mp4, webm, mp3, wav, pdf.
+- [Create Asset Upload](https://developers.heygen.com/reference/create-asset-upload.md): Presigns a direct-to-S3 upload slot for large files; finalize with Complete Asset Upload.
+
+### Brand
+
+- [List Brand Kits](https://developers.heygen.com/reference/list-brand-kits.md): Returns the brand kits in the workspace, each with its colors and logo URL.
+- [List Brand Glossaries](https://developers.heygen.com/reference/list-brand-glossaries.md): Returns the brand glossaries in the workspace with their names and timestamps.
+- [Get Brand Glossary](https://developers.heygen.com/reference/get-brand-glossary.md): Returns one brand glossary with its full list of term-to-pronunciation mappings.
+
+### Account
+
+- [Get Current User](https://developers.heygen.com/reference/get-current-user.md): Returns the authenticated user's profile, remaining credits or balance, and billing details.
+
+## OpenAPI Specs
+
+- [external-api](https://developers.heygen.com/openapi/external-api.json)
+- [openapi](https://developers.heygen.com/openapi.yaml)

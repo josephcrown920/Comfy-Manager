@@ -9,10 +9,27 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface SavedGpu {
+  id: number;
+  label: string;
+  url: string;
+}
+
 export interface Settings {
   /** URL of the ComfyUI server (e.g. http://localhost:8188) */
   comfyUrl: string;
   updatedAt: string;
+  savedGpus: SavedGpu[];
+}
+
+export interface SavedGpuInput {
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  label: string;
+  /** @minLength 1 */
+  url: string;
 }
 
 export interface SettingsInput {
@@ -268,6 +285,10 @@ export const ListOutputsType = {
   video: 'video',
   audio: 'audio',
 } as const;
+
+export type DeleteSavedGpu200 = {
+  success: boolean;
+};
 
 export type DeleteSavedWorkflow200 = {
   success: boolean;

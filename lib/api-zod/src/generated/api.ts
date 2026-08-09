@@ -21,7 +21,12 @@ export const HealthCheckResponse = zod.object({
  */
 export const GetSettingsResponse = zod.object({
   "comfyUrl": zod.string().describe('URL of the ComfyUI server (e.g. http:\/\/localhost:8188)'),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "savedGpus": zod.array(zod.object({
+  "id": zod.number(),
+  "label": zod.string(),
+  "url": zod.string()
+}))
 })
 
 
@@ -34,7 +39,12 @@ export const UpdateSettingsBody = zod.object({
 
 export const UpdateSettingsResponse = zod.object({
   "comfyUrl": zod.string().describe('URL of the ComfyUI server (e.g. http:\/\/localhost:8188)'),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "savedGpus": zod.array(zod.object({
+  "id": zod.number(),
+  "label": zod.string(),
+  "url": zod.string()
+}))
 })
 
 
@@ -353,6 +363,38 @@ export const UpdateModelAssignmentsResponse = zod.object({
   "checkpoint": zod.string().optional().describe('Primary checkpoint model name'),
   "checkpointFallback": zod.string().optional().describe('Fallback checkpoint model name if primary is unavailable')
 }))
+})
+
+
+/**
+ * @summary Save a GPU endpoint URL under a label for one-click switching
+ */
+export const addSavedGpuBodyLabelMax = 50;
+
+
+
+
+export const AddSavedGpuBody = zod.object({
+  "label": zod.string().min(1).max(addSavedGpuBodyLabelMax),
+  "url": zod.string().min(1)
+})
+
+export const AddSavedGpuResponse = zod.object({
+  "id": zod.number(),
+  "label": zod.string(),
+  "url": zod.string()
+})
+
+
+/**
+ * @summary Remove a saved GPU endpoint
+ */
+export const DeleteSavedGpuParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteSavedGpuResponse = zod.object({
+  "success": zod.boolean()
 })
 
 

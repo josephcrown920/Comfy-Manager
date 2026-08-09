@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { 
   useListWorkflows, 
@@ -9,6 +9,7 @@ import {
   useCreateSavedWorkflow,
   useDeleteSavedWorkflow,
   getListSavedWorkflowsQueryKey,
+  useValidateComfyNodes,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -185,6 +186,40 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [saveName, setSaveName] = useState("");
 
+  // Debounced missing-node check (informational, never blocks Run)
+  const validateNodes = useValidateComfyNodes();
+  const [nodeCheck, setNodeCheck] = useState<{ reachable: boolean; missingNodes: string[] } | null>(null);
+  const checkSeq = useRef(0);
+  useEffect(() => {
+    setNodeCheck(null);
+    // Invalidate any in-flight check on EVERY edit, so a stale response
+    // can never resurface a warning for content that changed since.
+    const seq = ++checkSeq.current;
+    const value = workflowJson.trim();
+    if (!value) return;
+    try {
+      const parsed = JSON.parse(value);
+      if (typeof parsed !== "object" || Array.isArray(parsed) || parsed === null) return;
+    } catch {
+      return; // not valid JSON yet — validateJson handles messaging
+    }
+    const t = setTimeout(() => {
+      validateNodes.mutate(
+        { data: { json: value } },
+        {
+          onSuccess: (result) => {
+            if (seq === checkSeq.current) {
+              setNodeCheck({ reachable: result.reachable, missingNodes: result.missingNodes });
+            }
+          },
+          // Silently ignore errors — this check is best-effort.
+        }
+      );
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflowJson]);
+
   const onSave = () => {
     if (!validateJson(workflowJson)) return;
     if (!saveName.trim()) {
@@ -314,6 +349,25 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                   <p className="text-sm text-destructive flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
                     {jsonError}
+                  </p>
+                )}
+                {!jsonError && nodeCheck && nodeCheck.missingNodes.length > 0 && (
+                  <Alert className="border-yellow-500/40 bg-yellow-500/10">
+                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                    <AlertDescription className="text-sm">
+                      <strong>Missing nodes:</strong> {nodeCheck.missingNodes.join(", ")}
+                      <span className="block mt-1 text-xs text-muted-foreground">
+                        These node types aren't installed on your ComfyUI server. The job will likely fail
+                        unless you install the matching node packs (or the node exists under another name).
+                        You can still run it.
+                      </span>
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {!jsonError && nodeCheck && !nodeCheck.reachable && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Couldn't check nodes — ComfyUI server is unreachable right now.
                   </p>
                 )}
               </div>

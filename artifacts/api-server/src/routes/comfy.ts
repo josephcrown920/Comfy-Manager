@@ -158,5 +158,59 @@ router.get("/comfy/queue", async (req, res): Promise<void> => {
   }
 });
 
+router.post("/comfy/validate-nodes", async (req, res): Promise<void> => {
+  const body = ValidateComfyNodesBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  let graph: Record<string, unknown>;
+  try {
+    const parsed = JSON.parse(body.data.json);
+    if (typeof parsed !== "object" || Array.isArray(parsed) || parsed === null) {
+      res.status(400).json({ error: "Workflow JSON must be an object" });
+      return;
+    }
+    graph = parsed as Record<string, unknown>;
+  } catch {
+    res.status(400).json({ error: "Workflow JSON is not valid JSON" });
+    return;
+  }
+
+  const referenced = new Set<string>();
+  for (const node of Object.values(graph)) {
+    if (node && typeof node === "object" && !Array.isArray(node)) {
+      const ct = (node as Record<string, unknown>).class_type;
+      if (typeof ct === "string" && ct) referenced.add(ct);
+    }
+  }
+
+  const comfyUrl = await getComfyUrl();
+  try {
+    const r = await fetchComfy(comfyUrl, "/object_info");
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const info = (await r.json()) as Record<string, unknown>;
+    const installed = new Set(Object.keys(info));
+    const missing = [...referenced].filter((ct) => !installed.has(ct)).sort();
+    res.json(
+      ValidateComfyNodesResponse.parse({
+        reachable: true,
+        missingNodes: missing,
+        totalNodes: referenced.size,
+      })
+    );
+  } catch {
+    // Server unreachable — validation is informational, never blocking.
+    res.json(
+      ValidateComfyNodesResponse.parse({
+        reachable: false,
+        missingNodes: [],
+        totalNodes: referenced.size,
+      })
+    );
+  }
+});
+
 export { fetchComfy, parseComfyTarget };
 export default router;
