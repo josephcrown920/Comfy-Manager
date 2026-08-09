@@ -5,6 +5,43 @@
  * ComfyUI Studio API — proxy and orchestration layer for a ComfyUI server
  * OpenAPI spec version: 0.1.0
  */
+export type AssistantChatMessageRole = typeof AssistantChatMessageRole[keyof typeof AssistantChatMessageRole];
+
+
+export const AssistantChatMessageRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const;
+
+export interface AssistantChatMessage {
+  role: AssistantChatMessageRole;
+  content: string;
+}
+
+export interface AssistantChatBody {
+  messages: AssistantChatMessage[];
+  /** Optional workflow JSON the user is currently editing, for context */
+  workflowJson?: string;
+}
+
+export interface AssistantChatResponse {
+  reply: string;
+}
+
+export interface VideoPlanBody {
+  /** Plain-language description of the video the user wants */
+  idea: string;
+}
+
+export interface VideoPlanResponse {
+  /** One of the built-in template ids */
+  templateId: string;
+  /** The filled-in workflow JSON, ready to queue */
+  workflowJson: string;
+  /** Plain-language explanation of choices and anything the user must do (e.g. upload files) */
+  notes: string;
+}
+
 export interface HealthStatus {
   status: string;
 }

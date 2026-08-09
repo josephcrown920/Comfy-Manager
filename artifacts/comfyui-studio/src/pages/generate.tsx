@@ -29,6 +29,14 @@ import animatediffTemplate from "@/assets/templates/animatediff-text-to-video.wo
 import svdTemplate from "@/assets/templates/svd-image-to-video.workflow.json";
 import latentsyncTemplate from "@/assets/templates/latentsync-lipsync.workflow.json";
 import mimicmotionTemplate from "@/assets/templates/mimicmotion-motion.workflow.json";
+import { WorkflowVisualizer } from "@/components/workflow-visualizer";
+
+// Image Assets
+import sdxlThumbnail from "@/assets/thumbnails/sdxl-image.jpg";
+import animatediffThumbnail from "@/assets/thumbnails/animatediff.jpg";
+import svdThumbnail from "@/assets/thumbnails/svd.jpg";
+import latentsyncThumbnail from "@/assets/thumbnails/latentsync.jpg";
+import mimicmotionThumbnail from "@/assets/thumbnails/mimicmotion.jpg";
 
 const CUSTOM_WORKFLOW_ID = "custom-workflow";
 
@@ -39,6 +47,15 @@ export default function Generate() {
   
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [initialCustomJson, setInitialCustomJson] = useState<string>("");
+  
+  useEffect(() => {
+    const assistantWorkflow = sessionStorage.getItem("assistant-workflow");
+    if (assistantWorkflow) {
+      sessionStorage.removeItem("assistant-workflow");
+      setInitialCustomJson(assistantWorkflow);
+      setSelectedWorkflowId(CUSTOM_WORKFLOW_ID);
+    }
+  }, []);
   
   const { data: workflows, isLoading: isListLoading } = useListWorkflows();
   const { data: savedWorkflows } = useListSavedWorkflows();
@@ -97,6 +114,11 @@ export default function Generate() {
                 </CardTitle>
                 <CardDescription className="line-clamp-2 mt-2 text-sm">{workflow.description}</CardDescription>
               </CardHeader>
+              {DB_WORKFLOW_THUMBNAILS[workflow.id] && (
+                <div className="px-6 pb-2">
+                  <img src={DB_WORKFLOW_THUMBNAILS[workflow.id]} alt={workflow.name} className="w-full h-32 object-cover rounded-md opacity-80 group-hover:opacity-100 transition-opacity" />
+                </div>
+              )}
               <CardContent>
                 <div className="flex items-center gap-2 mt-4 text-xs font-medium text-muted-foreground">
                   <span className="bg-secondary px-2 py-1 rounded capitalize">{workflow.category.replace('-', ' ')}</span>
@@ -168,12 +190,20 @@ export default function Generate() {
   );
 }
 
-const WORKFLOW_TEMPLATES: { id: string; label: string; description: string; json: Record<string, unknown> }[] = [
-  { id: "sdxl-image", label: "SDXL Image", description: "Text-to-image (SDXL base, core nodes only). Edit the prompt text.", json: sdxlImageTemplate },
-  { id: "animatediff", label: "AnimateDiff Video", description: "Text-to-video (SD1.5 + AnimateDiff, fits a free T4). Edit the prompt text.", json: animatediffTemplate },
-  { id: "svd", label: "SVD Image-to-Video", description: "Animate a still image (SVD XT, needs ~24 GB GPU). Paste your image URL or uploaded filename where marked.", json: svdTemplate },
-  { id: "latentsync", label: "LatentSync Lip Sync", description: "Sync a video's mouth to audio. Upload your video & audio on this page first, then replace the REPLACE_WITH_… filenames.", json: latentsyncTemplate },
-  { id: "mimicmotion", label: "MimicMotion", description: "Drive an image with a motion video (needs ~24 GB GPU). Upload image & pose video first, then replace the REPLACE_WITH_… filenames.", json: mimicmotionTemplate },
+const DB_WORKFLOW_THUMBNAILS: Record<string, string> = {
+  "lip-sync-basic": latentsyncThumbnail,
+  "motion-control-animatediff": mimicmotionThumbnail,
+  "video-generation-txt2vid": animatediffThumbnail,
+  "img2vid-stable-video": svdThumbnail,
+  "custom-workflow": sdxlThumbnail,
+};
+
+const WORKFLOW_TEMPLATES: { id: string; label: string; description: string; json: Record<string, unknown>, image?: string }[] = [
+  { id: "sdxl-image", label: "SDXL Image", description: "Text-to-image (SDXL base, core nodes only). Edit the prompt text.", json: sdxlImageTemplate, image: sdxlThumbnail },
+  { id: "animatediff", label: "AnimateDiff Video", description: "Text-to-video (SD1.5 + AnimateDiff, fits a free T4). Edit the prompt text.", json: animatediffTemplate, image: animatediffThumbnail },
+  { id: "svd", label: "SVD Image-to-Video", description: "Animate a still image (SVD XT, needs ~24 GB GPU). Paste your image URL or uploaded filename where marked.", json: svdTemplate, image: svdThumbnail },
+  { id: "latentsync", label: "LatentSync Lip Sync", description: "Sync a video's mouth to audio. Upload your video & audio on this page first, then replace the REPLACE_WITH_… filenames.", json: latentsyncTemplate, image: latentsyncThumbnail },
+  { id: "mimicmotion", label: "MimicMotion", description: "Drive an image with a motion video (needs ~24 GB GPU). Upload image & pose video first, then replace the REPLACE_WITH_… filenames.", json: mimicmotionTemplate, image: mimicmotionThumbnail },
 ];
 
 function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; initialJson?: string }) {
@@ -189,6 +219,7 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
   // Debounced missing-node check (informational, never blocks Run)
   const validateNodes = useValidateComfyNodes();
   const [nodeCheck, setNodeCheck] = useState<{ reachable: boolean; missingNodes: string[] } | null>(null);
+  const [viewMode, setViewMode] = useState<"json" | "diagram">("json");
   const checkSeq = useRef(0);
   useEffect(() => {
     setNodeCheck(null);
@@ -335,16 +366,40 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
 
             <form id="custom-workflow-form" onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-base">
-                  Workflow JSON <span className="text-destructive">*</span>
-                </Label>
-                <Textarea
-                  value={workflowJson}
-                  onChange={(e) => handleChange(e.target.value)}
-                  placeholder={'{\n  "1": {\n    "class_type": "KSampler",\n    "inputs": { ... }\n  }\n}'}
-                  className={`font-mono text-xs min-h-[400px] resize-y ${jsonError ? "border-destructive" : ""}`}
-                  spellCheck={false}
-                />
+                <div className="flex items-center justify-between">
+                  <Label className="text-base">
+                    Workflow JSON <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-md">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("json")}
+                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${viewMode === "json" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      JSON
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("diagram")}
+                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${viewMode === "diagram" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      Diagram
+                    </button>
+                  </div>
+                </div>
+                {viewMode === "json" ? (
+                  <Textarea
+                    value={workflowJson}
+                    onChange={(e) => handleChange(e.target.value)}
+                    placeholder={'{\n  "1": {\n    "class_type": "KSampler",\n    "inputs": { ... }\n  }\n}'}
+                    className={`font-mono text-xs min-h-[400px] resize-y ${jsonError ? "border-destructive" : ""}`}
+                    spellCheck={false}
+                  />
+                ) : (
+                  <div className="min-h-[400px] h-[500px] border border-border rounded-md">
+                    <WorkflowVisualizer jsonString={workflowJson} />
+                  </div>
+                )}
                 {jsonError && (
                   <p className="text-sm text-destructive flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />

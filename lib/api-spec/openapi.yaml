@@ -22,6 +22,8 @@ tags:
     description: Generated outputs gallery
   - name: files
     description: File uploads
+  - name: assistant
+    description: AI chat assistant and video agent
 
 paths:
   /healthz:
@@ -504,8 +506,101 @@ paths:
         "502":
           description: ComfyUI upstream unreachable or returned an error
 
+  /assistant/chat:
+    post:
+      operationId: assistantChat
+      tags: [assistant]
+      summary: Chat with the ComfyUI Studio assistant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssistantChatBody"
+      responses:
+        "200":
+          description: Assistant reply
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantChatResponse"
+        "502":
+          description: AI provider error
+
+  /assistant/video-plan:
+    post:
+      operationId: assistantVideoPlan
+      tags: [assistant]
+      summary: Turn a video idea into a ready-to-run workflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoPlanBody"
+      responses:
+        "200":
+          description: Chosen template and filled workflow
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoPlanResponse"
+        "502":
+          description: AI provider error
+
 components:
   schemas:
+    AssistantChatMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+
+    AssistantChatBody:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssistantChatMessage"
+        workflowJson:
+          type: string
+          description: Optional workflow JSON the user is currently editing, for context
+
+    AssistantChatResponse:
+      type: object
+      required: [reply]
+      properties:
+        reply:
+          type: string
+
+    VideoPlanBody:
+      type: object
+      required: [idea]
+      properties:
+        idea:
+          type: string
+          description: Plain-language description of the video the user wants
+
+    VideoPlanResponse:
+      type: object
+      required: [templateId, workflowJson, notes]
+      properties:
+        templateId:
+          type: string
+          description: One of the built-in template ids
+        workflowJson:
+          type: string
+          description: The filled-in workflow JSON, ready to queue
+        notes:
+          type: string
+          description: Plain-language explanation of choices and anything the user must do (e.g. upload files)
+
     HealthStatus:
       type: object
       required: [status]

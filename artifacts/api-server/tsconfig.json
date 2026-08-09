@@ -5,15 +5,22 @@
     "tsBuildInfoFile": ".tsbuildinfo",
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["src"],
+  "include": [
+    "src"
+  ],
   "references": [
     {
       "path": "../../lib/db"
     },
     {
       "path": "../../lib/api-zod"
+    },
+    {
+      "path": "../../lib/integrations-openai-ai-server"
     }
   ]
 }

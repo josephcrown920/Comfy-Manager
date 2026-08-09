@@ -476,3 +476,33 @@ export const UploadFileResponse = zod.object({
 })
 
 
+/**
+ * @summary Chat with the ComfyUI Studio assistant
+ */
+export const AssistantChatBody = zod.object({
+  "messages": zod.array(zod.object({
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string()
+})),
+  "workflowJson": zod.string().optional().describe('Optional workflow JSON the user is currently editing, for context')
+})
+
+export const AssistantChatResponse = zod.object({
+  "reply": zod.string()
+})
+
+
+/**
+ * @summary Turn a video idea into a ready-to-run workflow
+ */
+export const AssistantVideoPlanBody = zod.object({
+  "idea": zod.string().describe('Plain-language description of the video the user wants')
+})
+
+export const AssistantVideoPlanResponse = zod.object({
+  "templateId": zod.string().describe('One of the built-in template ids'),
+  "workflowJson": zod.string().describe('The filled-in workflow JSON, ready to queue'),
+  "notes": zod.string().describe('Plain-language explanation of choices and anything the user must do (e.g. upload files)')
+})
+
+

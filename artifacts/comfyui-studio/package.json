@@ -73,5 +73,9 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "@xyflow/react": "^12.11.2",
+    "react-markdown": "^10.1.0"
   }
 }

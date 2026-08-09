@@ -7,6 +7,7 @@ import NotFound from '@/pages/not-found';
 import { Shell } from '@/components/shell';
 import Dashboard from '@/pages/dashboard';
 import Generate from '@/pages/generate';
+import Assistant from '@/pages/assistant';
 import Jobs from '@/pages/jobs';
 import Gallery from '@/pages/gallery';
 import Settings from '@/pages/settings';
@@ -29,6 +30,7 @@ function Router() {
         <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/generate" component={Generate} />
+          <Route path="/assistant" component={Assistant} />
           <Route path="/jobs" component={Jobs} />
           <Route path="/gallery" component={Gallery} />
           <Route path="/models" component={Models} />

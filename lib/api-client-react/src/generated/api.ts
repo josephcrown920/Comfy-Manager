@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AssistantChatBody,
+  AssistantChatResponse,
   ComfyModels,
   ComfyQueue,
   ComfyStatus,
@@ -45,6 +47,8 @@ import type {
   UploadFileParams,
   UploadedFile,
   ValidateNodesInput,
+  VideoPlanBody,
+  VideoPlanResponse,
   WorkflowTemplate
 } from './api.schemas';
 
@@ -1956,5 +1960,147 @@ export const useUploadFile = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUploadFileMutationOptions(options));
+    }
+
+export const getAssistantChatUrl = () => {
+
+
+
+
+  return `/api/assistant/chat`
+}
+
+/**
+ * @summary Chat with the ComfyUI Studio assistant
+ */
+export const assistantChat = async (assistantChatBody: AssistantChatBody, options?: Parameters<typeof customFetch>[1]): Promise<AssistantChatResponse> => {
+
+  return customFetch<AssistantChatResponse>(getAssistantChatUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(assistantChatBody)
+  }
+);}
+
+
+
+
+
+export const getAssistantChatMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assistantChat>>, TError,{data: BodyType<AssistantChatBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assistantChat>>, TError,{data: BodyType<AssistantChatBody>}, TContext> => {
+
+const mutationKey = ['assistantChat'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assistantChat>>, {data: BodyType<AssistantChatBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  assistantChat(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssistantChatMutationResult = NonNullable<Awaited<ReturnType<typeof assistantChat>>>
+    export type AssistantChatMutationBody = BodyType<AssistantChatBody>
+    export type AssistantChatMutationError = ErrorType<void>
+
+    /**
+ * @summary Chat with the ComfyUI Studio assistant
+ */
+export const useAssistantChat = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assistantChat>>, TError,{data: BodyType<AssistantChatBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assistantChat>>,
+        TError,
+        {data: BodyType<AssistantChatBody>},
+        TContext
+      > => {
+      return useMutation(getAssistantChatMutationOptions(options));
+    }
+
+export const getAssistantVideoPlanUrl = () => {
+
+
+
+
+  return `/api/assistant/video-plan`
+}
+
+/**
+ * @summary Turn a video idea into a ready-to-run workflow
+ */
+export const assistantVideoPlan = async (videoPlanBody: VideoPlanBody, options?: Parameters<typeof customFetch>[1]): Promise<VideoPlanResponse> => {
+
+  return customFetch<VideoPlanResponse>(getAssistantVideoPlanUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(videoPlanBody)
+  }
+);}
+
+
+
+
+
+export const getAssistantVideoPlanMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assistantVideoPlan>>, TError,{data: BodyType<VideoPlanBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assistantVideoPlan>>, TError,{data: BodyType<VideoPlanBody>}, TContext> => {
+
+const mutationKey = ['assistantVideoPlan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assistantVideoPlan>>, {data: BodyType<VideoPlanBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  assistantVideoPlan(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssistantVideoPlanMutationResult = NonNullable<Awaited<ReturnType<typeof assistantVideoPlan>>>
+    export type AssistantVideoPlanMutationBody = BodyType<VideoPlanBody>
+    export type AssistantVideoPlanMutationError = ErrorType<void>
+
+    /**
+ * @summary Turn a video idea into a ready-to-run workflow
+ */
+export const useAssistantVideoPlan = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assistantVideoPlan>>, TError,{data: BodyType<VideoPlanBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assistantVideoPlan>>,
+        TError,
+        {data: BodyType<VideoPlanBody>},
+        TContext
+      > => {
+      return useMutation(getAssistantVideoPlanMutationOptions(options));
     }
 

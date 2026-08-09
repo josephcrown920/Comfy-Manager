@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+// excluded: './assistantChatBody' collides with zod export
+export * from './assistantChatMessage';
+export * from './assistantChatMessageRole';
+// excluded: './assistantChatResponse' collides with zod export
 export * from './comfyModels';
 export * from './comfyQueue';
 export * from './comfyQueueRunningItemsItem';
@@ -37,9 +41,11 @@ export * from './savedWorkflowInput';
 export * from './settings';
 export * from './settingsInput';
 export * from './uploadedFile';
-// uploadFileBody intentionally excluded — UploadFileBody is exported as a Zod schema from generated/api.ts
+// excluded: './uploadFileBody' collides with the zod schema export in api.ts
 export * from './uploadFileParams';
 export * from './validateNodesInput';
+// excluded: './videoPlanBody' collides with zod export
+// excluded: './videoPlanResponse' collides with zod export
 export * from './workflowModelAssignment';
 export * from './workflowParam';
 export * from './workflowParamType';
