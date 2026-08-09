@@ -1,1 +1,1 @@
-export * from "./use-toast"
+export * from "@/hooks/use-toast"

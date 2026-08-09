@@ -193,15 +193,26 @@ router.post("/jobs", async (req, res): Promise<void> => {
   const comfyUrl = await getComfyUrl();
   const assignments = await getModelAssignments();
 
-  // Resolve checkpoint: per-workflow setting > global setting > param > default
+  // Resolve checkpoint assignment. Per-workflow assignments always apply.
+  // The global default only applies to SD1.5-style workflows — applying it to
+  // SVD (img2vid) or SadTalker (lip sync) would break them, since those need
+  // architecture-specific checkpoints.
+  const GLOBAL_CHECKPOINT_WORKFLOWS = new Set([
+    "video-generation-txt2vid",
+    "motion-control-animatediff",
+  ]);
   const wfAssignment = assignments.workflows[workflowId];
   const primaryCheckpoint =
     wfAssignment?.checkpoint ||
-    assignments.global.checkpoint ||
-    String((params as Record<string, unknown>).checkpoint ?? "v1-5-pruned-emaonly.safetensors");
+    (GLOBAL_CHECKPOINT_WORKFLOWS.has(workflowId)
+      ? assignments.global.checkpoint
+      : "") ||
+    "";
   const fallbackCheckpoint =
     wfAssignment?.checkpointFallback ||
-    assignments.global.checkpointFallback ||
+    (GLOBAL_CHECKPOINT_WORKFLOWS.has(workflowId)
+      ? assignments.global.checkpointFallback
+      : "") ||
     "";
 
   // If a fallback is configured, check whether primary is available; use fallback if not
@@ -220,11 +231,13 @@ router.post("/jobs", async (req, res): Promise<void> => {
     }
   }
 
-  // Build a simple ComfyUI API prompt for the workflow
-  const comfyPrompt = buildComfyPrompt(workflowId, {
-    ...(params as Record<string, unknown>),
-    checkpoint: resolvedCheckpoint,
-  });
+  // Build the ComfyUI API prompt; only override checkpoint when assigned
+  const comfyPrompt = buildComfyPrompt(
+    workflowId,
+    resolvedCheckpoint
+      ? { ...(params as Record<string, unknown>), checkpoint: resolvedCheckpoint }
+      : (params as Record<string, unknown>)
+  );
 
   let comfyPromptId: string | null = null;
   let initialStatus = "pending";
@@ -257,7 +270,33 @@ router.post("/jobs", async (req, res): Promise<void> => {
     })
     .returning();
 
-  res.json(CreateJobResponse.parse(buildJobOutput(newJobRow!, [])));
+  res.status(201).json(CreateJobResponse.parse(buildJobOutput(newJobRow!, [])));
+});
+
+router.get("/jobs/:id", async (req, res): Promise<void> => {
+  const params = GetJobParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [job] = await db
+    .select()
+    .from(jobsTable)
+    .where(eq(jobsTable.id, params.data.id))
+    .limit(1);
+
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  const outputs = await db
+    .select()
+    .from(outputsTable)
+    .where(eq(outputsTable.jobId, job.id));
+
+  res.json(GetJobResponse.parse(buildJobOutput(job, outputs)));
 });
 
 router.delete("/jobs/:id", async (req, res): Promise<void> => {
@@ -429,7 +468,7 @@ function buildLipSyncPrompt(params: Record<string, unknown>): Record<string, unk
       inputs: {
         source_image: ["1", 0],
         driven_audio: ["2", 0],
-        checkpoint: String(params.sadtalker_model ?? "SadTalker_V0.0.2_256.safetensors"),
+        checkpoint: String(params.checkpoint ?? params.sadtalker_model ?? "SadTalker_V0.0.2_256.safetensors"),
         size: 256,
         expression_scale: 1.0,
         still_mode: false,
@@ -490,7 +529,7 @@ function buildImg2VidPrompt(params: Record<string, unknown>): Record<string, unk
     },
     "5": {
       class_type: "ImageOnlyCheckpointLoader",
-      inputs: { ckpt_name: "svd_xt.safetensors" },
+      inputs: { ckpt_name: String(params.checkpoint ?? "svd_xt.safetensors") },
     },
     "6": {
       class_type: "VideoLinearCFGGuidance",
@@ -621,7 +660,7 @@ function buildMotionControlPrompt(params: Record<string, unknown>): Record<strin
     },
     "2": {
       class_type: "CheckpointLoaderSimple",
-      inputs: { ckpt_name: "v1-5-pruned-emaonly.safetensors" },
+      inputs: { ckpt_name: String(params.checkpoint ?? "v1-5-pruned-emaonly.safetensors") },
     },
     "3": {
       class_type: "ADE_LoadAnimateDiffModel",
