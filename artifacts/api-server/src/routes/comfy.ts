@@ -8,15 +8,39 @@ import { getComfyUrl } from "./settings";
 
 const router: IRouter = Router();
 
+/**
+ * Split a ComfyUI URL that may embed basic-auth credentials
+ * (e.g. "https://user:pass@my-tunnel.ngrok-free.app") into a clean base URL
+ * plus the Authorization header to send. fetch() rejects URLs with userinfo,
+ * so this is the only way to support password-protected tunnels.
+ */
+function parseComfyTarget(comfyUrl: string): { baseUrl: string; headers: Record<string, string> } {
+  try {
+    const u = new URL(comfyUrl);
+    const headers: Record<string, string> = {};
+    if (u.username || u.password) {
+      const user = decodeURIComponent(u.username);
+      const pass = decodeURIComponent(u.password);
+      headers["Authorization"] = "Basic " + Buffer.from(`${user}:${pass}`).toString("base64");
+      u.username = "";
+      u.password = "";
+    }
+    return { baseUrl: u.toString().replace(/\/$/, ""), headers };
+  } catch {
+    return { baseUrl: comfyUrl.replace(/\/$/, ""), headers: {} };
+  }
+}
+
 async function fetchComfy(
   comfyUrl: string,
   path: string,
   options?: RequestInit
 ): Promise<Response> {
-  const url = `${comfyUrl.replace(/\/$/, "")}${path}`;
-  return fetch(url, {
+  const { baseUrl, headers } = parseComfyTarget(comfyUrl);
+  return fetch(`${baseUrl}${path}`, {
     ...options,
-    signal: AbortSignal.timeout(8000),
+    headers: { ...headers, ...(options?.headers as Record<string, string> | undefined) },
+    signal: options?.signal ?? AbortSignal.timeout(8000),
   });
 }
 
@@ -132,5 +156,5 @@ router.get("/comfy/queue", async (req, res): Promise<void> => {
   }
 });
 
-export { fetchComfy };
+export { fetchComfy, parseComfyTarget };
 export default router;

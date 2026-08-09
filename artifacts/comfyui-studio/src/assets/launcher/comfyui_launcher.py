@@ -15,6 +15,11 @@ Run it in ONE cell with GPU ON + Internet ON:
 
 Secrets / env it reads (Colab userdata, Kaggle Secrets, or plain env vars):
   NGROK_AUTHTOKEN       required — ngrok account token (dashboard.ngrok.com)
+  TUNNEL_USER           required — username protecting your tunnel (you choose it)
+  TUNNEL_PASS           required — password protecting your tunnel (min 8 chars).
+                        Without these, anyone who finds the URL could run jobs
+                        on your GPU. The launcher prints the URL with the
+                        credentials embedded — paste that whole URL into Studio.
   NGROK_STATIC_DOMAIN   optional — free static domain (dashboard.ngrok.com/domains)
                         keeps the URL stable across restarts so you never
                         have to re-paste it into Studio.
@@ -41,7 +46,8 @@ ROOT = "/kaggle/working" if os.path.isdir("/kaggle/working") else os.getcwd()
 COMFY_DIR = os.path.join(ROOT, "ComfyUI")
 PORT = 8188
 
-CONFIG_KEYS = ["NGROK_AUTHTOKEN", "NGROK_STATIC_DOMAIN", "COMFY_CAPABILITIES", "HF_TOKEN"]
+CONFIG_KEYS = ["NGROK_AUTHTOKEN", "NGROK_STATIC_DOMAIN", "COMFY_CAPABILITIES", "HF_TOKEN",
+               "TUNNEL_USER", "TUNNEL_PASS"]
 
 # Custom-node packs per capability. Core nodes (KSampler, CheckpointLoaderSimple,
 # SVD_img2vid_Conditioning, ...) ship with ComfyUI itself.
@@ -223,10 +229,27 @@ def open_tunnel():
     if not token:
         raise SystemExit("[tunnel] NGROK_AUTHTOKEN is required — get one free at "
                          "dashboard.ngrok.com and add it as a secret.")
+    user = os.environ.get("TUNNEL_USER", "").strip()
+    password = os.environ.get("TUNNEL_PASS", "").strip()
+    if not user or not password:
+        raise SystemExit(
+            "[tunnel] TUNNEL_USER and TUNNEL_PASS are required — they password-"
+            "protect your GPU so strangers who find the URL can't run jobs on it. "
+            "Pick any username and a password of 8+ characters and add them as secrets."
+        )
+    if len(password) < 8:
+        raise SystemExit("[tunnel] TUNNEL_PASS must be at least 8 characters (ngrok requirement).")
     ngrok.set_auth_token(token)
     domain = os.environ.get("NGROK_STATIC_DOMAIN", "").strip() or None
-    tunnel = ngrok.connect(PORT, "http", domain=domain) if domain else ngrok.connect(PORT, "http")
-    return tunnel.public_url
+    kwargs = {"auth": f"{user}:{password}"}
+    if domain:
+        kwargs["domain"] = domain
+    tunnel = ngrok.connect(PORT, "http", **kwargs)
+    # Return the URL with credentials embedded so it can be pasted into Studio as-is.
+    from urllib.parse import quote, urlsplit, urlunsplit
+    parts = urlsplit(tunnel.public_url)
+    netloc = f"{quote(user, safe='')}:{quote(password, safe='')}@{parts.netloc}"
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
 
 
 def main():

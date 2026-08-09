@@ -15,6 +15,21 @@ const SECRETS = [
     note: "Free ngrok account token — dashboard.ngrok.com → Your Authtoken",
   },
   {
+    key: "TUNNEL_USER",
+    required: true,
+    note: "Username protecting your tunnel — you pick it. Keeps strangers from running jobs on your GPU",
+  },
+  {
+    key: "TUNNEL_PASS",
+    required: true,
+    note: "Password protecting your tunnel — 8+ characters, you pick it",
+  },
+  {
+    key: "HF_TOKEN",
+    required: true,
+    note: "Hugging Face token (huggingface.co/settings/tokens). Needed for the gated SDXL/SVD model weights — accept the license on each model page first",
+  },
+  {
     key: "NGROK_STATIC_DOMAIN",
     required: false,
     note: "Free static domain (dashboard.ngrok.com/domains) — keeps the same URL across restarts so you never re-paste it",
@@ -162,8 +177,10 @@ export default function Launch() {
 
         <StepCard n={4} icon={Link2} title="Connect Studio">
           <p>
-            When the cell prints <span className="font-mono text-xs">ComfyUI is LIVE</span>, copy the URL
-            and paste it into{" "}
+            When the cell prints <span className="font-mono text-xs">ComfyUI is LIVE</span>, copy the
+            whole URL — it includes your tunnel username and password (
+            <span className="font-mono text-xs">https://user:pass@your-domain</span>) so Studio can
+            authenticate — and paste it into{" "}
             <Link href="/settings" className="text-primary underline underline-offset-4">
               Settings → ComfyUI Server URL
             </Link>

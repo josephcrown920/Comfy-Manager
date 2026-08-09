@@ -8,6 +8,7 @@ import outputsRouter from "./outputs";
 import filesRouter from "./files";
 import modelAssignmentsRouter from "./model-assignments";
 import { getComfyUrl } from "./settings";
+import { fetchComfy } from "./comfy";
 
 const router: IRouter = Router();
 
@@ -24,9 +25,9 @@ router.use(modelAssignmentsRouter);
 router.get("/comfy/view", async (req, res): Promise<void> => {
   const comfyUrl = await getComfyUrl();
   const { filename, subfolder, type } = req.query as Record<string, string>;
-  const url = `${comfyUrl.replace(/\/$/, "")}/view?filename=${encodeURIComponent(filename ?? "")}&subfolder=${encodeURIComponent(subfolder ?? "")}&type=${encodeURIComponent(type ?? "output")}`;
+  const path = `/view?filename=${encodeURIComponent(filename ?? "")}&subfolder=${encodeURIComponent(subfolder ?? "")}&type=${encodeURIComponent(type ?? "output")}`;
   try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(30000) });
+    const r = await fetchComfy(comfyUrl, path, { signal: AbortSignal.timeout(30000) });
     if (!r.ok) {
       res.status(r.status).json({ error: "File not found" });
       return;

@@ -3,6 +3,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { getComfyUrl } from "./routes/settings";
+import { parseComfyTarget } from "./routes/comfy";
 
 const rawPort = process.env["PORT"];
 
@@ -32,10 +33,12 @@ server.on("upgrade", async (req, socket, head) => {
 
   try {
     const comfyUrl = await getComfyUrl();
+    // Strip embedded basic-auth credentials into a header (password-protected tunnels)
+    const { baseUrl, headers } = parseComfyTarget(comfyUrl);
     // Convert http(s) → ws(s)
-    const wsUrl = comfyUrl.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
+    const wsUrl = baseUrl.replace(/^http/, "ws") + "/ws";
 
-    const upstream = new WebSocket(wsUrl);
+    const upstream = new WebSocket(wsUrl, { headers });
 
     upstream.on("open", () => {
       wss.handleUpgrade(req, socket, head, (client) => {

@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer, { MulterError } from "multer";
 import { getComfyUrl } from "./settings";
+import { fetchComfy } from "./comfy";
 
 const router: IRouter = Router();
 
@@ -63,7 +64,6 @@ router.post("/files/upload", async (req: Request, res: Response): Promise<void> 
 
   // getComfyUrl always returns a URL (defaults to localhost:8188 when unconfigured)
   const comfyUrl = await getComfyUrl();
-  const uploadUrl = `${comfyUrl.replace(/\/$/, "")}/upload/image`;
 
   const { subfolder } = comfyUploadParams(req.file.mimetype);
 
@@ -81,7 +81,7 @@ router.post("/files/upload", async (req: Request, res: Response): Promise<void> 
     // type=input marks this as a workflow input rather than an output
     formData.append("type", "input");
 
-    const comfyRes = await fetch(uploadUrl, {
+    const comfyRes = await fetchComfy(comfyUrl, "/upload/image", {
       method: "POST",
       body: formData,
       signal: AbortSignal.timeout(60_000),
