@@ -18,6 +18,11 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Play, LayoutGrid, Code, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import sdxlImageTemplate from "@/assets/templates/sdxl-image.workflow.json";
+import animatediffTemplate from "@/assets/templates/animatediff-text-to-video.workflow.json";
+import svdTemplate from "@/assets/templates/svd-image-to-video.workflow.json";
+import latentsyncTemplate from "@/assets/templates/latentsync-lipsync.workflow.json";
+import mimicmotionTemplate from "@/assets/templates/mimicmotion-motion.workflow.json";
 
 const CUSTOM_WORKFLOW_ID = "custom-workflow";
 
@@ -100,6 +105,14 @@ export default function Generate() {
   );
 }
 
+const WORKFLOW_TEMPLATES: { id: string; label: string; description: string; json: Record<string, unknown> }[] = [
+  { id: "sdxl-image", label: "SDXL Image", description: "Text-to-image (SDXL base, core nodes only)", json: sdxlImageTemplate },
+  { id: "animatediff", label: "AnimateDiff Video", description: "Text-to-video (SD1.5 + AnimateDiff)", json: animatediffTemplate },
+  { id: "svd", label: "SVD Image-to-Video", description: "Animate a still image (SVD XT)", json: svdTemplate },
+  { id: "latentsync", label: "LatentSync Lip Sync", description: "Sync a video's mouth to audio", json: latentsyncTemplate },
+  { id: "mimicmotion", label: "MimicMotion", description: "Drive an image with a motion video", json: mimicmotionTemplate },
+];
+
 function CustomWorkflowForm({ onBack }: { onBack: () => void }) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -174,6 +187,30 @@ function CustomWorkflowForm({ onBack }: { onBack: () => void }) {
                 Export your workflow from ComfyUI using <strong>Save (API format)</strong> in the settings menu, then paste the resulting JSON below. The workflow is submitted unchanged to your ComfyUI server.
               </AlertDescription>
             </Alert>
+
+            <div className="mb-6 space-y-2">
+              <Label className="text-base">Start from a template</Label>
+              <div className="flex flex-wrap gap-2">
+                {WORKFLOW_TEMPLATES.map((t) => (
+                  <Button
+                    key={t.id}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    title={t.description}
+                    onClick={() => {
+                      setWorkflowJson(JSON.stringify(t.json, null, 2));
+                      setJsonError(null);
+                    }}
+                  >
+                    {t.label}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Templates reference specific models and custom nodes — edit prompts, filenames, and inputs to match what's installed on your server.
+              </p>
+            </div>
 
             <form id="custom-workflow-form" onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-2">

@@ -1,0 +1,21 @@
+{
+  "1": { "class_type": "LoadImageFromUrl", "inputs": { "url": "" } },
+  "2": { "class_type": "LoadVideoFromUrl", "inputs": { "url": "" } },
+  "3": {
+    "class_type": "MimicMotionSampler",
+    "inputs": {
+      "ref_image": ["1", 0],
+      "pose_video": ["2", 0],
+      "motion_type": "faithful",
+      "camera_movement": "static",
+      "steps": 25,
+      "cfg": 2.0,
+      "fps": 16,
+      "frames": 72,
+      "preserve_face": true,
+      "seed": 0
+    }
+  },
+  "4": { "class_type": "VideoCombine", "inputs": { "frames": ["3", 0], "fps": 16 } },
+  "5": { "class_type": "SaveVideo", "inputs": { "video": ["4", 0] } }
+}

@@ -163,6 +163,14 @@ router.post("/jobs", async (req, res): Promise<void> => {
         const data = (await promptRes.json()) as { prompt_id?: string };
         comfyPromptId = data.prompt_id ?? null;
         initialStatus = "running";
+      } else {
+        // ComfyUI rejected the graph (bad nodes, missing models, invalid JSON) —
+        // surface the validation error instead of silently queueing a dead job.
+        const errBody = await promptRes.text().catch(() => "");
+        res.status(400).json({
+          error: `ComfyUI rejected the workflow (HTTP ${promptRes.status}): ${errBody.slice(0, 500)}`,
+        });
+        return;
       }
     } catch {
       // ComfyUI unreachable — job stays pending
@@ -253,6 +261,12 @@ router.post("/jobs", async (req, res): Promise<void> => {
       const data = (await promptRes.json()) as { prompt_id?: string };
       comfyPromptId = data.prompt_id ?? null;
       initialStatus = "running";
+    } else {
+      const errBody = await promptRes.text().catch(() => "");
+      res.status(400).json({
+        error: `ComfyUI rejected the workflow (HTTP ${promptRes.status}): ${errBody.slice(0, 500)}`,
+      });
+      return;
     }
   } catch {
     // ComfyUI unreachable — job stays pending
@@ -355,7 +369,16 @@ router.post("/jobs/:id/refresh", async (req, res): Promise<void> => {
           string,
           {
             status?: { completed?: boolean; status_str?: string };
-            outputs?: Record<string, { images?: Array<{ filename: string; subfolder: string; type: string }> }>;
+            outputs?: Record<
+              string,
+              {
+                images?: Array<{ filename: string; subfolder: string; type: string }>;
+                // VideoHelperSuite (VHS_VideoCombine) and other video nodes emit these:
+                gifs?: Array<{ filename: string; subfolder: string; type: string }>;
+                videos?: Array<{ filename: string; subfolder: string; type: string }>;
+                audio?: Array<{ filename: string; subfolder: string; type: string }>;
+              }
+            >;
           }
         >;
         const entry = hist[job.comfyPromptId];
@@ -363,8 +386,13 @@ router.post("/jobs/:id/refresh", async (req, res): Promise<void> => {
           // Collect output files
           const outputFiles: Array<{ filename: string; subfolder: string; type: string }> = [];
           for (const nodeOutput of Object.values(entry.outputs ?? {})) {
-            for (const img of nodeOutput.images ?? []) {
-              outputFiles.push(img);
+            for (const f of [
+              ...(nodeOutput.images ?? []),
+              ...(nodeOutput.gifs ?? []),
+              ...(nodeOutput.videos ?? []),
+              ...(nodeOutput.audio ?? []),
+            ]) {
+              outputFiles.push(f);
             }
           }
 

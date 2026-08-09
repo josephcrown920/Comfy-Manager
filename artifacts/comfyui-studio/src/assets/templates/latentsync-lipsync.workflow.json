@@ -1,0 +1,16 @@
+{
+  "1": { "class_type": "LoadVideoFromUrl", "inputs": { "url": "" } },
+  "2": { "class_type": "LoadAudioFromUrl", "inputs": { "url": "" } },
+  "3": {
+    "class_type": "LatentSyncSampler",
+    "inputs": {
+      "video": ["1", 0],
+      "audio": ["2", 0],
+      "inference_steps": 20,
+      "guidance_scale": 1.5,
+      "seed": 0
+    }
+  },
+  "4": { "class_type": "VideoCombine", "inputs": { "frames": ["3", 0] } },
+  "5": { "class_type": "SaveVideo", "inputs": { "video": ["4", 0] } }
+}

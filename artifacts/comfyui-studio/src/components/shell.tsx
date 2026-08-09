@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Link, useLocation } from "wouter"
-import { Boxes, LayoutDashboard, Settings2, Images, ListVideo, Layers, BrainCircuit } from "lucide-react"
+import { Boxes, LayoutDashboard, Settings2, Images, ListVideo, Layers, BrainCircuit, Rocket } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -10,6 +10,7 @@ const navItems = [
   { href: "/jobs", label: "Jobs", icon: ListVideo },
   { href: "/gallery", label: "Gallery", icon: Images },
   { href: "/models", label: "Models", icon: BrainCircuit },
+  { href: "/launch", label: "Launch GPU", icon: Rocket },
   { href: "/settings", label: "Settings", icon: Settings2 },
 ]
 
