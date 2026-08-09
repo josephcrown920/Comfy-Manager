@@ -123,8 +123,9 @@ function useComfyWebSocket(hasRunningJobs: boolean, promptJobMap: PromptJobMap) 
 export default function Jobs() {
   const { data: jobs, isLoading } = useListJobs(undefined, {
     query: {
-      // Slow fallback poll; WS-driven updates handle the real-time case
-      refetchInterval: 15000,
+      // Slow fallback poll; WS-driven updates handle the real-time case and
+      // the server now persists progress to the DB during execution
+      refetchInterval: 30000,
       queryKey: getListJobsQueryKey()
     }
   });

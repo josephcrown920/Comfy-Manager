@@ -4,6 +4,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { getComfyUrl } from "./routes/settings";
 import { parseComfyTarget } from "./routes/comfy";
+import { startProgressTracker } from "./lib/progress-tracker";
 
 const rawPort = process.env["PORT"];
 
@@ -82,4 +83,7 @@ server.listen(port, (err?: Error) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Persist incremental job progress to the DB so the UI survives reloads
+  startProgressTracker();
 });
