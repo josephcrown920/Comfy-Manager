@@ -461,6 +461,10 @@ export const DeleteSavedWorkflowResponse = zod.object({
 /**
  * @summary Upload a file and forward it to ComfyUI
  */
+export const UploadFileQueryParams = zod.object({
+  "accept": zod.coerce.string().optional().describe('Optional comma-separated list of allowed file types for this upload, in HTML accept format (MIME types like image\/png, wildcards like image\/\*, or extensions like .png). Files that don\'t match are rejected with 422.')
+})
+
 export const UploadFileBody = zod.object({
   "file": zod.instanceof(File).describe('The file to upload (image or audio)')
 })

@@ -38,6 +38,7 @@ export * from './settings';
 export * from './settingsInput';
 export * from './uploadedFile';
 // uploadFileBody intentionally excluded — UploadFileBody is exported as a Zod schema from generated/api.ts
+export * from './uploadFileParams';
 export * from './validateNodesInput';
 export * from './workflowModelAssignment';
 export * from './workflowParam';

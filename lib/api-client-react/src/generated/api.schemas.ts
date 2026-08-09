@@ -294,6 +294,13 @@ export type DeleteSavedWorkflow200 = {
   success: boolean;
 };
 
+export type UploadFileParams = {
+/**
+ * Optional comma-separated list of allowed file types for this upload, in HTML accept format (MIME types like image/png, wildcards like image/*, or extensions like .png). Files that don't match are rejected with 422.
+ */
+accept?: string;
+};
+
 export type UploadFileBody = {
   /** The file to upload (image or audio) */
   file: Blob;

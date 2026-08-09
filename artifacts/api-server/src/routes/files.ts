@@ -36,6 +36,39 @@ function comfyUploadParams(mimetype: string): { subfolder: string } {
 }
 
 /**
+ * Check a file against an HTML-style `accept` string (comma-separated list of
+ * MIME types like `image/png`, wildcards like `image/*`, or extensions like `.png`).
+ * Returns null when accepted, otherwise a user-friendly error message.
+ */
+function validateAccept(
+  accept: string,
+  file: { mimetype: string; originalname: string },
+): string | null {
+  const patterns = accept
+    .split(",")
+    .map((p) => p.trim().toLowerCase())
+    .filter(Boolean);
+  if (patterns.length === 0) return null;
+
+  const mimetype = file.mimetype.toLowerCase();
+  const name = file.originalname.toLowerCase();
+
+  const ok = patterns.some((pattern) => {
+    if (pattern.startsWith(".")) {
+      return name.endsWith(pattern);
+    }
+    if (pattern.endsWith("/*")) {
+      return mimetype.startsWith(pattern.slice(0, -1));
+    }
+    return mimetype === pattern;
+  });
+
+  if (ok) return null;
+
+  return `This file type isn't supported here. "${file.originalname}" is ${file.mimetype}, but this input expects: ${patterns.join(", ")}.`;
+}
+
+/**
  * POST /api/files/upload
  *
  * Accepts a multipart file in the `file` field, forwards it to ComfyUI's
@@ -60,6 +93,17 @@ router.post("/files/upload", async (req: Request, res: Response): Promise<void> 
   if (!req.file) {
     res.status(400).json({ error: "No file provided. Use field name: file" });
     return;
+  }
+
+  // Optional workflow-param accept filter (query param or header), e.g. "image/*,.png"
+  const acceptRaw = req.query.accept ?? req.headers["x-upload-accept"];
+  const accept = Array.isArray(acceptRaw) ? acceptRaw[0] : acceptRaw;
+  if (typeof accept === "string" && accept.trim()) {
+    const error = validateAccept(accept, req.file);
+    if (error) {
+      res.status(422).json({ error });
+      return;
+    }
   }
 
   // getComfyUrl always returns a URL (defaults to localhost:8188 when unconfigured)

@@ -29,7 +29,7 @@ export function FileUpload({ accept, onFileSelect, label, description }: FileUpl
     setUploadedName("");
 
     try {
-      const comfyName = await uploadFile(file, (pct) => setProgress(pct));
+      const comfyName = await uploadFile(file, (pct) => setProgress(pct), accept);
       setUploadedName(file.name);
       onFileSelect(comfyName);
       toast({ title: "File uploaded", description: `Stored as: ${comfyName}` });
@@ -94,7 +94,11 @@ export function FileUpload({ accept, onFileSelect, label, description }: FileUpl
  * Uses XMLHttpRequest so we get upload-progress events.
  * Returns the filename that ComfyUI assigned.
  */
-function uploadFile(file: File, onProgress: (pct: number) => void): Promise<string> {
+function uploadFile(
+  file: File,
+  onProgress: (pct: number) => void,
+  accept?: string,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append("file", file, file.name);
@@ -128,7 +132,10 @@ function uploadFile(file: File, onProgress: (pct: number) => void): Promise<stri
     xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
     xhr.addEventListener("abort", () => reject(new Error("Upload aborted")));
 
-    xhr.open("POST", "/api/files/upload");
+    const url = accept
+      ? `/api/files/upload?accept=${encodeURIComponent(accept)}`
+      : "/api/files/upload";
+    xhr.open("POST", url);
     xhr.send(formData);
   });
 }

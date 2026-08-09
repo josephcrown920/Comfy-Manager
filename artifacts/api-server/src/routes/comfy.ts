@@ -3,8 +3,6 @@ import {
   GetComfyStatusResponse,
   GetComfyModelsResponse,
   GetComfyQueueResponse,
-  ValidateComfyNodesBody,
-  ValidateComfyNodesResponse,
 } from "@workspace/api-zod";
 import { getComfyUrl } from "./settings";
 

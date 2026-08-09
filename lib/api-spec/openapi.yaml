@@ -465,6 +465,17 @@ paths:
       operationId: uploadFile
       tags: [files]
       summary: Upload a file and forward it to ComfyUI
+      parameters:
+        - name: accept
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >-
+            Optional comma-separated list of allowed file types for this upload,
+            in HTML accept format (MIME types like image/png, wildcards like
+            image/*, or extensions like .png). Files that don't match are
+            rejected with 422.
       requestBody:
         required: true
         content:
@@ -488,6 +499,8 @@ paths:
           description: No file provided or parse error
         "413":
           description: File too large (limit is 100 MB)
+        "422":
+          description: File type not allowed by the accept filter
         "502":
           description: ComfyUI upstream unreachable or returned an error
 

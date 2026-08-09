@@ -42,6 +42,7 @@ import type {
   Settings,
   SettingsInput,
   UploadFileBody,
+  UploadFileParams,
   UploadedFile,
   ValidateNodesInput,
   WorkflowTemplate
@@ -1876,22 +1877,30 @@ export const useDeleteSavedWorkflow = <TError = ErrorType<void>,
       return useMutation(getDeleteSavedWorkflowMutationOptions(options));
     }
 
-export const getUploadFileUrl = () => {
+export const getUploadFileUrl = (params?: UploadFileParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/files/upload`
+  return stringifiedParams.length > 0 ? `/api/files/upload?${stringifiedParams}` : `/api/files/upload`
 }
 
 /**
  * @summary Upload a file and forward it to ComfyUI
  */
-export const uploadFile = async (uploadFileBody: UploadFileBody, options?: Parameters<typeof customFetch>[1]): Promise<UploadedFile> => {
+export const uploadFile = async (uploadFileBody: UploadFileBody,
+    params?: UploadFileParams, options?: Parameters<typeof customFetch>[1]): Promise<UploadedFile> => {
     const formData = new FormData();
 formData.append(`file`, uploadFileBody.file);
 
-  return customFetch<UploadedFile>(getUploadFileUrl(),
+  return customFetch<UploadedFile>(getUploadFileUrl(params),
   {
     ...options,
     method: 'POST'
@@ -1905,8 +1914,8 @@ formData.append(`file`, uploadFileBody.file);
 
 
 export const getUploadFileMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadFile>>, TError,{data: BodyType<UploadFileBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof uploadFile>>, TError,{data: BodyType<UploadFileBody>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadFile>>, TError,{data: BodyType<UploadFileBody>;params?: UploadFileParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadFile>>, TError,{data: BodyType<UploadFileBody>;params?: UploadFileParams}, TContext> => {
 
 const mutationKey = ['uploadFile'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1918,10 +1927,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadFile>>, {data: BodyType<UploadFileBody>}> = (props) => {
-          const {data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadFile>>, {data: BodyType<UploadFileBody>;params?: UploadFileParams}> = (props) => {
+          const {data,params} = props ?? {};
 
-          return  uploadFile(data,requestOptions)
+          return  uploadFile(data,params,requestOptions)
         }
 
 
@@ -1939,11 +1948,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
  * @summary Upload a file and forward it to ComfyUI
  */
 export const useUploadFile = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadFile>>, TError,{data: BodyType<UploadFileBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadFile>>, TError,{data: BodyType<UploadFileBody>;params?: UploadFileParams}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof uploadFile>>,
         TError,
-        {data: BodyType<UploadFileBody>},
+        {data: BodyType<UploadFileBody>;params?: UploadFileParams},
         TContext
       > => {
       return useMutation(getUploadFileMutationOptions(options));
