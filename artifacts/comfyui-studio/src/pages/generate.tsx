@@ -169,11 +169,11 @@ export default function Generate() {
 }
 
 const WORKFLOW_TEMPLATES: { id: string; label: string; description: string; json: Record<string, unknown> }[] = [
-  { id: "sdxl-image", label: "SDXL Image", description: "Text-to-image (SDXL base, core nodes only)", json: sdxlImageTemplate },
-  { id: "animatediff", label: "AnimateDiff Video", description: "Text-to-video (SD1.5 + AnimateDiff)", json: animatediffTemplate },
-  { id: "svd", label: "SVD Image-to-Video", description: "Animate a still image (SVD XT)", json: svdTemplate },
-  { id: "latentsync", label: "LatentSync Lip Sync", description: "Sync a video's mouth to audio", json: latentsyncTemplate },
-  { id: "mimicmotion", label: "MimicMotion", description: "Drive an image with a motion video", json: mimicmotionTemplate },
+  { id: "sdxl-image", label: "SDXL Image", description: "Text-to-image (SDXL base, core nodes only). Edit the prompt text.", json: sdxlImageTemplate },
+  { id: "animatediff", label: "AnimateDiff Video", description: "Text-to-video (SD1.5 + AnimateDiff, fits a free T4). Edit the prompt text.", json: animatediffTemplate },
+  { id: "svd", label: "SVD Image-to-Video", description: "Animate a still image (SVD XT, needs ~24 GB GPU). Paste your image URL or uploaded filename where marked.", json: svdTemplate },
+  { id: "latentsync", label: "LatentSync Lip Sync", description: "Sync a video's mouth to audio. Upload your video & audio on this page first, then replace the REPLACE_WITH_… filenames.", json: latentsyncTemplate },
+  { id: "mimicmotion", label: "MimicMotion", description: "Drive an image with a motion video (needs ~24 GB GPU). Upload image & pose video first, then replace the REPLACE_WITH_… filenames.", json: mimicmotionTemplate },
 ];
 
 function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; initialJson?: string }) {

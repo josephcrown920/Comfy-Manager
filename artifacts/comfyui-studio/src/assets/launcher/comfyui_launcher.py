@@ -66,7 +66,7 @@ CAP_NODE_PACKS = {
     ],
     "motion": [
         "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite",
-        "https://github.com/AIWarper/ComfyUI-MimicMotionWrapper",
+        "https://github.com/kijai/ComfyUI-MimicMotionWrapper",
         "https://github.com/sipherxyz/comfyui-art-venture",
     ],
 }

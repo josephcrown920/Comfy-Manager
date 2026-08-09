@@ -1,6 +1,6 @@
 {
   "1": { "class_type": "ImageOnlyCheckpointLoader", "inputs": { "ckpt_name": "svd_xt_1_1.safetensors" } },
-  "2": { "class_type": "LoadImageFromUrl", "inputs": { "url": "" } },
+  "2": { "class_type": "LoadImageFromUrl", "inputs": { "image": "PASTE_IMAGE_URL_OR_UPLOADED_FILENAME_HERE" } },
   "3": {
     "class_type": "SVD_img2vid_Conditioning",
     "inputs": {
