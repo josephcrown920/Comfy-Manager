@@ -200,6 +200,24 @@ export interface ModelAssignmentsInput {
   workflows: ModelAssignmentsInputWorkflows;
 }
 
+export interface SavedWorkflow {
+  id: number;
+  name: string;
+  /** The ComfyUI API-format workflow JSON as a string */
+  json: string;
+  createdAt: string;
+}
+
+export interface SavedWorkflowInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /** @minLength 2 */
+  json: string;
+}
+
 export interface UploadedFile {
   name: string;
   subfolder: string;
@@ -236,6 +254,10 @@ export const ListOutputsType = {
   video: 'video',
   audio: 'audio',
 } as const;
+
+export type DeleteSavedWorkflow200 = {
+  success: boolean;
+};
 
 export type UploadFileBody = {
   /** The file to upload (image or audio) */

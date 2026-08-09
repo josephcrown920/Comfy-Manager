@@ -23,6 +23,7 @@ import type {
   ComfyModels,
   ComfyQueue,
   ComfyStatus,
+  DeleteSavedWorkflow200,
   HealthStatus,
   Job,
   JobInput,
@@ -32,6 +33,8 @@ import type {
   ModelAssignments,
   ModelAssignmentsInput,
   Output,
+  SavedWorkflow,
+  SavedWorkflowInput,
   Settings,
   SettingsInput,
   UploadFileBody,
@@ -1434,6 +1437,225 @@ export const useUpdateModelAssignments = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateModelAssignmentsMutationOptions(options));
+    }
+
+export const getListSavedWorkflowsUrl = () => {
+
+
+
+
+  return `/api/saved-workflows`
+}
+
+/**
+ * @summary List user-saved custom workflows
+ */
+export const listSavedWorkflows = async ( options?: Parameters<typeof customFetch>[1]): Promise<SavedWorkflow[]> => {
+
+  return customFetch<SavedWorkflow[]>(getListSavedWorkflowsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSavedWorkflowsQueryKey = () => {
+    return [
+    `/api/saved-workflows`
+    ] as const;
+    }
+
+
+export const getListSavedWorkflowsQueryOptions = <TData = Awaited<ReturnType<typeof listSavedWorkflows>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSavedWorkflows>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSavedWorkflowsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSavedWorkflows>>> = ({ signal }) => listSavedWorkflows({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSavedWorkflows>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSavedWorkflowsQueryResult = NonNullable<Awaited<ReturnType<typeof listSavedWorkflows>>>
+export type ListSavedWorkflowsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List user-saved custom workflows
+ */
+
+export function useListSavedWorkflows<TData = Awaited<ReturnType<typeof listSavedWorkflows>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSavedWorkflows>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSavedWorkflowsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSavedWorkflowUrl = () => {
+
+
+
+
+  return `/api/saved-workflows`
+}
+
+/**
+ * @summary Save a custom workflow by name
+ */
+export const createSavedWorkflow = async (savedWorkflowInput: SavedWorkflowInput, options?: Parameters<typeof customFetch>[1]): Promise<SavedWorkflow> => {
+
+  return customFetch<SavedWorkflow>(getCreateSavedWorkflowUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(savedWorkflowInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSavedWorkflowMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSavedWorkflow>>, TError,{data: BodyType<SavedWorkflowInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSavedWorkflow>>, TError,{data: BodyType<SavedWorkflowInput>}, TContext> => {
+
+const mutationKey = ['createSavedWorkflow'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSavedWorkflow>>, {data: BodyType<SavedWorkflowInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSavedWorkflow(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSavedWorkflowMutationResult = NonNullable<Awaited<ReturnType<typeof createSavedWorkflow>>>
+    export type CreateSavedWorkflowMutationBody = BodyType<SavedWorkflowInput>
+    export type CreateSavedWorkflowMutationError = ErrorType<void>
+
+    /**
+ * @summary Save a custom workflow by name
+ */
+export const useCreateSavedWorkflow = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSavedWorkflow>>, TError,{data: BodyType<SavedWorkflowInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSavedWorkflow>>,
+        TError,
+        {data: BodyType<SavedWorkflowInput>},
+        TContext
+      > => {
+      return useMutation(getCreateSavedWorkflowMutationOptions(options));
+    }
+
+export const getDeleteSavedWorkflowUrl = (id: number,) => {
+
+
+
+
+  return `/api/saved-workflows/${id}`
+}
+
+/**
+ * @summary Delete a saved workflow
+ */
+export const deleteSavedWorkflow = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<DeleteSavedWorkflow200> => {
+
+  return customFetch<DeleteSavedWorkflow200>(getDeleteSavedWorkflowUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteSavedWorkflowMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSavedWorkflow>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSavedWorkflow>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteSavedWorkflow'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSavedWorkflow>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteSavedWorkflow(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteSavedWorkflowMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSavedWorkflow>>>
+
+    export type DeleteSavedWorkflowMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete a saved workflow
+ */
+export const useDeleteSavedWorkflow = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSavedWorkflow>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteSavedWorkflow>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteSavedWorkflowMutationOptions(options));
     }
 
 export const getUploadFileUrl = () => {

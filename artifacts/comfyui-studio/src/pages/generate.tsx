@@ -4,8 +4,13 @@ import {
   useListWorkflows, 
   useGetWorkflow, 
   useCreateJob, 
-  getGetWorkflowQueryKey 
+  getGetWorkflowQueryKey,
+  useListSavedWorkflows,
+  useCreateSavedWorkflow,
+  useDeleteSavedWorkflow,
+  getListSavedWorkflowsQueryKey,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Play, LayoutGrid, Code, AlertCircle } from "lucide-react";
+import { ArrowLeft, Play, LayoutGrid, Code, AlertCircle, Bookmark, Trash2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import sdxlImageTemplate from "@/assets/templates/sdxl-image.workflow.json";
 import animatediffTemplate from "@/assets/templates/animatediff-text-to-video.workflow.json";
@@ -32,8 +37,13 @@ export default function Generate() {
   const categoryFilter = searchParams.get('category');
   
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
+  const [initialCustomJson, setInitialCustomJson] = useState<string>("");
   
   const { data: workflows, isLoading: isListLoading } = useListWorkflows();
+  const { data: savedWorkflows } = useListSavedWorkflows();
+  const deleteSaved = useDeleteSavedWorkflow();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const filteredWorkflows = useMemo(() => {
     if (!workflows) return [];
@@ -41,8 +51,11 @@ export default function Generate() {
     return workflows.filter(w => w.category === categoryFilter);
   }, [workflows, categoryFilter]);
 
+  // Saved custom workflows only make sense in the unfiltered view or "custom" category
+  const visibleSaved = (!categoryFilter || categoryFilter === "custom") ? (savedWorkflows ?? []) : [];
+
   if (selectedWorkflowId === CUSTOM_WORKFLOW_ID) {
-    return <CustomWorkflowForm onBack={() => setSelectedWorkflowId(null)} />;
+    return <CustomWorkflowForm onBack={() => setSelectedWorkflowId(null)} initialJson={initialCustomJson} />;
   }
 
   if (selectedWorkflowId) {
@@ -93,6 +106,55 @@ export default function Generate() {
               </CardContent>
             </Card>
           ))}
+          {visibleSaved.map(saved => (
+            <Card
+              key={`saved-${saved.id}`}
+              className="cursor-pointer hover:border-primary transition-colors hover-elevate overflow-hidden group"
+              onClick={() => {
+                setInitialCustomJson(saved.json);
+                setSelectedWorkflowId(CUSTOM_WORKFLOW_ID);
+              }}
+            >
+              <div className="h-2 bg-gradient-to-r from-accent to-primary opacity-50 group-hover:opacity-100 transition-opacity" />
+              <CardHeader>
+                <CardTitle className="flex justify-between items-start gap-2">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <Bookmark className="h-4 w-4 shrink-0 text-primary fill-primary/30" />
+                    <span className="truncate">{saved.name}</span>
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                    aria-label={`Delete saved workflow ${saved.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteSaved.mutate({ id: saved.id }, {
+                        onSuccess: () => {
+                          queryClient.invalidateQueries({ queryKey: getListSavedWorkflowsQueryKey() });
+                          toast({ title: `Deleted "${saved.name}"` });
+                        },
+                        onError: (err: any) => {
+                          toast({ title: "Failed to delete", description: err.message, variant: "destructive" });
+                        },
+                      });
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </CardTitle>
+                <CardDescription className="line-clamp-2 mt-2 text-sm">
+                  Your saved custom workflow — click to load and run.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2 mt-4 text-xs font-medium text-muted-foreground">
+                  <span className="bg-secondary px-2 py-1 rounded">saved</span>
+                  <span>{new Date(saved.createdAt).toLocaleDateString()}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
       
@@ -113,12 +175,36 @@ const WORKFLOW_TEMPLATES: { id: string; label: string; description: string; json
   { id: "mimicmotion", label: "MimicMotion", description: "Drive an image with a motion video", json: mimicmotionTemplate },
 ];
 
-function CustomWorkflowForm({ onBack }: { onBack: () => void }) {
+function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; initialJson?: string }) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const createJob = useCreateJob();
-  const [workflowJson, setWorkflowJson] = useState("");
+  const createSaved = useCreateSavedWorkflow();
+  const queryClient = useQueryClient();
+  const [workflowJson, setWorkflowJson] = useState(initialJson);
   const [jsonError, setJsonError] = useState<string | null>(null);
+  const [saveName, setSaveName] = useState("");
+
+  const onSave = () => {
+    if (!validateJson(workflowJson)) return;
+    if (!saveName.trim()) {
+      toast({ title: "Give your workflow a name first", variant: "destructive" });
+      return;
+    }
+    createSaved.mutate(
+      { data: { name: saveName.trim(), json: workflowJson } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListSavedWorkflowsQueryKey() });
+          toast({ title: `Saved "${saveName.trim()}"`, description: "It now appears in your template grid." });
+          setSaveName("");
+        },
+        onError: (err: any) => {
+          toast({ title: "Failed to save workflow", description: err.message, variant: "destructive" });
+        },
+      }
+    );
+  };
 
   const validateJson = (value: string): boolean => {
     if (!value.trim()) {
@@ -258,6 +344,36 @@ function CustomWorkflowForm({ onBack }: { onBack: () => void }) {
               <div className="text-xs text-muted-foreground text-center">
                 This job will be added to your queue.
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Bookmark className="h-4 w-4 text-primary" />
+                Save for later
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Input
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                placeholder="Workflow name"
+                maxLength={100}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                onClick={onSave}
+                disabled={createSaved.isPending}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {createSaved.isPending ? "Saving..." : "Save as…"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Saved workflows appear in the template grid so you can rerun them without re-pasting.
+              </p>
             </CardContent>
           </Card>
         </div>

@@ -334,6 +334,65 @@ paths:
         "400":
           description: Invalid request
 
+  /saved-workflows:
+    get:
+      operationId: listSavedWorkflows
+      tags: [saved-workflows]
+      summary: List user-saved custom workflows
+      responses:
+        "200":
+          description: Saved workflows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SavedWorkflow"
+    post:
+      operationId: createSavedWorkflow
+      tags: [saved-workflows]
+      summary: Save a custom workflow by name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavedWorkflowInput"
+      responses:
+        "201":
+          description: Saved workflow
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedWorkflow"
+        "400":
+          description: Invalid request
+
+  /saved-workflows/{id}:
+    delete:
+      operationId: deleteSavedWorkflow
+      tags: [saved-workflows]
+      summary: Delete a saved workflow
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+        "404":
+          description: Not found
+
   /files/upload:
     post:
       operationId: uploadFile
@@ -613,6 +672,32 @@ components:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/WorkflowModelAssignment"
+
+    SavedWorkflow:
+      type: object
+      required: [id, name, json, createdAt]
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        json:
+          type: string
+          description: The ComfyUI API-format workflow JSON as a string
+        createdAt:
+          type: string
+
+    SavedWorkflowInput:
+      type: object
+      required: [name, json]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        json:
+          type: string
+          minLength: 2
 
     UploadedFile:
       type: object

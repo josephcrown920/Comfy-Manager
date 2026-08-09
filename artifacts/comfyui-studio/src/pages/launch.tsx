@@ -103,9 +103,10 @@ export default function Launch() {
           <Alert className="border-primary/30 bg-primary/5">
             <AlertCircle className="h-4 w-4 text-primary" />
             <AlertDescription className="text-sm">
-              Free tier: NVIDIA T4, 16 GB VRAM — fits <strong>image</strong> and <strong>lip sync</strong>.
-              Video and motion control need a bigger card (Colab Pro+ A100). Sessions idle-disconnect;
-              just re-run the cell to come back online.
+              Free tier: NVIDIA T4, 16 GB VRAM — fits <strong>image</strong>,{" "}
+              <strong>text-to-video</strong> (AnimateDiff, 512px), and <strong>lip sync</strong>.
+              Image-to-video (SVD) and motion control need a bigger card (Colab Pro+ A100).
+              Sessions idle-disconnect; just re-run the cell to come back online.
             </AlertDescription>
           </Alert>
         </TabsContent>

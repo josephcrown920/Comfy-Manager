@@ -357,6 +357,52 @@ export const UpdateModelAssignmentsResponse = zod.object({
 
 
 /**
+ * @summary List user-saved custom workflows
+ */
+export const ListSavedWorkflowsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "json": zod.string().describe('The ComfyUI API-format workflow JSON as a string'),
+  "createdAt": zod.string()
+})
+export const ListSavedWorkflowsResponse = zod.array(ListSavedWorkflowsResponseItem)
+
+
+/**
+ * @summary Save a custom workflow by name
+ */
+export const createSavedWorkflowBodyNameMax = 100;
+
+export const createSavedWorkflowBodyJsonMin = 2;
+
+
+
+export const CreateSavedWorkflowBody = zod.object({
+  "name": zod.string().min(1).max(createSavedWorkflowBodyNameMax),
+  "json": zod.string().min(createSavedWorkflowBodyJsonMin)
+})
+
+export const CreateSavedWorkflowResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "json": zod.string().describe('The ComfyUI API-format workflow JSON as a string'),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a saved workflow
+ */
+export const DeleteSavedWorkflowParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteSavedWorkflowResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
  * @summary Upload a file and forward it to ComfyUI
  */
 export const UploadFileBody = zod.object({

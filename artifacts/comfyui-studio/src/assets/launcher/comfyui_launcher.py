@@ -30,8 +30,9 @@ Secrets / env it reads (Colab userdata, Kaggle Secrets, or plain env vars):
                         stabilityai/stable-video-diffusion-img2vid-xt-1-1).
   COMFY_CAPABILITIES    optional — comma list of what to install:
                         image, video, lipsync, motion.
-                        Default picks by VRAM: <20 GB -> image,lipsync;
-                        >=20 GB -> image,video,lipsync,motion.
+                        Default picks by VRAM: <20 GB -> image,video,lipsync
+                        (video = AnimateDiff text-to-video; SVD image-to-video
+                        is skipped on small cards); >=20 GB -> all four.
 """
 
 import json
@@ -70,19 +71,24 @@ CAP_NODE_PACKS = {
     ],
 }
 
-# Model weights per capability: (dest_rel_path, hf_repo, hf_file).
+# Model weights per capability: (dest_rel_path, hf_repo, hf_file, min_vram_gb).
+# Entries with min_vram_gb > 0 are skipped on smaller cards so a free 16 GB T4
+# still gets a working "video-lite" path (AnimateDiff text-to-video at 512px)
+# instead of no video at all. SVD image-to-video genuinely needs ~24 GB.
 CAP_MODELS = {
     "image": [
         ("models/checkpoints/sd_xl_base_1.0.safetensors",
-         "stabilityai/stable-diffusion-xl-base-1.0", "sd_xl_base_1.0.safetensors"),
+         "stabilityai/stable-diffusion-xl-base-1.0", "sd_xl_base_1.0.safetensors", 0),
     ],
     "video": [
-        ("models/checkpoints/svd_xt_1_1.safetensors",
-         "stabilityai/stable-video-diffusion-img2vid-xt-1-1", "svd_xt_1_1.safetensors"),
+        # AnimateDiff (SD1.5) — fits a free 16 GB T4 at 512px / short clips.
         ("models/checkpoints/v1-5-pruned-emaonly.safetensors",
-         "Comfy-Org/stable-diffusion-v1-5-archive", "v1-5-pruned-emaonly-fp16.safetensors"),
+         "Comfy-Org/stable-diffusion-v1-5-archive", "v1-5-pruned-emaonly-fp16.safetensors", 0),
         ("models/animatediff_models/mm_sd_v15_v2.ckpt",
-         "guoyww/animatediff", "mm_sd_v15_v2.ckpt"),
+         "guoyww/animatediff", "mm_sd_v15_v2.ckpt", 0),
+        # SVD image-to-video — heavy; only installed on ~24 GB cards.
+        ("models/checkpoints/svd_xt_1_1.safetensors",
+         "stabilityai/stable-video-diffusion-img2vid-xt-1-1", "svd_xt_1_1.safetensors", 20),
     ],
     # lipsync/motion wrapper packs self-download their weights on first run.
     "lipsync": [],
@@ -144,7 +150,9 @@ def requested_caps():
                              f"Valid: {sorted(CAP_NODE_PACKS)}")
         return caps
     vram = detect_vram_gb()
-    caps = ["image", "lipsync"] if vram < 20 else ["image", "video", "lipsync", "motion"]
+    # Free 16 GB cards get image + video-lite (AnimateDiff) + lipsync.
+    # Motion control (MimicMotion) and SVD need ~24 GB.
+    caps = ["image", "video", "lipsync"] if vram < 20 else ["image", "video", "lipsync", "motion"]
     print(f"[boot] detected {vram:.0f} GB VRAM -> installing {caps}", flush=True)
     return caps
 
@@ -183,7 +191,12 @@ def download_models(caps):
             "Hugging Face. Create a token at huggingface.co/settings/tokens, "
             "accept the license on each model page, and add HF_TOKEN as a secret."
         )
-    for _cap, (rel, repo, fname) in needed:
+    vram = detect_vram_gb()
+    for _cap, (rel, repo, fname, min_vram) in needed:
+        if min_vram and vram and vram < min_vram:
+            print(f"[models] skipping {fname} — needs a ~{min_vram}+ GB GPU "
+                  f"(this card has {vram:.0f} GB). Video still works via AnimateDiff.", flush=True)
+            continue
         dest = os.path.join(COMFY_DIR, rel)
         if os.path.isfile(dest):
             print(f"[models] cached: {rel}", flush=True)
