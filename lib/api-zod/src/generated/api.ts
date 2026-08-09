@@ -357,6 +357,20 @@ export const UpdateModelAssignmentsResponse = zod.object({
 
 
 /**
+ * @summary Check which node class_types in a workflow JSON are missing on the ComfyUI server
+ */
+export const ValidateComfyNodesBody = zod.object({
+  "json": zod.string().describe('ComfyUI API-format workflow JSON as a string')
+})
+
+export const ValidateComfyNodesResponse = zod.object({
+  "reachable": zod.boolean().describe('Whether the ComfyUI server could be queried for its node list'),
+  "missingNodes": zod.array(zod.string()).describe('class_type values referenced in the workflow but not installed on the server'),
+  "totalNodes": zod.number().describe('Number of distinct class_types referenced by the workflow')
+})
+
+
+/**
  * @summary List user-saved custom workflows
  */
 export const ListSavedWorkflowsResponseItem = zod.object({

@@ -334,6 +334,27 @@ paths:
         "400":
           description: Invalid request
 
+  /comfy/validate-nodes:
+    post:
+      operationId: validateComfyNodes
+      tags: [comfy]
+      summary: Check which node class_types in a workflow JSON are missing on the ComfyUI server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateNodesInput"
+      responses:
+        "200":
+          description: Validation result (non-blocking — informational only)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NodeValidation"
+        "400":
+          description: Invalid request
+
   /saved-workflows:
     get:
       operationId: listSavedWorkflows
@@ -672,6 +693,30 @@ components:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/WorkflowModelAssignment"
+
+    ValidateNodesInput:
+      type: object
+      required: [json]
+      properties:
+        json:
+          type: string
+          description: ComfyUI API-format workflow JSON as a string
+
+    NodeValidation:
+      type: object
+      required: [reachable, missingNodes, totalNodes]
+      properties:
+        reachable:
+          type: boolean
+          description: Whether the ComfyUI server could be queried for its node list
+        missingNodes:
+          type: array
+          items:
+            type: string
+          description: class_type values referenced in the workflow but not installed on the server
+        totalNodes:
+          type: number
+          description: Number of distinct class_types referenced by the workflow
 
     SavedWorkflow:
       type: object

@@ -200,6 +200,20 @@ export interface ModelAssignmentsInput {
   workflows: ModelAssignmentsInputWorkflows;
 }
 
+export interface ValidateNodesInput {
+  /** ComfyUI API-format workflow JSON as a string */
+  json: string;
+}
+
+export interface NodeValidation {
+  /** Whether the ComfyUI server could be queried for its node list */
+  reachable: boolean;
+  /** class_type values referenced in the workflow but not installed on the server */
+  missingNodes: string[];
+  /** Number of distinct class_types referenced by the workflow */
+  totalNodes: number;
+}
+
 export interface SavedWorkflow {
   id: number;
   name: string;

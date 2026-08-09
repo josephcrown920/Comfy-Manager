@@ -32,6 +32,7 @@ import type {
   ListOutputsParams,
   ModelAssignments,
   ModelAssignmentsInput,
+  NodeValidation,
   Output,
   SavedWorkflow,
   SavedWorkflowInput,
@@ -39,6 +40,7 @@ import type {
   SettingsInput,
   UploadFileBody,
   UploadedFile,
+  ValidateNodesInput,
   WorkflowTemplate
 } from './api.schemas';
 
@@ -1437,6 +1439,77 @@ export const useUpdateModelAssignments = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateModelAssignmentsMutationOptions(options));
+    }
+
+export const getValidateComfyNodesUrl = () => {
+
+
+
+
+  return `/api/comfy/validate-nodes`
+}
+
+/**
+ * @summary Check which node class_types in a workflow JSON are missing on the ComfyUI server
+ */
+export const validateComfyNodes = async (validateNodesInput: ValidateNodesInput, options?: Parameters<typeof customFetch>[1]): Promise<NodeValidation> => {
+
+  return customFetch<NodeValidation>(getValidateComfyNodesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(validateNodesInput)
+  }
+);}
+
+
+
+
+
+export const getValidateComfyNodesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof validateComfyNodes>>, TError,{data: BodyType<ValidateNodesInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof validateComfyNodes>>, TError,{data: BodyType<ValidateNodesInput>}, TContext> => {
+
+const mutationKey = ['validateComfyNodes'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof validateComfyNodes>>, {data: BodyType<ValidateNodesInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  validateComfyNodes(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ValidateComfyNodesMutationResult = NonNullable<Awaited<ReturnType<typeof validateComfyNodes>>>
+    export type ValidateComfyNodesMutationBody = BodyType<ValidateNodesInput>
+    export type ValidateComfyNodesMutationError = ErrorType<void>
+
+    /**
+ * @summary Check which node class_types in a workflow JSON are missing on the ComfyUI server
+ */
+export const useValidateComfyNodes = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof validateComfyNodes>>, TError,{data: BodyType<ValidateNodesInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof validateComfyNodes>>,
+        TError,
+        {data: BodyType<ValidateNodesInput>},
+        TContext
+      > => {
+      return useMutation(getValidateComfyNodesMutationOptions(options));
     }
 
 export const getListSavedWorkflowsUrl = () => {
