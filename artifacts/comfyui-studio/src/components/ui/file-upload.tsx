@@ -94,7 +94,7 @@ export function FileUpload({ accept, onFileSelect, label, description }: FileUpl
  * Uses XMLHttpRequest so we get upload-progress events.
  * Returns the filename that ComfyUI assigned.
  */
-function uploadFile(
+export function uploadFile(
   file: File,
   onProgress: (pct: number) => void,
   accept?: string,

@@ -22,8 +22,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Play, LayoutGrid, Code, AlertCircle, Bookmark, Trash2, Save } from "lucide-react";
+import { ArrowLeft, Play, LayoutGrid, Code, AlertCircle, Bookmark, Trash2, Save, History, BookOpen, Plus, Loader2, CheckCircle2, Sparkles, Video } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { uploadFile } from "@/components/ui/file-upload";
 import sdxlImageTemplate from "@/assets/templates/sdxl-image.workflow.json";
 import animatediffTemplate from "@/assets/templates/animatediff-text-to-video.workflow.json";
 import svdTemplate from "@/assets/templates/svd-image-to-video.workflow.json";
@@ -39,6 +40,19 @@ import latentsyncThumbnail from "@/assets/thumbnails/latentsync.jpg";
 import mimicmotionThumbnail from "@/assets/thumbnails/mimicmotion.jpg";
 
 const CUSTOM_WORKFLOW_ID = "custom-workflow";
+const MOTION_WORKFLOW_ID = "motion-control-animatediff";
+
+const LIME = "#c8f135";
+
+const MOTION_PRESETS = [
+  { id: "zoom-in",   label: "Zoom In",    icon: "🔍", description: "Slow push toward the subject" },
+  { id: "zoom-out",  label: "Zoom Out",   icon: "🔭", description: "Pull back to reveal the scene" },
+  { id: "pan-left",  label: "Pan Left",   icon: "⬅",  description: "Slide the camera left" },
+  { id: "pan-right", label: "Pan Right",  icon: "➡",  description: "Slide the camera right" },
+  { id: "tilt-up",   label: "Tilt Up",    icon: "⬆",  description: "Lift the camera upward" },
+  { id: "tilt-down", label: "Tilt Down",  icon: "⬇",  description: "Dip the camera downward" },
+  { id: "rotate",    label: "Rotate",     icon: "↻",  description: "Spin around the subject" },
+];
 
 export default function Generate() {
   const [location, setLocation] = useLocation();
@@ -74,6 +88,10 @@ export default function Generate() {
 
   if (selectedWorkflowId === CUSTOM_WORKFLOW_ID) {
     return <CustomWorkflowForm onBack={() => setSelectedWorkflowId(null)} initialJson={initialCustomJson} />;
+  }
+
+  if (selectedWorkflowId === MOTION_WORKFLOW_ID) {
+    return <MotionControlForm onBack={() => setSelectedWorkflowId(null)} />;
   }
 
   if (selectedWorkflowId) {
@@ -672,6 +690,291 @@ function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBack: () =
               </div>
             </CardContent>
           </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Motion Control ───────────────────────────────────────────────────────────
+
+function MotionUploadSlot({
+  label, hint, accept, onUploaded, uploaded,
+}: {
+  label: string; hint: string; accept: string;
+  onUploaded: (filename: string) => void; uploaded: boolean;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const { toast } = useToast();
+
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setProgress(0);
+    try {
+      const name = await uploadFile(file, (p) => setProgress(p), accept);
+      onUploaded(name);
+      toast({ title: "Uploaded", description: file.name });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+      if (fileRef.current) fileRef.current.value = "";
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div
+      className="aspect-video bg-black/50 rounded-lg flex flex-col items-center justify-center gap-2 border border-dashed border-white/20 cursor-pointer hover:border-white/40 transition-colors relative overflow-hidden"
+      onClick={() => fileRef.current?.click()}
+    >
+      <input ref={fileRef} type="file" accept={accept} className="hidden" onChange={handleChange} />
+      {uploading ? (
+        <>
+          <Loader2 className="h-5 w-5 text-white/50 animate-spin" />
+          <span className="text-xs text-white/40">{progress}%</span>
+          <div className="absolute bottom-0 left-0 h-0.5 transition-all" style={{ width: `${progress}%`, background: LIME }} />
+        </>
+      ) : uploaded ? (
+        <CheckCircle2 className="h-7 w-7" style={{ color: LIME }} />
+      ) : (
+        <Plus className="h-7 w-7 text-white/25" />
+      )}
+      <div className="mt-1 text-center px-2">
+        <p className="text-sm font-semibold text-white">{label}</p>
+        <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>{hint}</p>
+      </div>
+    </div>
+  );
+}
+
+function MotionControlForm({ onBack }: { onBack: () => void }) {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const createJob = useCreateJob();
+
+  const [activeTab, setActiveTab] = useState<"library" | "history">("library");
+  const [sourceImage, setSourceImage] = useState("");
+  const [selectedPreset, setSelectedPreset] = useState("zoom-in");
+  const [motionStrength, setMotionStrength] = useState(50);
+  const [numFrames, setNumFrames] = useState(16);
+  const [prompt, setPrompt] = useState("");
+
+  const handleGenerate = () => {
+    if (!sourceImage) {
+      toast({ title: "Upload your character image first", variant: "destructive" });
+      return;
+    }
+    createJob.mutate(
+      {
+        data: {
+          workflowId: MOTION_WORKFLOW_ID,
+          params: { source_image: sourceImage, motion_preset: selectedPreset, motion_strength: motionStrength, num_frames: numFrames, prompt },
+        },
+      },
+      {
+        onSuccess: () => { toast({ title: "Motion job started!" }); setLocation("/jobs"); },
+        onError: (err: any) => { toast({ title: "Failed to start job", description: err.message, variant: "destructive" }); },
+      }
+    );
+  };
+
+  return (
+    <div
+      className="animate-in slide-in-from-right-8 duration-300 -mx-6 -mt-6 flex flex-col"
+      style={{ minHeight: "calc(100vh - 56px)", background: "#0f0f10" }}
+    >
+      {/* Back */}
+      <div className="px-6 pt-4 flex-shrink-0">
+        <Button variant="ghost" className="text-white/50 hover:text-white -ml-2" onClick={onBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Templates
+        </Button>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* ── Left sidebar ── */}
+        <div
+          className="w-72 flex-shrink-0 flex flex-col p-4 gap-3 overflow-y-auto"
+          style={{ borderRight: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          {/* Tabs */}
+          <div className="flex gap-1 rounded-xl p-1" style={{ background: "rgba(255,255,255,0.05)" }}>
+            {(["history", "library"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  activeTab === tab ? "text-white" : "text-white/40 hover:text-white/70"
+                }`}
+                style={activeTab === tab ? { background: "rgba(255,255,255,0.1)" } : {}}
+              >
+                {tab === "history" ? <History className="h-3 w-3" /> : <BookOpen className="h-3 w-3" />}
+                {tab === "history" ? "History" : "Motion Library"}
+              </button>
+            ))}
+          </div>
+
+          {/* Motion-to-copy shortcut card */}
+          <div
+            onClick={() => setActiveTab("library")}
+            className="rounded-xl p-3 cursor-pointer transition-colors"
+            style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }}
+          >
+            <div
+              className="aspect-video bg-black/50 rounded-lg mb-2 flex flex-col items-center justify-center gap-1"
+              style={{ border: "1px dashed rgba(255,255,255,0.15)" }}
+            >
+              <Video className="h-5 w-5 text-white/25" />
+              <span className="text-xs font-bold" style={{ color: LIME }}>
+                {MOTION_PRESETS.find((p) => p.id === selectedPreset)?.label ?? "Pick a style"}
+              </span>
+            </div>
+            <p className="text-sm font-semibold text-white">Add motion to copy</p>
+            <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+              Video duration: 3–30 seconds
+            </p>
+          </div>
+
+          {/* Character upload */}
+          <div
+            className="rounded-xl p-3"
+            style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }}
+          >
+            <MotionUploadSlot
+              label="Add your character"
+              hint="Image with visible face and body"
+              accept="image/*"
+              onUploaded={setSourceImage}
+              uploaded={!!sourceImage}
+            />
+          </div>
+
+          {/* Sliders */}
+          <div
+            className="rounded-xl px-4 py-3 space-y-4"
+            style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }}
+          >
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>Motion Strength</span>
+                <span className="text-xs font-mono text-white">{motionStrength}</span>
+              </div>
+              <Slider value={[motionStrength]} min={0} max={100} step={1} onValueChange={(v) => setMotionStrength(v[0])} />
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>Frames</span>
+                <span className="text-xs font-mono text-white">{numFrames}</span>
+              </div>
+              <Slider value={[numFrames]} min={8} max={64} step={8} onValueChange={(v) => setNumFrames(v[0])} />
+            </div>
+          </div>
+
+          {/* Optional prompt */}
+          <Textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Optional: describe the motion in words…"
+            className="text-sm resize-none min-h-[60px] text-white placeholder:text-white/30"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+          />
+
+          {/* Generate */}
+          <button
+            onClick={handleGenerate}
+            disabled={createJob.isPending}
+            className="w-full py-4 rounded-xl font-black text-sm text-black flex items-center justify-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: LIME }}
+          >
+            {createJob.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                Generate
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* ── Right panel ── */}
+        <div className="flex-1 overflow-y-auto px-8 py-6">
+          {activeTab === "library" ? (
+            <>
+              {/* Hero */}
+              <div className="flex items-start justify-between gap-6 mb-8">
+                <div className="flex-1 min-w-0">
+                  <h1
+                    className="font-black leading-[1.05] tracking-tight text-white uppercase"
+                    style={{ fontSize: "clamp(2rem, 4vw, 3.25rem)" }}
+                  >
+                    RECREATE ANY{" "}
+                    <span style={{ color: LIME }}>[MOTION]</span>
+                    <br />WITH YOUR IMAGE
+                  </h1>
+                  <p className="mt-4 text-base leading-relaxed max-w-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
+                    Copy motion from any video and place your character into the same movement.
+                  </p>
+                </div>
+
+                {/* Fan of sample photos */}
+                <div className="relative flex-shrink-0 hidden lg:block" style={{ width: "11rem", height: "9rem" }}>
+                  <img src={mimicmotionThumbnail} alt="" className="absolute rounded-xl object-cover shadow-xl"
+                    style={{ right: 0, top: 0, width: "6rem", height: "8rem", border: "2px solid rgba(255,255,255,0.12)", transform: "rotate(4deg)" }} />
+                  <img src={animatediffThumbnail} alt="" className="absolute rounded-xl object-cover shadow-xl"
+                    style={{ right: "4.5rem", top: "0.5rem", width: "5.5rem", height: "7rem", border: "2px solid rgba(255,255,255,0.12)", transform: "rotate(-5deg)", opacity: 0.85 }} />
+                  <img src={svdThumbnail} alt="" className="absolute rounded-xl object-cover shadow-lg"
+                    style={{ right: "8rem", top: "1rem", width: "5rem", height: "6.5rem", border: "2px solid rgba(255,255,255,0.10)", transform: "rotate(1deg)", opacity: 0.7 }} />
+                </div>
+              </div>
+
+              {/* Library grid */}
+              <p className="text-sm mb-3 font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
+                Start by copying motion from library
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                {MOTION_PRESETS.map((preset) => {
+                  const active = selectedPreset === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      onClick={() => setSelectedPreset(preset.id)}
+                      className="group rounded-xl text-left transition-all p-3"
+                      style={{
+                        background: active ? "rgba(200,241,53,0.08)" : "rgba(255,255,255,0.04)",
+                        border: active ? `1.5px solid rgba(200,241,53,0.5)` : "1.5px solid rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      <div
+                        className="w-full aspect-video rounded-lg mb-3 flex items-center justify-center text-3xl"
+                        style={{ background: active ? "rgba(200,241,53,0.1)" : "rgba(0,0,0,0.35)" }}
+                      >
+                        {preset.icon}
+                      </div>
+                      <p className="text-sm font-semibold" style={{ color: active ? LIME : "white" }}>
+                        {preset.label}
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        {preset.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 gap-3" style={{ color: "rgba(255,255,255,0.2)" }}>
+              <History className="h-12 w-12" />
+              <p className="text-sm">No generation history yet.</p>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.12)" }}>
+                Run a motion job and it will appear here.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
