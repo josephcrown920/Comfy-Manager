@@ -83,8 +83,8 @@ export default function Launch() {
           <Badge variant="secondary">HEADLESS READY</Badge>
           <Badge variant="secondary">COMFYUI NATIVE</Badge>
         </div>
-        <h1 className="text-3xl font-display font-bold tracking-tight flex items-center gap-3">
-          <Rocket className="h-8 w-8 text-primary" />
+        <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-3">
+          <Rocket className="h-6 w-6 text-primary" />
           Launch a GPU
         </h1>
         <p className="text-muted-foreground mt-2 max-w-2xl">

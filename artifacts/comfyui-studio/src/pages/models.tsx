@@ -210,7 +210,7 @@ export default function Models() {
   return (
     <div className="max-w-3xl space-y-6 animate-in fade-in duration-300">
       <div>
-        <h1 className="text-3xl font-display font-bold">Model Orchestrator</h1>
+        <h1 className="text-2xl font-semibold">Model Orchestrator</h1>
         <p className="text-muted-foreground mt-1">
           Assign which checkpoint to use per workflow and configure fallbacks
           for when a model isn't available.

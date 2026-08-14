@@ -104,69 +104,69 @@ export default function Generate() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div>
-        <h1 className="text-3xl font-display font-bold flex items-center gap-3">
-          <LayoutGrid className="h-8 w-8 text-primary" />
+        <h1 className="text-2xl font-semibold flex items-center gap-3">
+          <LayoutGrid className="h-6 w-6 text-[#ff9500]" />
           Templates
         </h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-[#888888] mt-2 text-sm">
           Select a workflow template to begin generating.
         </p>
       </div>
 
       {isListLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-40 rounded-xl" />)}
+          {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-40 rounded-[2px]" />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredWorkflows.map(workflow => (
-            <Card 
+            <div 
               key={workflow.id} 
-              className="cursor-pointer hover:border-primary transition-colors hover-elevate overflow-hidden group"
+              className="bg-[#242424] border border-[#3a3a3a] cursor-pointer hover:bg-[#2d2d2d] transition-colors overflow-hidden group relative flex flex-col hover:border-[#ff9500]"
               onClick={() => setSelectedWorkflowId(workflow.id)}
             >
-              <div className="h-2 bg-gradient-to-r from-primary to-accent opacity-50 group-hover:opacity-100 transition-opacity" />
-              <CardHeader>
-                <CardTitle className="flex justify-between items-start">
-                  <span>{workflow.name}</span>
-                </CardTitle>
-                <CardDescription className="line-clamp-2 mt-2 text-sm">{workflow.description}</CardDescription>
-              </CardHeader>
+              <div className="absolute top-0 left-0 w-full h-[2px] bg-[#ff9500] opacity-60 group-hover:opacity-100 transition-opacity z-10" />
+              <div className="p-4 flex-1">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-semibold text-base">{workflow.name}</h3>
+                </div>
+                <p className="text-xs text-[#888888] line-clamp-2">{workflow.description}</p>
+              </div>
               {DB_WORKFLOW_THUMBNAILS[workflow.id] && (
-                <div className="px-6 pb-2">
-                  <img src={DB_WORKFLOW_THUMBNAILS[workflow.id]} alt={workflow.name} className="w-full h-32 object-cover rounded-md opacity-80 group-hover:opacity-100 transition-opacity" />
+                <div className="px-4 pb-2">
+                  <img src={DB_WORKFLOW_THUMBNAILS[workflow.id]} alt={workflow.name} className="w-full h-32 object-cover rounded-[2px] opacity-70 group-hover:opacity-100 transition-opacity" />
                 </div>
               )}
-              <CardContent>
-                <div className="flex items-center gap-2 mt-4 text-xs font-medium text-muted-foreground">
-                  <span className="bg-secondary px-2 py-1 rounded capitalize">{workflow.category.replace('-', ' ')}</span>
+              <div className="p-4 pt-0">
+                <div className="flex items-center gap-2 mt-4 text-xs font-mono text-[#555555]">
+                  <span className="uppercase tracking-wider">{workflow.category.replace('-', ' ')}</span>
                   {workflow.estimatedTime && (
                     <span className="flex items-center gap-1">⏱ {workflow.estimatedTime}</span>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
           {visibleSaved.map(saved => (
-            <Card
+            <div
               key={`saved-${saved.id}`}
-              className="cursor-pointer hover:border-primary transition-colors hover-elevate overflow-hidden group"
+              className="bg-[#242424] border border-[#3a3a3a] cursor-pointer hover:bg-[#2d2d2d] transition-colors overflow-hidden group relative flex flex-col hover:border-[#ff9500]"
               onClick={() => {
                 setInitialCustomJson(saved.json);
                 setSelectedWorkflowId(CUSTOM_WORKFLOW_ID);
               }}
             >
-              <div className="h-2 bg-gradient-to-r from-accent to-primary opacity-50 group-hover:opacity-100 transition-opacity" />
-              <CardHeader>
-                <CardTitle className="flex justify-between items-start gap-2">
-                  <span className="flex items-center gap-2 min-w-0">
-                    <Bookmark className="h-4 w-4 shrink-0 text-primary fill-primary/30" />
+              <div className="absolute top-0 left-0 w-full h-[2px] bg-[#ff9500] opacity-60 group-hover:opacity-100 transition-opacity z-10" />
+              <div className="p-4 flex-1">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-semibold text-base flex items-center gap-2 min-w-0">
+                    <Bookmark className="h-4 w-4 shrink-0 text-[#ff9500]" />
                     <span className="truncate">{saved.name}</span>
-                  </span>
+                  </h3>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                    className="h-6 w-6 shrink-0 text-[#888888] hover:text-[#dd4444]"
                     aria-label={`Delete saved workflow ${saved.name}`}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -183,24 +183,24 @@ export default function Generate() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                </CardTitle>
-                <CardDescription className="line-clamp-2 mt-2 text-sm">
+                </div>
+                <p className="text-xs text-[#888888] line-clamp-2">
                   Your saved custom workflow — click to load and run.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 mt-4 text-xs font-medium text-muted-foreground">
-                  <span className="bg-secondary px-2 py-1 rounded">saved</span>
+                </p>
+              </div>
+              <div className="p-4 pt-0">
+                <div className="flex items-center gap-2 mt-4 text-xs font-mono text-[#555555]">
+                  <span className="uppercase tracking-wider">SAVED</span>
                   <span>{new Date(saved.createdAt).toLocaleDateString()}</span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}
       
       {filteredWorkflows.length === 0 && !isListLoading && (
-         <div className="text-center p-12 border border-dashed rounded-xl text-muted-foreground">
+         <div className="text-center p-12 border border-dashed border-[#3a3a3a] rounded-[2px] text-[#555555]">
            No workflows found for this category.
          </div>
       )}
@@ -334,32 +334,32 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
 
   return (
     <div className="animate-in slide-in-from-right-8 duration-300">
-      <Button variant="ghost" className="mb-6 -ml-4 text-muted-foreground" onClick={onBack}>
+      <Button variant="ghost" className="mb-6 -ml-4 text-[#888888] hover:text-white rounded-[2px]" onClick={onBack}>
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Templates
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
-        <Card className="border-border">
-          <CardHeader className="bg-secondary/30 border-b">
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <Code className="h-6 w-6 text-primary" />
+        <div className="bg-[#242424] border border-[#3a3a3a] rounded-[2px]">
+          <div className="p-6 border-b border-[#3a3a3a]">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Code className="h-5 w-5 text-[#ff9500]" />
               Custom Workflow
-            </CardTitle>
-            <CardDescription>
+            </h2>
+            <p className="text-[#888888] text-sm mt-1">
               Paste your ComfyUI API-format workflow JSON and run it directly on your server.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            <Alert className="mb-6 border-primary/30 bg-primary/5">
-              <AlertCircle className="h-4 w-4 text-primary" />
+            </p>
+          </div>
+          <div className="p-6">
+            <Alert className="mb-6 border-[#3a3a3a] bg-[#1a1a1a] rounded-[2px]">
+              <AlertCircle className="h-4 w-4 text-[#ff9500]" />
               <AlertDescription className="text-sm">
                 Export your workflow from ComfyUI using <strong>Save (API format)</strong> in the settings menu, then paste the resulting JSON below. The workflow is submitted unchanged to your ComfyUI server.
               </AlertDescription>
             </Alert>
 
             <div className="mb-6 space-y-2">
-              <Label className="text-base">Start from a template</Label>
+              <Label className="text-sm font-medium">Start from a template</Label>
               <div className="flex flex-wrap gap-2">
                 {WORKFLOW_TEMPLATES.map((t) => (
                   <Button
@@ -367,6 +367,7 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="bg-[#1a1a1a] border-[#3a3a3a] hover:bg-[#2d2d2d] rounded-[2px]"
                     title={t.description}
                     onClick={() => {
                       setWorkflowJson(JSON.stringify(t.json, null, 2));
@@ -377,7 +378,7 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                   </Button>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-[#555555] font-mono">
                 Templates reference specific models and custom nodes — edit prompts, filenames, and inputs to match what's installed on your server.
               </p>
             </div>
@@ -385,21 +386,21 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
             <form id="custom-workflow-form" onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base">
-                    Workflow JSON <span className="text-destructive">*</span>
+                  <Label className="text-sm font-medium">
+                    Workflow JSON <span className="text-[#dd4444]">*</span>
                   </Label>
-                  <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-md">
+                  <div className="flex items-center gap-1 bg-[#1a1a1a] p-1 rounded-[2px] border border-[#3a3a3a]">
                     <button
                       type="button"
                       onClick={() => setViewMode("json")}
-                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${viewMode === "json" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${viewMode === "json" ? "bg-[#2d2d2d] text-white" : "text-[#888888] hover:text-white"}`}
                     >
                       JSON
                     </button>
                     <button
                       type="button"
                       onClick={() => setViewMode("diagram")}
-                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${viewMode === "diagram" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${viewMode === "diagram" ? "bg-[#2d2d2d] text-white" : "text-[#888888] hover:text-white"}`}
                     >
                       Diagram
                     </button>
@@ -410,26 +411,26 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                     value={workflowJson}
                     onChange={(e) => handleChange(e.target.value)}
                     placeholder={'{\n  "1": {\n    "class_type": "KSampler",\n    "inputs": { ... }\n  }\n}'}
-                    className={`font-mono text-xs min-h-[400px] resize-y ${jsonError ? "border-destructive" : ""}`}
+                    className={`font-mono text-xs min-h-[400px] resize-y rounded-[2px] bg-[#1a1a1a] border-[#3a3a3a] ${jsonError ? "border-[#dd4444]" : ""}`}
                     spellCheck={false}
                   />
                 ) : (
-                  <div className="min-h-[400px] h-[500px] border border-border rounded-md">
+                  <div className="min-h-[400px] h-[500px] border border-[#3a3a3a] rounded-[2px] bg-[#1a1a1a]">
                     <WorkflowVisualizer jsonString={workflowJson} />
                   </div>
                 )}
                 {jsonError && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
+                  <p className="text-sm text-[#dd4444] flex items-center gap-1 font-mono">
                     <AlertCircle className="h-3 w-3" />
                     {jsonError}
                   </p>
                 )}
                 {!jsonError && nodeCheck && nodeCheck.missingNodes.length > 0 && (
-                  <Alert className="border-yellow-500/40 bg-yellow-500/10">
+                  <Alert className="border-yellow-500/40 bg-yellow-500/10 rounded-[2px]">
                     <AlertCircle className="h-4 w-4 text-yellow-500" />
                     <AlertDescription className="text-sm">
                       <strong>Missing nodes:</strong> {nodeCheck.missingNodes.join(", ")}
-                      <span className="block mt-1 text-xs text-muted-foreground">
+                      <span className="block mt-1 text-xs text-[#888888]">
                         These node types aren't installed on your ComfyUI server. The job will likely fail
                         unless you install the matching node packs (or the node exists under another name).
                         You can still run it.
@@ -438,71 +439,68 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                   </Alert>
                 )}
                 {!jsonError && nodeCheck && !nodeCheck.reachable && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <p className="text-xs text-[#888888] flex items-center gap-1 font-mono">
                     <AlertCircle className="h-3 w-3" />
                     Couldn't check nodes — ComfyUI server is unreachable right now.
                   </p>
                 )}
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         <div className="space-y-6">
-          <Card className="sticky top-6">
-            <CardHeader>
-              <CardTitle className="text-lg">Ready?</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="bg-[#242424] border border-[#3a3a3a] rounded-[2px] p-4 sticky top-6">
+            <h3 className="font-semibold mb-4 text-sm uppercase tracking-widest text-[#e0e0e0]">Ready?</h3>
+            <div className="space-y-4">
               <Button
                 type="submit"
                 form="custom-workflow-form"
                 size="lg"
-                className="w-full text-base py-6 shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:shadow-[0_0_30px_rgba(var(--primary),0.5)] transition-all"
+                className="w-full text-sm font-medium py-6 rounded-[2px] bg-[#ff9500] text-black hover:bg-[#ff8000]"
                 disabled={createJob.isPending}
               >
                 {createJob.isPending ? "Starting Job..." : (
                   <>
-                    <Play className="mr-2 h-5 w-5 fill-current" />
+                    <Play className="mr-2 h-4 w-4 fill-current" />
                     Run Workflow
                   </>
                 )}
               </Button>
-              <div className="text-xs text-muted-foreground text-center">
+              <div className="text-xs text-[#888888] text-center font-mono">
                 This job will be added to your queue.
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Bookmark className="h-4 w-4 text-primary" />
-                Save for later
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <div className="bg-[#242424] border border-[#3a3a3a] rounded-[2px] p-4">
+            <h3 className="font-semibold mb-4 text-sm uppercase tracking-widest text-[#e0e0e0] flex items-center gap-2">
+              <Bookmark className="h-4 w-4 text-[#ff9500]" />
+              Save for later
+            </h3>
+            <div className="space-y-3">
               <Input
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
                 placeholder="Workflow name"
                 maxLength={100}
+                className="bg-[#1a1a1a] border-[#3a3a3a] rounded-[2px]"
               />
               <Button
                 type="button"
-                variant="secondary"
-                className="w-full"
+                variant="outline"
+                className="w-full bg-transparent border-[#3a3a3a] hover:bg-[#2d2d2d] rounded-[2px]"
                 onClick={onSave}
                 disabled={createSaved.isPending}
               >
                 <Save className="mr-2 h-4 w-4" />
                 {createSaved.isPending ? "Saving..." : "Save as…"}
               </Button>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-[#555555] font-mono">
                 Saved workflows appear in the template grid so you can rerun them without re-pasting.
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </div>
