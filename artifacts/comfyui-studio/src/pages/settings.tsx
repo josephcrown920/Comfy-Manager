@@ -90,16 +90,16 @@ export default function Settings() {
     <div className="max-w-3xl space-y-6 animate-in fade-in duration-300">
       <div>
         <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-[#888888] mt-1 text-sm">Configure your ComfyUI connection.</p>
+        <p className="text-[#666] mt-1 text-sm">Configure your ComfyUI connection.</p>
       </div>
 
-      <div className="bg-[#242424] border border-[#3a3a3a] rounded-[2px]">
-        <div className="p-6 border-b border-[#3a3a3a]">
+      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
+        <div className="p-6 border-b border-[#2a2a2a]">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Server className="h-5 w-5 text-[#ff9500]" />
+            <Server className="h-5 w-5 text-[#d4e84a]" />
             Connection Details
           </h2>
-          <p className="text-[#888888] text-sm mt-1">
+          <p className="text-[#666] text-sm mt-1">
             Enter the URL where your ComfyUI instance is running (e.g. http://127.0.0.1:8188).
             ComfyUI Studio acts as a proxy to this URL.
           </p>
@@ -108,7 +108,7 @@ export default function Settings() {
           <div className="space-y-2">
             <Label htmlFor="comfyUrl" className="text-sm font-medium">ComfyUI Server URL</Label>
             {isSettingsLoading ? (
-              <Skeleton className="h-10 w-full rounded-[2px]" />
+              <Skeleton className="h-10 w-full rounded-lg" />
             ) : (
               <Input 
                 id="comfyUrl"
@@ -120,54 +120,54 @@ export default function Settings() {
             )}
           </div>
         </div>
-        <div className="bg-[#1a1a1a] border-t border-[#3a3a3a] p-4 flex justify-between items-center">
-          <p className="text-xs text-[#555555]">Changes apply immediately for new jobs.</p>
+        <div className="bg-[#1a1a1a] border-t border-[#2a2a2a] p-4 flex justify-between items-center">
+          <p className="text-xs text-[#555]">Changes apply immediately for new jobs.</p>
           <Button 
             onClick={handleSave} 
             disabled={updateSettings.isPending || isSettingsLoading}
-            className="bg-[#ff9500] text-black hover:bg-[#ff8000]"
+            className="bg-[#d4e84a] text-black hover:bg-[#c8dc3e]"
           >
             {updateSettings.isPending ? "Saving..." : "Save Configuration"}
           </Button>
         </div>
       </div>
 
-      <div className="bg-[#242424] border border-[#3a3a3a] rounded-[2px]">
-        <div className="p-6 border-b border-[#3a3a3a]">
+      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
+        <div className="p-6 border-b border-[#2a2a2a]">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Bookmark className="h-5 w-5 text-[#ff9500]" />
+            <Bookmark className="h-5 w-5 text-[#d4e84a]" />
             Saved GPUs
           </h2>
-          <p className="text-[#888888] text-sm mt-1">
+          <p className="text-[#666] text-sm mt-1">
             Keep your Colab and Kaggle URLs here and switch between them with one click — no re-pasting.
           </p>
         </div>
         <div className="p-6 space-y-4">
           {(settings?.savedGpus ?? []).length === 0 && (
-            <p className="text-sm text-[#555555] border border-dashed border-[#3a3a3a] rounded-[2px] p-4 text-center font-mono">
+            <p className="text-sm text-[#555] border border-dashed border-[#2a2a2a] rounded-lg p-4 text-center font-mono">
               No saved GPUs yet. Paste a URL above, give it a label below, and save it.
             </p>
           )}
           {(settings?.savedGpus ?? []).map((gpu) => {
             const isActive = gpu.url === settings?.comfyUrl;
             return (
-              <div key={gpu.id} className={`flex items-center gap-3 rounded-[2px] border border-[#3a3a3a] p-3 ${isActive ? "bg-[#2d2d2d] border-[#ff9500]" : "bg-[#1a1a1a]"}`}>
+              <div key={gpu.id} className={`flex items-center gap-3 rounded-lg border border-[#2a2a2a] p-3 ${isActive ? "bg-[#252525] border-[#d4e84a]" : "bg-[#1a1a1a]"}`}>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm flex items-center gap-2 text-[#e0e0e0]">
+                  <p className="font-medium text-sm flex items-center gap-2 text-[#e8e8e8]">
                     {gpu.label}
-                    {isActive && <span className="text-xs text-[#ff9500] font-normal uppercase tracking-wider">active</span>}
+                    {isActive && <span className="text-xs text-[#d4e84a] font-normal uppercase tracking-wider">active</span>}
                   </p>
-                  <p className="text-xs text-[#555555] font-mono truncate mt-0.5">{gpu.url}</p>
+                  <p className="text-xs text-[#555] font-mono truncate mt-0.5">{gpu.url}</p>
                 </div>
                 {!isActive && (
-                  <Button size="sm" variant="outline" className="gap-1.5 shrink-0 bg-transparent border-[#3a3a3a] hover:bg-[#2d2d2d]"
+                  <Button size="sm" variant="outline" className="gap-1.5 shrink-0 bg-transparent border-[#2a2a2a] hover:bg-[#252525]"
                     onClick={() => handleSwitchGpu(gpu.label, gpu.url)}
                     disabled={updateSettings.isPending}>
                     <ArrowRightLeft className="h-3.5 w-3.5" />
                     Switch
                   </Button>
                 )}
-                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-[#888888] hover:text-[#dd4444] hover:bg-[#2d2d2d]"
+                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-[#666] hover:text-[#e05555] hover:bg-[#252525]"
                   aria-label={`Delete saved GPU ${gpu.label}`}
                   onClick={() => deleteGpu.mutate({ id: gpu.id }, {
                     onSuccess: () => { toast({ title: `Removed "${gpu.label}"` }); refreshAll(); },
@@ -178,7 +178,7 @@ export default function Settings() {
               </div>
             );
           })}
-          <div className="flex gap-2 pt-4 border-t border-[#3a3a3a]">
+          <div className="flex gap-2 pt-4 border-t border-[#2a2a2a]">
             <Input
               value={newGpuLabel}
               onChange={(e) => setNewGpuLabel(e.target.value)}
@@ -186,15 +186,15 @@ export default function Settings() {
               maxLength={50}
               className="max-w-xs font-mono"
             />
-            <Button variant="secondary" onClick={handleSaveCurrentGpu} disabled={addGpu.isPending} className="bg-[#2d2d2d] hover:bg-[#3a3a3a] border border-[#3a3a3a]">
+            <Button variant="secondary" onClick={handleSaveCurrentGpu} disabled={addGpu.isPending} className="bg-[#252525] hover:bg-[#3a3a3a] border border-[#2a2a2a]">
               {addGpu.isPending ? "Saving…" : "Save current URL"}
             </Button>
           </div>
         </div>
       </div>
 
-      <div className={`bg-[#242424] border rounded-[2px] ${status?.connected ? "border-[#4a4]/50" : "border-[#dd4444]/50"}`}>
-        <div className="p-6 border-b border-[#3a3a3a]">
+      <div className={`bg-[#1a1a1a] border rounded-lg ${status?.connected ? "border-[#4a4]/50" : "border-[#dd4444]/50"}`}>
+        <div className="p-6 border-b border-[#2a2a2a]">
           <div className="flex justify-between items-center">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <Zap className="h-5 w-5" />
@@ -205,7 +205,7 @@ export default function Settings() {
               size="sm" 
               onClick={handleTestConnection}
               disabled={isStatusFetching}
-              className="gap-2 bg-transparent border-[#3a3a3a] hover:bg-[#2d2d2d]"
+              className="gap-2 bg-transparent border-[#2a2a2a] hover:bg-[#252525]"
             >
               <RefreshCw className={`h-3 w-3 ${isStatusFetching ? 'animate-spin' : ''}`} />
               Test Connection
@@ -213,7 +213,7 @@ export default function Settings() {
           </div>
         </div>
         <div className="p-6">
-          <div className="rounded-[2px] bg-[#1a1a1a] border border-[#3a3a3a] p-4 space-y-4">
+          <div className="rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] p-4 space-y-4">
             <div className="flex items-center gap-3">
               {status?.connected ? (
                 <div className="w-4 h-4 rounded-full bg-[#4a4]" />
@@ -224,34 +224,34 @@ export default function Settings() {
                 <p className="font-semibold text-foreground">
                   {status?.connected ? "Connected to ComfyUI" : "Connection Failed"}
                 </p>
-                <p className="text-sm text-[#888888] font-mono mt-1">
+                <p className="text-sm text-[#666] font-mono mt-1">
                   {status?.serverUrl || comfyUrl || "Unknown URL"}
                 </p>
               </div>
             </div>
 
             {status?.connected && (
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#3a3a3a] mt-4">
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#2a2a2a] mt-4">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs text-[#888888] uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 text-xs text-[#666] uppercase tracking-wider">
                     <Cpu className="h-3 w-3" /> GPU Name
                   </div>
                   <p className="font-medium text-sm font-mono">{status.gpuName || "Unknown"}</p>
                 </div>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs text-[#888888] uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 text-xs text-[#666] uppercase tracking-wider">
                     <Server className="h-3 w-3" /> GPU VRAM
                   </div>
                   <p className="font-medium text-sm font-mono">{status.gpuVram || "Unknown"}</p>
                 </div>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs text-[#888888] uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 text-xs text-[#666] uppercase tracking-wider">
                     <Server className="h-3 w-3" /> System RAM
                   </div>
                   <p className="font-medium text-sm font-mono">{status.ramUsed} / {status.ramTotal}</p>
                 </div>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs text-[#888888] uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 text-xs text-[#666] uppercase tracking-wider">
                     <RefreshCw className="h-3 w-3" /> Queue Remaining
                   </div>
                   <p className="font-medium text-sm font-mono">{status.queueRemaining ?? 0} jobs</p>
@@ -260,7 +260,7 @@ export default function Settings() {
             )}
 
             {!status?.connected && status?.error && (
-              <div className="mt-4 pt-4 border-t border-[#3a3a3a] text-sm text-[#dd4444] font-mono">
+              <div className="mt-4 pt-4 border-t border-[#2a2a2a] text-sm text-[#e05555] font-mono">
                 Error: {status.error}
               </div>
             )}

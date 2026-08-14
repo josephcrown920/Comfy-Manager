@@ -45,46 +45,49 @@
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Mono', monospace;
 
-  --radius-sm: var(--radius);
-  --radius-md: var(--radius);
-  --radius-lg: var(--radius);
-  --radius-xl: var(--radius);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
 }
 
 :root {
-  --background: #1a1a1a;
-  --foreground: #e0e0e0;
+  /* Near-black base — matches Comfy's actual app */
+  --background: #0d0d0d;
+  --foreground: #e8e8e8;
   
-  --card: #242424;
-  --card-foreground: #e0e0e0;
-  --card-border: #3a3a3a;
+  /* Panel surfaces */
+  --card: #1a1a1a;
+  --card-foreground: #e8e8e8;
+  --card-border: #2a2a2a;
   
-  --primary: #ff9500;
-  --primary-foreground: #000000;
+  /* Yellow-green accent — the Comfy brand color */
+  --primary: #d4e84a;
+  --primary-foreground: #0d0d0d;
   
-  --secondary: #2d2d2d;
-  --secondary-foreground: #e0e0e0;
+  --secondary: #252525;
+  --secondary-foreground: #e8e8e8;
   
-  --muted: #242424;
-  --muted-foreground: #888888;
+  --muted: #1a1a1a;
+  --muted-foreground: #666666;
   
-  --accent: #2d2d2d;
-  --accent-foreground: #e0e0e0;
+  --accent: #252525;
+  --accent-foreground: #e8e8e8;
   
-  --destructive: #dd4444;
-  --destructive-foreground: #e0e0e0;
+  --destructive: #e05555;
+  --destructive-foreground: #e8e8e8;
   
-  --success: #44aa44;
-  --success-foreground: #e0e0e0;
+  --success: #4caf50;
+  --success-foreground: #e8e8e8;
   
   --info: #4499aa;
-  --info-foreground: #e0e0e0;
+  --info-foreground: #e8e8e8;
   
   --input: #1a1a1a;
-  --ring: #ff9500;
-  --border: #3a3a3a;
+  --ring: #d4e84a;
+  --border: #2a2a2a;
   
-  --radius: 2px;
+  --radius: 8px;
 }
 
 .dark {
@@ -101,32 +104,32 @@
     @apply font-sans font-semibold tracking-tight;
   }
   
-  /* Global Overrides per Prompt */
+  /* Comfy-style card: slightly raised panel on near-black bg */
   .card, [class*="Card"] {
-    @apply bg-[#242424] border-[#3a3a3a] rounded-[2px] shadow-none;
+    @apply bg-[#1a1a1a] border-[#2a2a2a] rounded-lg shadow-none;
   }
   
   button, .button, [class*="Button"] {
-    @apply rounded-[2px];
+    @apply rounded-lg;
   }
   
   button.bg-primary, .bg-primary {
-    @apply bg-[#ff9500] text-[#000000] hover:bg-[#ff8000];
+    @apply bg-[#d4e84a] text-[#0d0d0d] hover:bg-[#c8dc3e];
   }
   
   input, textarea, select {
-    @apply bg-[#1a1a1a] border-[#3a3a3a] text-[#e0e0e0] rounded-[2px] font-mono text-xs focus:ring-[#ff9500];
+    @apply bg-[#1a1a1a] border-[#2a2a2a] text-[#e8e8e8] rounded-lg text-sm focus:ring-[#d4e84a];
   }
 
   [role="combobox"] {
-    @apply bg-[#1a1a1a] border-[#3a3a3a] text-[#e0e0e0] rounded-[2px] font-mono text-xs;
+    @apply bg-[#1a1a1a] border-[#2a2a2a] text-[#e8e8e8] rounded-lg text-sm;
   }
   
   .badge, [class*="Badge"] {
-    @apply rounded-none bg-transparent border-none font-mono font-normal tracking-normal;
+    @apply rounded-md bg-[#252525] border-[#2a2a2a] text-[#999] font-normal text-xs;
   }
   
   [role="progressbar"] > div {
-    @apply bg-[#ff9500];
+    @apply bg-[#d4e84a];
   }
 }

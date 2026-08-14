@@ -20,21 +20,21 @@ export default function Assistant() {
     <div className="space-y-6 animate-in fade-in duration-300 h-full flex flex-col">
       <div>
         <h1 className="text-2xl font-semibold flex items-center gap-3">
-          <Bot className="h-6 w-6 text-[#ff9500]" />
+          <Bot className="h-6 w-6 text-[#d4e84a]" />
           AI Assistant
         </h1>
-        <p className="text-[#888888] mt-2 text-sm">
+        <p className="text-[#666] mt-2 text-sm">
           Your copilot for ComfyUI. Ask for help with nodes, or describe a video idea to get a ready-to-run workflow.
         </p>
       </div>
 
       <Tabs defaultValue="chat" className="w-full flex-1 flex flex-col">
-        <TabsList className="w-full max-w-md mx-auto grid grid-cols-2 bg-transparent border-b border-[#3a3a3a] h-auto p-0">
-          <TabsTrigger value="chat" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#ff9500] data-[state=active]:bg-transparent data-[state=active]:text-[#ff9500] bg-transparent text-[#888888] py-3">
+        <TabsList className="w-full max-w-md mx-auto grid grid-cols-2 bg-transparent border-b border-[#2a2a2a] h-auto p-0">
+          <TabsTrigger value="chat" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#d4e84a] data-[state=active]:bg-transparent data-[state=active]:text-[#d4e84a] bg-transparent text-[#666] py-3">
             <Bot className="w-4 h-4 mr-2" />
             Chat Assistant
           </TabsTrigger>
-          <TabsTrigger value="video" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#ff9500] data-[state=active]:bg-transparent data-[state=active]:text-[#ff9500] bg-transparent text-[#888888] py-3">
+          <TabsTrigger value="video" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#d4e84a] data-[state=active]:bg-transparent data-[state=active]:text-[#d4e84a] bg-transparent text-[#666] py-3">
             <Video className="w-4 h-4 mr-2" />
             Video Agent
           </TabsTrigger>
@@ -96,7 +96,7 @@ function ChatTab() {
   };
 
   return (
-    <div className="flex flex-col h-[600px] border border-[#3a3a3a] bg-[#1a1a1a] rounded-[2px] max-w-4xl mx-auto shadow-none">
+    <div className="flex flex-col h-[600px] border border-[#2a2a2a] bg-[#1a1a1a] rounded-lg max-w-4xl mx-auto shadow-none">
       <ScrollArea className="flex-1 p-6" ref={scrollRef}>
         <div className="space-y-6 max-w-3xl mx-auto">
           {messages.map((msg, i) => (
@@ -105,59 +105,59 @@ function ChatTab() {
               className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-[2px] bg-[#242424] flex items-center justify-center shrink-0 border border-[#3a3a3a]">
-                  <Bot className="w-4 h-4 text-[#ff9500]" />
+                <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center shrink-0 border border-[#2a2a2a]">
+                  <Bot className="w-4 h-4 text-[#d4e84a]" />
                 </div>
               )}
               <div 
-                className={`px-4 py-3 rounded-[2px] max-w-[80%] text-sm ${
+                className={`px-4 py-3 rounded-lg max-w-[80%] text-sm ${
                   msg.role === 'user' 
-                    ? 'bg-[#ff9500] text-black font-medium' 
-                    : 'bg-[#242424] text-[#e0e0e0] border border-[#3a3a3a]'
+                    ? 'bg-[#d4e84a] text-black font-medium' 
+                    : 'bg-[#1a1a1a] text-[#e8e8e8] border border-[#2a2a2a]'
                 }`}
               >
                 {msg.role === 'user' ? (
                   <div className="whitespace-pre-wrap">{msg.content}</div>
                 ) : (
-                  <div className="prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:bg-[#1a1a1a] prose-pre:border prose-pre:border-[#3a3a3a] max-w-none">
+                  <div className="prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:bg-[#1a1a1a] prose-pre:border prose-pre:border-[#2a2a2a] max-w-none">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 )}
               </div>
               {msg.role === 'user' && (
-                <div className="w-8 h-8 rounded-[2px] bg-[#2d2d2d] border border-[#3a3a3a] flex items-center justify-center shrink-0">
-                  <User className="w-4 h-4 text-[#888888]" />
+                <div className="w-8 h-8 rounded-lg bg-[#252525] border border-[#2a2a2a] flex items-center justify-center shrink-0">
+                  <User className="w-4 h-4 text-[#666]" />
                 </div>
               )}
             </div>
           ))}
           {chatMutation.isPending && (
             <div className="flex gap-3 justify-start">
-              <div className="w-8 h-8 rounded-[2px] bg-[#242424] flex items-center justify-center shrink-0 border border-[#3a3a3a]">
-                <Bot className="w-4 h-4 text-[#ff9500]" />
+              <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center shrink-0 border border-[#2a2a2a]">
+                <Bot className="w-4 h-4 text-[#d4e84a]" />
               </div>
-              <div className="px-4 py-3 rounded-[2px] bg-[#242424] border border-[#3a3a3a] flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#ff9500] animate-bounce" />
-                <div className="w-2 h-2 rounded-full bg-[#ff9500] animate-bounce [animation-delay:0.2s]" />
-                <div className="w-2 h-2 rounded-full bg-[#ff9500] animate-bounce [animation-delay:0.4s]" />
+              <div className="px-4 py-3 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#d4e84a] animate-bounce" />
+                <div className="w-2 h-2 rounded-full bg-[#d4e84a] animate-bounce [animation-delay:0.2s]" />
+                <div className="w-2 h-2 rounded-full bg-[#d4e84a] animate-bounce [animation-delay:0.4s]" />
               </div>
             </div>
           )}
         </div>
       </ScrollArea>
       
-      <div className="p-4 border-t border-[#3a3a3a] bg-[#242424]">
+      <div className="p-4 border-t border-[#2a2a2a] bg-[#1a1a1a]">
         <div className="max-w-3xl mx-auto relative flex items-center">
           <Textarea 
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask a question about ComfyUI..."
-            className="min-h-[60px] max-h-[150px] pr-14 resize-none rounded-[2px] bg-[#1a1a1a] border-[#3a3a3a] font-sans text-sm focus-visible:ring-[#ff9500]"
+            className="min-h-[60px] max-h-[150px] pr-14 resize-none rounded-lg bg-[#1a1a1a] border-[#2a2a2a] font-sans text-sm focus-visible:ring-[#ff9500]"
           />
           <Button 
             size="icon" 
-            className="absolute right-2 bottom-2 rounded-[2px] h-9 w-9 bg-[#ff9500] text-black hover:bg-[#ff8000]"
+            className="absolute right-2 bottom-2 rounded-lg h-9 w-9 bg-[#d4e84a] text-black hover:bg-[#c8dc3e]"
             onClick={handleSend}
             disabled={!input.trim() || chatMutation.isPending}
           >
@@ -208,13 +208,13 @@ function VideoAgentTab() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-[#242424] border border-[#3a3a3a] rounded-[2px]">
-        <div className="p-6 border-b border-[#3a3a3a]">
+      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
+        <div className="p-6 border-b border-[#2a2a2a]">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Sparkles className="w-5 h-5 text-[#ff9500]" />
+            <Sparkles className="w-5 h-5 text-[#d4e84a]" />
             Describe Your Video Idea
           </h2>
-          <p className="text-sm text-[#888888] mt-1">
+          <p className="text-sm text-[#666] mt-1">
             Tell the AI what kind of video you want to create, and it will build a complete ComfyUI workflow for you.
           </p>
         </div>
@@ -223,7 +223,7 @@ function VideoAgentTab() {
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
             placeholder="I want a 6-second cinematic video of a cyberpunk city zooming through the streets, glowing neon signs..."
-            className="min-h-[120px] text-sm font-sans resize-y bg-[#1a1a1a] border-[#3a3a3a] rounded-[2px]"
+            className="min-h-[120px] text-sm font-sans resize-y bg-[#1a1a1a] border-[#2a2a2a] rounded-lg"
           />
         </div>
         <div className="p-6 pt-0">
@@ -231,7 +231,7 @@ function VideoAgentTab() {
             size="lg" 
             onClick={handleGeneratePlan}
             disabled={!idea.trim() || planMutation.isPending}
-            className="w-full sm:w-auto bg-[#ff9500] text-black hover:bg-[#ff8000] rounded-[2px]"
+            className="w-full sm:w-auto bg-[#d4e84a] text-black hover:bg-[#c8dc3e] rounded-lg"
           >
             {planMutation.isPending ? "Generating Plan..." : "Generate Workflow"}
           </Button>
@@ -239,31 +239,31 @@ function VideoAgentTab() {
       </div>
 
       {planMutation.isPending && (
-        <div className="bg-[#242424] border border-[#3a3a3a] rounded-[2px] p-6 space-y-4 animate-pulse">
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-6 space-y-4 animate-pulse">
           <div className="flex items-center gap-4">
-            <Skeleton className="w-10 h-10 rounded-[2px]" />
+            <Skeleton className="w-10 h-10 rounded-lg" />
             <div className="space-y-2">
-              <Skeleton className="h-5 w-48 rounded-[2px]" />
-              <Skeleton className="h-4 w-32 rounded-[2px]" />
+              <Skeleton className="h-5 w-48 rounded-lg" />
+              <Skeleton className="h-4 w-32 rounded-lg" />
             </div>
           </div>
-          <Skeleton className="h-24 w-full rounded-[2px]" />
+          <Skeleton className="h-24 w-full rounded-lg" />
         </div>
       )}
 
       {result && !planMutation.isPending && (
-        <div className="bg-[#242424] border border-[#3a3a3a] rounded-[2px] animate-in slide-in-from-bottom-4 duration-500 overflow-hidden relative">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-[#ff9500]" />
-          <div className="p-6 border-b border-[#3a3a3a]">
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg animate-in slide-in-from-bottom-4 duration-500 overflow-hidden relative">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-[#d4e84a]" />
+          <div className="p-6 border-b border-[#2a2a2a]">
             <h2 className="text-lg font-semibold">Your Workflow is Ready</h2>
-            <p className="text-sm text-[#888888] mt-1">
-              Based on the <span className="font-mono text-[#ff9500]">{result.templateId}</span> template.
+            <p className="text-sm text-[#666] mt-1">
+              Based on the <span className="font-mono text-[#d4e84a]">{result.templateId}</span> template.
             </p>
           </div>
           <div className="p-6 space-y-6">
-            <div className="bg-[#1a1a1a] p-4 rounded-[2px] border border-[#3a3a3a]">
-              <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm uppercase tracking-widest text-[#e0e0e0]">
-                <Bot className="w-4 h-4 text-[#ff9500]" />
+            <div className="bg-[#1a1a1a] p-4 rounded-lg border border-[#2a2a2a]">
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm uppercase tracking-widest text-[#e8e8e8]">
+                <Bot className="w-4 h-4 text-[#d4e84a]" />
                 AI Notes
               </h3>
               <div className="prose prose-sm dark:prose-invert max-w-none text-[#a0a0a0] prose-p:leading-relaxed">
@@ -274,7 +274,7 @@ function VideoAgentTab() {
             <div className="flex gap-4">
               <Button 
                 size="lg" 
-                className="flex-1 sm:flex-none bg-[#ff9500] text-black hover:bg-[#ff8000] rounded-[2px]"
+                className="flex-1 sm:flex-none bg-[#d4e84a] text-black hover:bg-[#c8dc3e] rounded-lg"
                 onClick={handleOpenInGenerate}
               >
                 <FileJson className="w-4 h-4 mr-2" />
