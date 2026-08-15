@@ -103,59 +103,86 @@ export default function Generate() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-[#e8e8e8] flex items-center gap-2">
-            <LayoutGrid className="h-5 w-5 text-[#d4e84a]" />
-            Workflows
-          </h1>
-          <p className="text-[#555] mt-0.5 text-sm">Select a template to begin generating.</p>
-        </div>
+      {/* Header — styled like comfy.org/workflows */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold tracking-widest uppercase text-[#e8f724]">Browse Workflows</p>
+        <h1 className="text-3xl md:text-4xl font-bold text-[#f0eeff]">
+          {filteredWorkflows.length > 0 ? `${filteredWorkflows.length}+ workflows` : "Workflows"}
+        </h1>
+        <p className="text-[#7b72a8] text-sm">Select a template to begin generating.</p>
+      </div>
+
+      {/* Category pill filters */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { value: null,                   label: "All" },
+          { value: "image-generation",     label: "Image Generation" },
+          { value: "video-generation",     label: "Video Generation" },
+          { value: "lip-sync",             label: "Lip Sync" },
+          { value: "motion-control",       label: "Motion Control" },
+        ].map(({ value, label }) => {
+          const active = categoryFilter === value;
+          return (
+            <button
+              key={label}
+              onClick={() => {
+                if (value === null) setLocation("/generate");
+                else setLocation(`/generate?category=${value}`);
+              }}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                active
+                  ? "bg-[#e8f724] text-[#0d0b1a] border-[#e8f724]"
+                  : "bg-transparent text-[#7b72a8] border-[#2d2650] hover:text-[#f0eeff] hover:border-[#4a4269]"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {isListLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-72 rounded-xl bg-[#1a1a1a]" />)}
+          {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-72 rounded-2xl bg-[#1e1a38]" />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredWorkflows.map(workflow => (
             <div
               key={workflow.id}
-              className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl cursor-pointer hover:border-[#d4e84a]/50 transition-all overflow-hidden group flex flex-col"
+              className="bg-[#1e1a38] border border-[#2d2650] rounded-2xl cursor-pointer hover:border-[#e8f724]/40 hover:bg-[#231f42] transition-all overflow-hidden group flex flex-col shadow-lg shadow-black/20"
               onClick={() => setSelectedWorkflowId(workflow.id)}
             >
               {/* Full-bleed thumbnail */}
               {DB_WORKFLOW_THUMBNAILS[workflow.id] ? (
-                <div className="relative overflow-hidden rounded-t-xl">
+                <div className="relative overflow-hidden rounded-t-2xl">
                   <img
                     src={DB_WORKFLOW_THUMBNAILS[workflow.id]}
                     alt={workflow.name}
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  {/* Node graph badge — mirrors Comfy's "Node graph" pill */}
-                  <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 text-xs text-[#d4e84a] font-medium">
+                  {/* "Node graph" pill — matches comfy.org style */}
+                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1 text-xs text-[#e8f724] font-semibold">
                     <LayoutGrid className="h-3 w-3" />
                     Node graph
                   </div>
                 </div>
               ) : (
-                <div className="w-full h-48 bg-[#111] rounded-t-xl flex items-center justify-center">
-                  <LayoutGrid className="h-10 w-10 text-[#2a2a2a]" />
+                <div className="w-full h-48 bg-[#16122a] rounded-t-2xl flex items-center justify-center">
+                  <LayoutGrid className="h-10 w-10 text-[#2d2650]" />
                 </div>
               )}
-              {/* Info below thumbnail */}
+              {/* Info below */}
               <div className="p-4 flex-1 flex flex-col gap-2">
-                <h3 className="font-semibold text-sm text-[#e8e8e8] leading-snug">{workflow.name}</h3>
-                <p className="text-xs text-[#555] line-clamp-2 leading-relaxed">{workflow.description}</p>
-                {/* Tag pills */}
+                <h3 className="font-bold text-sm text-[#f0eeff] leading-snug">{workflow.name}</h3>
+                <p className="text-xs text-[#7b72a8] line-clamp-2 leading-relaxed">{workflow.description}</p>
+                {/* Tag pills — matches comfy.org "ControlNet Video" pills */}
                 <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
-                  <span className="px-2 py-0.5 rounded-md bg-[#252525] border border-[#2a2a2a] text-xs text-[#666]">
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#2a2448] border border-[#2d2650] text-xs text-[#7b72a8] font-medium">
                     {workflow.category.replace(/-/g, ' ')}
                   </span>
                   {workflow.estimatedTime && (
-                    <span className="px-2 py-0.5 rounded-md bg-[#252525] border border-[#2a2a2a] text-xs text-[#666]">
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#2a2448] border border-[#2d2650] text-xs text-[#7b72a8] font-medium">
                       ⏱ {workflow.estimatedTime}
                     </span>
                   )}
@@ -166,23 +193,22 @@ export default function Generate() {
           {visibleSaved.map(saved => (
             <div
               key={`saved-${saved.id}`}
-              className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl cursor-pointer hover:border-[#d4e84a]/50 transition-all overflow-hidden group flex flex-col"
+              className="bg-[#1e1a38] border border-[#2d2650] rounded-2xl cursor-pointer hover:border-[#e8f724]/40 hover:bg-[#231f42] transition-all overflow-hidden group flex flex-col shadow-lg shadow-black/20"
               onClick={() => {
                 setInitialCustomJson(saved.json);
                 setSelectedWorkflowId(CUSTOM_WORKFLOW_ID);
               }}
             >
-              {/* Placeholder thumbnail for saved */}
-              <div className="w-full h-48 bg-[#111] rounded-t-xl flex items-center justify-center relative">
-                <Bookmark className="h-10 w-10 text-[#2a2a2a]" />
-                <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 text-xs text-[#d4e84a] font-medium">
+              <div className="w-full h-48 bg-[#16122a] rounded-t-2xl flex items-center justify-center relative">
+                <Bookmark className="h-10 w-10 text-[#2d2650]" />
+                <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1 text-xs text-[#e8f724] font-semibold">
                   <Bookmark className="h-3 w-3" />
                   Saved
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute top-2 right-2 h-7 w-7 text-[#555] hover:text-[#e05555] bg-black/60 rounded-lg"
+                  className="absolute top-2 right-2 h-7 w-7 text-[#7b72a8] hover:text-[#e05555] bg-black/60 rounded-full"
                   aria-label={`Delete saved workflow ${saved.name}`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -201,11 +227,11 @@ export default function Generate() {
                 </Button>
               </div>
               <div className="p-4 flex-1 flex flex-col gap-2">
-                <h3 className="font-semibold text-sm text-[#e8e8e8] truncate">{saved.name}</h3>
-                <p className="text-xs text-[#555] line-clamp-2">Your saved custom workflow — click to load and run.</p>
+                <h3 className="font-bold text-sm text-[#f0eeff] truncate">{saved.name}</h3>
+                <p className="text-xs text-[#7b72a8] line-clamp-2">Your saved custom workflow — click to load and run.</p>
                 <div className="flex gap-1.5 mt-auto pt-2">
-                  <span className="px-2 py-0.5 rounded-md bg-[#252525] border border-[#2a2a2a] text-xs text-[#666]">Saved</span>
-                  <span className="px-2 py-0.5 rounded-md bg-[#252525] border border-[#2a2a2a] text-xs text-[#666]">{new Date(saved.createdAt).toLocaleDateString()}</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#2a2448] border border-[#2d2650] text-xs text-[#7b72a8] font-medium">Saved</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#2a2448] border border-[#2d2650] text-xs text-[#7b72a8] font-medium">{new Date(saved.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
             </div>
@@ -214,7 +240,7 @@ export default function Generate() {
       )}
 
       {filteredWorkflows.length === 0 && !isListLoading && (
-        <div className="text-center p-12 border border-dashed border-[#2a2a2a] rounded-xl text-[#444]">
+        <div className="text-center p-12 border border-dashed border-[#2d2650] rounded-2xl text-[#4a4269]">
           No workflows found for this category.
         </div>
       )}
@@ -348,25 +374,25 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
 
   return (
     <div className="animate-in slide-in-from-right-8 duration-300">
-      <Button variant="ghost" className="mb-6 -ml-4 text-[#666] hover:text-white rounded-lg" onClick={onBack}>
+      <Button variant="ghost" className="mb-6 -ml-4 text-[#7b72a8] hover:text-white rounded-lg" onClick={onBack}>
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Templates
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
-          <div className="p-6 border-b border-[#2a2a2a]">
+        <div className="bg-[#1e1a38] border border-[#2d2650] rounded-lg">
+          <div className="p-6 border-b border-[#2d2650]">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Code className="h-5 w-5 text-[#d4e84a]" />
+              <Code className="h-5 w-5 text-[#e8f724]" />
               Custom Workflow
             </h2>
-            <p className="text-[#666] text-sm mt-1">
+            <p className="text-[#7b72a8] text-sm mt-1">
               Paste your ComfyUI API-format workflow JSON and run it directly on your server.
             </p>
           </div>
           <div className="p-6">
-            <Alert className="mb-6 border-[#2a2a2a] bg-[#1a1a1a] rounded-lg">
-              <AlertCircle className="h-4 w-4 text-[#d4e84a]" />
+            <Alert className="mb-6 border-[#2d2650] bg-[#1e1a38] rounded-lg">
+              <AlertCircle className="h-4 w-4 text-[#e8f724]" />
               <AlertDescription className="text-sm">
                 Export your workflow from ComfyUI using <strong>Save (API format)</strong> in the settings menu, then paste the resulting JSON below. The workflow is submitted unchanged to your ComfyUI server.
               </AlertDescription>
@@ -381,7 +407,7 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="bg-[#1a1a1a] border-[#2a2a2a] hover:bg-[#252525] rounded-lg"
+                    className="bg-[#1e1a38] border-[#2d2650] hover:bg-[#2a2448] rounded-lg"
                     title={t.description}
                     onClick={() => {
                       setWorkflowJson(JSON.stringify(t.json, null, 2));
@@ -392,7 +418,7 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                   </Button>
                 ))}
               </div>
-              <p className="text-xs text-[#555] font-mono">
+              <p className="text-xs text-[#7b72a8] font-mono">
                 Templates reference specific models and custom nodes — edit prompts, filenames, and inputs to match what's installed on your server.
               </p>
             </div>
@@ -403,18 +429,18 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                   <Label className="text-sm font-medium">
                     Workflow JSON <span className="text-[#e05555]">*</span>
                   </Label>
-                  <div className="flex items-center gap-1 bg-[#1a1a1a] p-1 rounded-lg border border-[#2a2a2a]">
+                  <div className="flex items-center gap-1 bg-[#1e1a38] p-1 rounded-lg border border-[#2d2650]">
                     <button
                       type="button"
                       onClick={() => setViewMode("json")}
-                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${viewMode === "json" ? "bg-[#252525] text-white" : "text-[#666] hover:text-white"}`}
+                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${viewMode === "json" ? "bg-[#2a2448] text-white" : "text-[#7b72a8] hover:text-white"}`}
                     >
                       JSON
                     </button>
                     <button
                       type="button"
                       onClick={() => setViewMode("diagram")}
-                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${viewMode === "diagram" ? "bg-[#252525] text-white" : "text-[#666] hover:text-white"}`}
+                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${viewMode === "diagram" ? "bg-[#2a2448] text-white" : "text-[#7b72a8] hover:text-white"}`}
                     >
                       Diagram
                     </button>
@@ -425,11 +451,11 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                     value={workflowJson}
                     onChange={(e) => handleChange(e.target.value)}
                     placeholder={'{\n  "1": {\n    "class_type": "KSampler",\n    "inputs": { ... }\n  }\n}'}
-                    className={`font-mono text-xs min-h-[400px] resize-y rounded-lg bg-[#1a1a1a] border-[#2a2a2a] ${jsonError ? "border-[#e05555]" : ""}`}
+                    className={`font-mono text-xs min-h-[400px] resize-y rounded-lg bg-[#1e1a38] border-[#2d2650] ${jsonError ? "border-[#e05555]" : ""}`}
                     spellCheck={false}
                   />
                 ) : (
-                  <div className="min-h-[400px] h-[500px] border border-[#2a2a2a] rounded-lg bg-[#1a1a1a]">
+                  <div className="min-h-[400px] h-[500px] border border-[#2d2650] rounded-lg bg-[#1e1a38]">
                     <WorkflowVisualizer jsonString={workflowJson} />
                   </div>
                 )}
@@ -444,7 +470,7 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                     <AlertCircle className="h-4 w-4 text-yellow-500" />
                     <AlertDescription className="text-sm">
                       <strong>Missing nodes:</strong> {nodeCheck.missingNodes.join(", ")}
-                      <span className="block mt-1 text-xs text-[#666]">
+                      <span className="block mt-1 text-xs text-[#7b72a8]">
                         These node types aren't installed on your ComfyUI server. The job will likely fail
                         unless you install the matching node packs (or the node exists under another name).
                         You can still run it.
@@ -453,7 +479,7 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                   </Alert>
                 )}
                 {!jsonError && nodeCheck && !nodeCheck.reachable && (
-                  <p className="text-xs text-[#666] flex items-center gap-1 font-mono">
+                  <p className="text-xs text-[#7b72a8] flex items-center gap-1 font-mono">
                     <AlertCircle className="h-3 w-3" />
                     Couldn't check nodes — ComfyUI server is unreachable right now.
                   </p>
@@ -464,14 +490,14 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
         </div>
 
         <div className="space-y-6">
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 sticky top-6">
-            <h3 className="font-semibold mb-4 text-sm uppercase tracking-widest text-[#e8e8e8]">Ready?</h3>
+          <div className="bg-[#1e1a38] border border-[#2d2650] rounded-lg p-4 sticky top-6">
+            <h3 className="font-semibold mb-4 text-sm uppercase tracking-widest text-[#f0eeff]">Ready?</h3>
             <div className="space-y-4">
               <Button
                 type="submit"
                 form="custom-workflow-form"
                 size="lg"
-                className="w-full text-sm font-medium py-6 rounded-lg bg-[#d4e84a] text-black hover:bg-[#c8dc3e]"
+                className="w-full text-sm font-medium py-6 rounded-lg bg-[#e8f724] text-black hover:bg-[#d4e010]"
                 disabled={createJob.isPending}
               >
                 {createJob.isPending ? "Starting Job..." : (
@@ -481,15 +507,15 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                   </>
                 )}
               </Button>
-              <div className="text-xs text-[#666] text-center font-mono">
+              <div className="text-xs text-[#7b72a8] text-center font-mono">
                 This job will be added to your queue.
               </div>
             </div>
           </div>
 
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-            <h3 className="font-semibold mb-4 text-sm uppercase tracking-widest text-[#e8e8e8] flex items-center gap-2">
-              <Bookmark className="h-4 w-4 text-[#d4e84a]" />
+          <div className="bg-[#1e1a38] border border-[#2d2650] rounded-lg p-4">
+            <h3 className="font-semibold mb-4 text-sm uppercase tracking-widest text-[#f0eeff] flex items-center gap-2">
+              <Bookmark className="h-4 w-4 text-[#e8f724]" />
               Save for later
             </h3>
             <div className="space-y-3">
@@ -498,19 +524,19 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                 onChange={(e) => setSaveName(e.target.value)}
                 placeholder="Workflow name"
                 maxLength={100}
-                className="bg-[#1a1a1a] border-[#2a2a2a] rounded-lg"
+                className="bg-[#1e1a38] border-[#2d2650] rounded-lg"
               />
               <Button
                 type="button"
                 variant="outline"
-                className="w-full bg-transparent border-[#2a2a2a] hover:bg-[#252525] rounded-lg"
+                className="w-full bg-transparent border-[#2d2650] hover:bg-[#2a2448] rounded-lg"
                 onClick={onSave}
                 disabled={createSaved.isPending}
               >
                 <Save className="mr-2 h-4 w-4" />
                 {createSaved.isPending ? "Saving..." : "Save as…"}
               </Button>
-              <p className="text-xs text-[#555] font-mono">
+              <p className="text-xs text-[#7b72a8] font-mono">
                 Saved workflows appear in the template grid so you can rerun them without re-pasting.
               </p>
             </div>

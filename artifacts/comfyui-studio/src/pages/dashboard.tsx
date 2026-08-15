@@ -5,101 +5,102 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
   const { data: status, isLoading: isStatusLoading } = useGetComfyStatus({
-    query: {
-      refetchInterval: 10000,
-      queryKey: getGetComfyStatusQueryKey()
-    }
+    query: { refetchInterval: 10000, queryKey: getGetComfyStatusQueryKey() }
   });
-
   const { data: stats, isLoading: isStatsLoading } = useGetJobStats();
-
   const { data: recentOutputs, isLoading: isOutputsLoading } = useGetRecentOutputs({
     query: { queryKey: getGetRecentOutputsQueryKey() }
   });
 
   return (
-    <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-semibold text-[#e8e8e8]">Dashboard</h1>
-        <p className="text-[#555] mt-0.5 text-sm">Your creative generation studio.</p>
+    <div className="space-y-10 animate-in fade-in zoom-in-95 duration-300">
+      {/* Hero header */}
+      <div className="text-center pt-4 pb-2">
+        <p className="text-xs font-semibold tracking-widest uppercase text-[#e8f724] mb-3">ComfyUI Studio</p>
+        <h1 className="text-4xl md:text-5xl font-bold text-[#f0eeff] tracking-tight leading-tight">
+          Your creative<br className="hidden sm:block" /> generation studio
+        </h1>
+        <p className="text-[#7b72a8] mt-3 text-base max-w-lg mx-auto">
+          Connect your ComfyUI server and start generating images and videos from your browser.
+        </p>
+        <div className="flex items-center justify-center gap-3 mt-6">
+          <Link href="/generate">
+            <button className="px-6 py-2.5 rounded-full bg-[#e8f724] text-[#0d0b1a] font-bold text-sm hover:bg-[#d4e010] transition-colors">
+              Browse Workflows
+            </button>
+          </Link>
+          <Link href="/settings">
+            <button className="px-6 py-2.5 rounded-full border border-[#2d2650] text-[#f0eeff] font-medium text-sm hover:bg-[#2a2448] transition-colors">
+              Connect Server
+            </button>
+          </Link>
+        </div>
       </div>
 
       {/* Stat tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Status */}
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-xs text-[#555]">Server Status</p>
-            {isStatusLoading ? (
-              <Skeleton className="h-5 w-20 bg-[#252525]" />
-            ) : status?.connected ? (
-              <div className="flex items-center gap-1.5 text-[#4caf50] font-medium text-sm">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#4caf50]" />
-                Connected
+        {[
+          {
+            label: "Server Status",
+            icon: <Activity className="h-4 w-4 text-[#4a4269]" />,
+            value: isStatusLoading ? null : status?.connected ? (
+              <div className="flex items-center gap-1.5 text-[#4caf50] font-semibold text-sm">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#4caf50]" /> Connected
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 text-[#e05555] font-medium text-sm">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#e05555]" />
-                Offline
+              <div className="flex items-center gap-1.5 text-[#e05555] font-semibold text-sm">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#e05555]" /> Offline
               </div>
-            )}
-          </div>
-          <Activity className="h-4 w-4 text-[#444]" />
-        </div>
-
-        {/* Running */}
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-xs text-[#555]">Running</p>
-            <div className="text-xl font-semibold text-[#e8e8e8]">
-              {isStatsLoading ? <Skeleton className="h-6 w-8 bg-[#252525]" /> : stats?.running ?? 0}
+            ),
+          },
+          {
+            label: "Running",
+            icon: <Play className="h-4 w-4 text-[#4a4269]" />,
+            value: isStatsLoading ? null : <span className="text-2xl font-bold text-[#f0eeff]">{stats?.running ?? 0}</span>,
+          },
+          {
+            label: "Completed",
+            icon: <CheckCircle2 className="h-4 w-4 text-[#4a4269]" />,
+            value: isStatsLoading ? null : <span className="text-2xl font-bold text-[#f0eeff]">{stats?.completed ?? 0}</span>,
+          },
+          {
+            label: "Failed",
+            icon: <AlertCircle className="h-4 w-4 text-[#e05555]/50" />,
+            value: isStatsLoading ? null : <span className="text-2xl font-bold text-[#e05555]">{stats?.failed ?? 0}</span>,
+          },
+        ].map(({ label, icon, value }) => (
+          <div key={label} className="bg-[#1e1a38] border border-[#2d2650] rounded-2xl p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs text-[#7b72a8]">{label}</p>
+              {value === null ? <Skeleton className="h-6 w-16 bg-[#2a2448]" /> : value}
             </div>
+            {icon}
           </div>
-          <Play className="h-4 w-4 text-[#444]" />
-        </div>
-
-        {/* Completed */}
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-xs text-[#555]">Completed</p>
-            <div className="text-xl font-semibold text-[#e8e8e8]">
-              {isStatsLoading ? <Skeleton className="h-6 w-8 bg-[#252525]" /> : stats?.completed ?? 0}
-            </div>
-          </div>
-          <CheckCircle2 className="h-4 w-4 text-[#444]" />
-        </div>
-
-        {/* Failed */}
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-xs text-[#555]">Failed</p>
-            <div className="text-xl font-semibold text-[#e05555]">
-              {isStatsLoading ? <Skeleton className="h-6 w-8 bg-[#252525]" /> : stats?.failed ?? 0}
-            </div>
-          </div>
-          <AlertCircle className="h-4 w-4 text-[#e05555]/50" />
-        </div>
+        ))}
       </div>
 
       {/* Quick Start */}
-      <div className="space-y-3">
-        <h2 className="text-xs uppercase tracking-widest text-[#444] font-medium">Quick Start</h2>
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-[#2d2650]" />
+          <span className="text-xs font-semibold tracking-widest uppercase text-[#4a4269]">Quick Start</span>
+          <div className="h-px flex-1 bg-[#2d2650]" />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             { href: "/generate?category=image-generation", icon: ImageIcon, label: "Image Generation", sub: "Text to Image, Img2Img" },
-            { href: "/generate?category=video-generation", icon: Video, label: "Video Generation", sub: "Animate, Text to Video" },
-            { href: "/generate?category=lip-sync", icon: Mic, label: "Lip Sync", sub: "Audio to Face animation" },
-            { href: "/generate?category=motion-control", icon: Wand2, label: "Motion Control", sub: "Advanced controlnets" },
+            { href: "/generate?category=video-generation", icon: Video,     label: "Video Generation",  sub: "Animate, Text to Video" },
+            { href: "/generate?category=lip-sync",         icon: Mic,       label: "Lip Sync",           sub: "Audio to Face animation" },
+            { href: "/generate?category=motion-control",   icon: Wand2,     label: "Motion Control",     sub: "Advanced controlnets" },
           ].map(({ href, icon: Icon, label, sub }) => (
             <Link key={href} href={href}>
-              <div className="group p-4 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl cursor-pointer hover:border-[#d4e84a]/40 hover:bg-[#1e1e1e] transition-all flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#252525] flex items-center justify-center shrink-0 group-hover:bg-[#d4e84a]/10 transition-colors">
-                  <Icon className="h-4 w-4 text-[#555] group-hover:text-[#d4e84a] transition-colors" />
+              <div className="group p-4 bg-[#1e1a38] border border-[#2d2650] rounded-2xl cursor-pointer hover:border-[#e8f724]/30 hover:bg-[#231f42] transition-all flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#2a2448] flex items-center justify-center shrink-0 group-hover:bg-[#e8f724]/10 transition-colors">
+                  <Icon className="h-4 w-4 text-[#7b72a8] group-hover:text-[#e8f724] transition-colors" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-sm text-[#e8e8e8] leading-tight">{label}</h3>
-                  <p className="text-xs text-[#444] mt-0.5">{sub}</p>
+                  <h3 className="font-semibold text-sm text-[#f0eeff] leading-tight">{label}</h3>
+                  <p className="text-xs text-[#4a4269] mt-0.5">{sub}</p>
                 </div>
               </div>
             </Link>
@@ -108,15 +109,15 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Outputs */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs uppercase tracking-widest text-[#444] font-medium">Recent Outputs</h2>
-          <Link href="/gallery" className="text-xs text-[#d4e84a] hover:text-[#c8dc3e] font-medium transition-colors">View all</Link>
+          <h2 className="text-sm font-semibold text-[#f0eeff]">Recent Outputs</h2>
+          <Link href="/gallery" className="text-xs text-[#e8f724] hover:text-[#d4e010] font-semibold transition-colors">View all →</Link>
         </div>
         {isOutputsLoading ? (
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
             {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="aspect-square rounded-xl bg-[#1a1a1a]" />
+              <Skeleton key={i} className="aspect-square rounded-2xl bg-[#1e1a38]" />
             ))}
           </div>
         ) : recentOutputs && recentOutputs.length > 0 ? (
@@ -124,25 +125,17 @@ export default function Dashboard() {
             {recentOutputs.map((output) => (
               <div
                 key={output.id}
-                className="relative aspect-square rounded-xl border border-[#2a2a2a] overflow-hidden bg-[#1a1a1a] group hover:border-[#d4e84a]/50 transition-all cursor-pointer"
+                className="relative aspect-square rounded-2xl border border-[#2d2650] overflow-hidden bg-[#1e1a38] group hover:border-[#e8f724]/40 transition-all cursor-pointer"
               >
                 {output.outputType === 'video' ? (
-                  <video
-                    src={output.comfyUrl}
-                    className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
-                    muted loop playsInline
-                    onMouseEnter={e => e.currentTarget.play()}
-                    onMouseLeave={e => e.currentTarget.pause()}
-                  />
+                  <video src={output.comfyUrl} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" muted loop playsInline
+                    onMouseEnter={e => e.currentTarget.play()} onMouseLeave={e => e.currentTarget.pause()} />
                 ) : (
-                  <img
-                    src={output.thumbnailUrl || output.comfyUrl}
-                    alt={output.filename}
-                    className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
-                  />
+                  <img src={output.thumbnailUrl || output.comfyUrl} alt={output.filename}
+                    className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
                 )}
                 {output.outputType === 'video' && (
-                  <div className="absolute top-1.5 right-1.5 bg-black/60 rounded-md p-0.5 text-white backdrop-blur">
+                  <div className="absolute top-1.5 right-1.5 bg-black/60 rounded-lg p-0.5 text-white backdrop-blur">
                     <Video className="h-2.5 w-2.5" />
                   </div>
                 )}
@@ -150,7 +143,7 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <div className="p-10 text-center text-[#444] bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl text-sm">
+          <div className="p-10 text-center text-[#4a4269] bg-[#1e1a38] border border-[#2d2650] rounded-2xl text-sm">
             No recent outputs found. Start generating to see them here.
           </div>
         )}

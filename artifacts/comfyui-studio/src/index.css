@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @import 'tailwindcss';
 @import 'tw-animate-css';
@@ -52,84 +52,75 @@
 }
 
 :root {
-  /* Near-black base — matches Comfy's actual app */
-  --background: #0d0d0d;
-  --foreground: #e8e8e8;
-  
-  /* Panel surfaces */
-  --card: #1a1a1a;
-  --card-foreground: #e8e8e8;
-  --card-border: #2a2a2a;
-  
-  /* Yellow-green accent — the Comfy brand color */
-  --primary: #d4e84a;
-  --primary-foreground: #0d0d0d;
-  
-  --secondary: #252525;
-  --secondary-foreground: #e8e8e8;
-  
-  --muted: #1a1a1a;
-  --muted-foreground: #666666;
-  
-  --accent: #252525;
-  --accent-foreground: #e8e8e8;
-  
-  --destructive: #e05555;
-  --destructive-foreground: #e8e8e8;
-  
-  --success: #4caf50;
-  --success-foreground: #e8e8e8;
-  
-  --info: #4499aa;
-  --info-foreground: #e8e8e8;
-  
-  --input: #1a1a1a;
-  --ring: #d4e84a;
-  --border: #2a2a2a;
-  
-  --radius: 8px;
+  /* ── comfy.org purple palette ── */
+  --background:         #16122a;   /* deep indigo-purple page bg */
+  --foreground:         #f0eeff;   /* near-white text */
+
+  /* Panel surfaces — slightly lighter than the bg */
+  --card:               #1e1a38;
+  --card-foreground:    #f0eeff;
+  --card-border:        #2d2650;
+
+  /* Yellow-green brand accent — exact comfy.org logo colour */
+  --primary:            #e8f724;
+  --primary-foreground: #0d0b1a;
+
+  --secondary:          #2a2448;
+  --secondary-foreground: #f0eeff;
+
+  --muted:              #1e1a38;
+  --muted-foreground:   #7b72a8;
+
+  --accent:             #2a2448;
+  --accent-foreground:  #f0eeff;
+
+  --destructive:        #e05555;
+  --destructive-foreground: #f0eeff;
+
+  --success:            #4caf50;
+  --success-foreground: #f0eeff;
+
+  --info:               #6b8ef0;
+  --info-foreground:    #f0eeff;
+
+  --input:              #1e1a38;
+  --ring:               #e8f724;
+  --border:             #2d2650;
+
+  --radius: 10px;
 }
 
-.dark {
-}
+.dark {}
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply font-sans antialiased bg-background text-foreground;
-  }
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-sans font-semibold tracking-tight;
-  }
-  
-  /* Comfy-style card: slightly raised panel on near-black bg */
+  * { @apply border-border; }
+  body { @apply font-sans antialiased bg-background text-foreground; }
+  h1, h2, h3, h4, h5, h6 { @apply font-sans font-semibold tracking-tight; }
+
+  /* Cards */
   .card, [class*="Card"] {
-    @apply bg-[#1a1a1a] border-[#2a2a2a] rounded-lg shadow-none;
-  }
-  
-  button, .button, [class*="Button"] {
-    @apply rounded-lg;
-  }
-  
-  button.bg-primary, .bg-primary {
-    @apply bg-[#d4e84a] text-[#0d0d0d] hover:bg-[#c8dc3e];
-  }
-  
-  input, textarea, select {
-    @apply bg-[#1a1a1a] border-[#2a2a2a] text-[#e8e8e8] rounded-lg text-sm focus:ring-[#d4e84a];
+    @apply bg-[#1e1a38] border-[#2d2650] rounded-xl shadow-none;
   }
 
+  /* Buttons */
+  button, .button, [class*="Button"] { @apply rounded-full; }
+  button.bg-primary, .bg-primary {
+    @apply bg-[#e8f724] text-[#0d0b1a] hover:bg-[#d4e010] font-semibold;
+  }
+
+  /* Inputs */
+  input, textarea, select {
+    @apply bg-[#1e1a38] border-[#2d2650] text-[#f0eeff] rounded-xl text-sm focus:ring-[#e8f724];
+  }
   [role="combobox"] {
-    @apply bg-[#1a1a1a] border-[#2a2a2a] text-[#e8e8e8] rounded-lg text-sm;
+    @apply bg-[#1e1a38] border-[#2d2650] text-[#f0eeff] rounded-xl text-sm;
   }
-  
+
+  /* Badges */
   .badge, [class*="Badge"] {
-    @apply rounded-md bg-[#252525] border-[#2a2a2a] text-[#999] font-normal text-xs;
+    @apply rounded-full bg-[#2a2448] border-[#2d2650] text-[#a097c8] font-normal text-xs;
   }
-  
-  [role="progressbar"] > div {
-    @apply bg-[#d4e84a];
-  }
+
+  /* Progress fill */
+  [role="progressbar"] > div { @apply bg-[#e8f724]; }
 }

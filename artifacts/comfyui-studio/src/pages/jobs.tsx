@@ -77,7 +77,6 @@ export default function Jobs() {
   });
 
   const hasRunningJobs = !!jobs?.some((j) => j.status === "running" || j.status === "pending");
-
   const promptJobMap: PromptJobMap = {};
   if (jobs) {
     for (const job of jobs) {
@@ -106,26 +105,26 @@ export default function Jobs() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed": return (
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#4caf50]">
-          <CheckCircle2 className="h-3.5 w-3.5" /> Completed
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#4caf50]/10 text-[#4caf50] text-xs font-semibold">
+          <CheckCircle2 className="h-3 w-3" /> Completed
         </span>
       );
       case "failed": return (
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#e05555]">
-          <AlertCircle className="h-3.5 w-3.5" /> Failed
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#e05555]/10 text-[#e05555] text-xs font-semibold">
+          <AlertCircle className="h-3 w-3" /> Failed
         </span>
       );
       case "running": return (
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#d4e84a]">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Running
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#e8f724]/10 text-[#e8f724] text-xs font-semibold">
+          <Loader2 className="h-3 w-3 animate-spin" /> Running
         </span>
       );
       case "pending": return (
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#666]">
-          <PlayCircle className="h-3.5 w-3.5" /> Pending
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#2a2448] text-[#7b72a8] text-xs font-semibold">
+          <PlayCircle className="h-3 w-3" /> Pending
         </span>
       );
-      default: return <span className="text-xs text-[#666]">{status}</span>;
+      default: return <span className="text-xs text-[#7b72a8]">{status}</span>;
     }
   };
 
@@ -142,33 +141,32 @@ export default function Jobs() {
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-[#e8e8e8]">Jobs</h1>
-          <p className="text-[#555] text-sm mt-0.5">Monitor and manage your generation queue.</p>
+          <h1 className="text-2xl font-bold text-[#f0eeff]">Jobs</h1>
+          <p className="text-[#7b72a8] text-sm mt-0.5">Monitor and manage your generation queue.</p>
         </div>
         <Link href="/generate">
-          <Button className="bg-[#d4e84a] text-black hover:bg-[#c8dc3e] rounded-xl font-medium">
+          <Button className="bg-[#e8f724] text-[#0d0b1a] hover:bg-[#d4e010] rounded-full font-bold px-5">
             New Generation
           </Button>
         </Link>
       </div>
 
-      <div className="border border-[#2a2a2a] bg-[#1a1a1a] rounded-xl overflow-hidden">
+      <div className="border border-[#2d2650] bg-[#1e1a38] rounded-2xl overflow-hidden">
         <Table>
-          <TableHeader className="bg-[#111111] border-b border-[#2a2a2a]">
-            <TableRow className="border-none hover:bg-[#111111]">
-              <TableHead className="w-[80px] text-[#555] text-xs font-medium h-10">ID</TableHead>
-              <TableHead className="text-[#555] text-xs font-medium h-10">Workflow</TableHead>
-              <TableHead className="text-[#555] text-xs font-medium h-10">Status</TableHead>
-              <TableHead className="w-[180px] text-[#555] text-xs font-medium h-10">Progress</TableHead>
-              <TableHead className="text-[#555] text-xs font-medium h-10">Created</TableHead>
-              <TableHead className="text-right text-[#555] text-xs font-medium h-10">Actions</TableHead>
+          <TableHeader className="bg-[#16122a] border-b border-[#2d2650]">
+            <TableRow className="border-none hover:bg-[#16122a]">
+              {["ID", "Workflow", "Status", "Progress", "Created", "Actions"].map((h, i) => (
+                <TableHead key={h} className={`text-[#4a4269] text-xs font-semibold h-10 ${i === 5 ? "text-right" : ""} ${i === 0 ? "w-[80px]" : ""} ${i === 3 ? "w-[180px]" : ""}`}>
+                  {h}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow className="border-b border-[#2a2a2a]">
-                <TableCell colSpan={6} className="h-32 text-center text-[#444]">
-                  <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#d4e84a]" />
+              <TableRow className="border-b border-[#2d2650]">
+                <TableCell colSpan={6} className="h-32 text-center text-[#4a4269]">
+                  <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#e8f724]" />
                   <span className="text-sm">Loading jobs…</span>
                 </TableCell>
               </TableRow>
@@ -176,36 +174,30 @@ export default function Jobs() {
               jobs.map((job) => {
                 const progress = getProgress(job);
                 return (
-                  <TableRow key={job.id} className="border-b border-[#2a2a2a] hover:bg-[#1e1e1e] transition-colors">
-                    <TableCell className="font-mono text-xs text-[#444]">#{job.id}</TableCell>
-                    <TableCell className="font-medium text-sm text-[#e8e8e8]">{job.workflowId}</TableCell>
+                  <TableRow key={job.id} className="border-b border-[#2d2650] hover:bg-[#231f42] transition-colors">
+                    <TableCell className="font-mono text-xs text-[#4a4269]">#{job.id}</TableCell>
+                    <TableCell className="font-medium text-sm text-[#f0eeff]">{job.workflowId}</TableCell>
                     <TableCell>{getStatusBadge(job.status)}</TableCell>
                     <TableCell>
                       {progress !== null ? (
                         <div className="space-y-1">
-                          <Progress value={progress} className="h-1.5 bg-[#252525] rounded-full" />
-                          <span className="text-xs text-[#555] font-mono">{progress}%</span>
+                          <Progress value={progress} className="h-1.5 bg-[#2a2448] rounded-full" />
+                          <span className="text-xs text-[#7b72a8] font-mono">{progress}%</span>
                         </div>
-                      ) : (
-                        <span className="text-xs text-[#333]">—</span>
-                      )}
+                      ) : <span className="text-xs text-[#2d2650]">—</span>}
                     </TableCell>
-                    <TableCell className="text-xs text-[#555]">{formatDate(job.createdAt)}</TableCell>
+                    <TableCell className="text-xs text-[#7b72a8]">{formatDate(job.createdAt)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         {job.status === "completed" && (
                           <Link href="/gallery">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-[#555] hover:text-[#d4e84a] rounded-lg">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-[#4a4269] hover:text-[#e8f724] rounded-full">
                               <ExternalLink className="h-3.5 w-3.5" />
                             </Button>
                           </Link>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-[#555] hover:text-[#e05555] rounded-lg"
-                          onClick={() => handleDelete(job.id)}
-                        >
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[#4a4269] hover:text-[#e05555] rounded-full"
+                          onClick={() => handleDelete(job.id)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -215,7 +207,7 @@ export default function Jobs() {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center text-[#444] text-sm">
+                <TableCell colSpan={6} className="h-32 text-center text-[#4a4269] text-sm">
                   No jobs found.
                 </TableCell>
               </TableRow>

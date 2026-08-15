@@ -1,11 +1,11 @@
 import * as React from "react"
 import { Link, useLocation } from "wouter"
-import { LayoutDashboard, Settings2, Images, ListVideo, BrainCircuit, Rocket, Bot, Boxes } from "lucide-react"
+import { LayoutDashboard, Settings2, Images, ListVideo, BrainCircuit, Rocket, Bot, Boxes, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/generate", label: "Generate", icon: Boxes },
+  { href: "/generate", label: "Workflows", icon: Boxes },
   { href: "/assistant", label: "Assistant", icon: Bot },
   { href: "/jobs", label: "Jobs", icon: ListVideo },
   { href: "/gallery", label: "Gallery", icon: Images },
@@ -14,105 +14,127 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings2 },
 ]
 
-/** The "C" logomark — matches Comfy's chunky letter icon style */
-function ComfyLogo({ className }: { className?: string }) {
+/** comfy.org wordmark — bold italic yellow-green */
+function ComfyWordmark() {
   return (
-    <div className={cn("flex items-center justify-center", className)}>
-      <span
-        style={{
-          fontFamily: "'Inter', sans-serif",
-          fontWeight: 700,
-          fontSize: "20px",
-          color: "#d4e84a",
-          letterSpacing: "-0.04em",
-          lineHeight: 1,
-          fontStyle: "italic",
-        }}
-      >
-        C
-      </span>
-    </div>
+    <span
+      style={{
+        fontFamily: "'Inter', sans-serif",
+        fontWeight: 800,
+        fontStyle: "italic",
+        fontSize: "22px",
+        color: "#e8f724",
+        letterSpacing: "-0.03em",
+        lineHeight: 1,
+        userSelect: "none",
+      }}
+    >
+      Comfy
+    </span>
   )
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation()
+  const [mobileOpen, setMobileOpen] = React.useState(false)
+
+  // Close drawer on navigation
+  React.useEffect(() => { setMobileOpen(false) }, [location])
 
   return (
-    <div className="min-h-[100dvh] flex flex-col md:flex-row bg-[#0d0d0d]">
+    <div className="min-h-[100dvh] flex flex-col bg-[#16122a]">
 
-      {/* ── Mobile top bar ── */}
-      <div className="md:hidden border-b border-[#2a2a2a] bg-[#0d0d0d] px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <ComfyLogo className="w-7 h-7" />
-          <span className="text-[#e8e8e8] font-semibold text-sm tracking-tight">ComfyUI Studio</span>
-        </div>
-      </div>
+      {/* ── Top nav bar ── */}
+      <header className="sticky top-0 z-40 border-b border-[#2d2650] bg-[#16122a]/95 backdrop-blur-sm">
+        <div className="flex items-center h-14 px-4 md:px-6 gap-4 max-w-[1400px] mx-auto">
 
-      {/* ── Mobile horizontal scroll nav ── */}
-      <nav className="md:hidden flex overflow-x-auto border-b border-[#2a2a2a] bg-[#111111] px-2 py-1.5 snap-x scrollbar-hide gap-1">
-        {navItems.map((item) => {
-          const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href))
-          const Icon = item.icon
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-medium transition-all snap-start shrink-0",
-                isActive
-                  ? "bg-[#d4e84a]/10 text-[#d4e84a]"
-                  : "text-[#666] hover:text-[#aaa] hover:bg-[#1a1a1a]"
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {item.label}
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 shrink-0 mr-2">
+            <ComfyWordmark />
+          </Link>
+
+          {/* Desktop nav links */}
+          <nav className="hidden md:flex items-center gap-1 flex-1">
+            {navItems.map((item) => {
+              const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href))
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                    isActive
+                      ? "bg-[#e8f724]/15 text-[#e8f724]"
+                      : "text-[#7b72a8] hover:text-[#f0eeff] hover:bg-[#2a2448]"
+                  )}
+                >
+                  <item.icon className="h-3.5 w-3.5" />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* Desktop right actions */}
+          <div className="hidden md:flex items-center gap-2 ml-auto">
+            <Link href="/settings">
+              <button className="px-4 py-1.5 rounded-full border border-[#2d2650] text-sm text-[#f0eeff] hover:bg-[#2a2448] transition-colors font-medium">
+                Settings
+              </button>
             </Link>
-          )
-        })}
-      </nav>
-
-      {/* ── Desktop icon-only sidebar ── */}
-      <aside className="hidden md:flex w-[52px] flex-col items-center border-r border-[#1e1e1e] bg-[#111111] py-3 gap-1">
-        {/* Logo */}
-        <Link href="/" className="w-9 h-9 flex items-center justify-center mb-2 hover:bg-[#1a1a1a] rounded-lg transition-colors">
-          <ComfyLogo className="w-9 h-9" />
-        </Link>
-
-        <div className="w-6 h-px bg-[#2a2a2a] mb-1" />
-
-        {/* Nav icons */}
-        {navItems.map((item) => {
-          const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href))
-          const Icon = item.icon
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={item.label}
-              className={cn(
-                "w-9 h-9 flex items-center justify-center rounded-lg transition-all relative group",
-                isActive
-                  ? "bg-[#d4e84a]/15 text-[#d4e84a]"
-                  : "text-[#555] hover:text-[#bbb] hover:bg-[#1a1a1a]"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {/* Tooltip */}
-              <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 rounded-md bg-[#1e1e1e] border border-[#2a2a2a] text-xs text-[#e8e8e8] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl">
-                {item.label}
-              </span>
+            <Link href="/generate">
+              <button className="px-4 py-1.5 rounded-full bg-[#e8f724] text-[#0d0b1a] text-sm font-bold hover:bg-[#d4e010] transition-colors">
+                Run Workflow
+              </button>
             </Link>
-          )
-        })}
-      </aside>
-
-      {/* ── Main Content ── */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          <div className="mx-auto max-w-6xl">
-            {children}
           </div>
+
+          {/* Mobile hamburger */}
+          <button
+            className="md:hidden ml-auto p-2 rounded-lg text-[#7b72a8] hover:text-[#f0eeff] hover:bg-[#2a2448] transition-colors"
+            onClick={() => setMobileOpen(o => !o)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+
+        {/* Mobile dropdown nav */}
+        {mobileOpen && (
+          <nav className="md:hidden border-t border-[#2d2650] bg-[#1a163a] px-4 py-3 flex flex-col gap-1">
+            {navItems.map((item) => {
+              const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href))
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                    isActive
+                      ? "bg-[#e8f724]/15 text-[#e8f724]"
+                      : "text-[#7b72a8] hover:text-[#f0eeff] hover:bg-[#2a2448]"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              )
+            })}
+            <div className="pt-2 mt-1 border-t border-[#2d2650] flex gap-2">
+              <Link href="/generate" className="flex-1">
+                <button className="w-full px-4 py-2 rounded-full bg-[#e8f724] text-[#0d0b1a] text-sm font-bold hover:bg-[#d4e010] transition-colors">
+                  Run Workflow
+                </button>
+              </Link>
+            </div>
+          </nav>
+        )}
+      </header>
+
+      {/* ── Page content ── */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="px-4 md:px-8 py-8 max-w-[1400px] mx-auto">
+          {children}
         </div>
       </main>
     </div>

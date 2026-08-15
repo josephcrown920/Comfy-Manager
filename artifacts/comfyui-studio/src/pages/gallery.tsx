@@ -24,7 +24,6 @@ export default function Gallery() {
   );
 
   const { toast } = useToast();
-
   const handleCopyLink = (url: string) => {
     navigator.clipboard.writeText(url);
     toast({ title: "Link copied to clipboard" });
@@ -32,24 +31,24 @@ export default function Gallery() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Header + filter pills */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-[#e8e8e8]">Gallery</h1>
-          <p className="text-[#555] text-sm mt-0.5">All generated images and videos.</p>
+          <h1 className="text-2xl font-bold text-[#f0eeff]">Gallery</h1>
+          <p className="text-[#7b72a8] text-sm mt-0.5">All generated images and videos.</p>
         </div>
 
-        {/* Pill-style filter tabs */}
-        <div className="flex items-center gap-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-1">
+        {/* Pill filter — matches comfy.org "ALL / Node Graphs / Comfy Apps" */}
+        <div className="flex items-center gap-1 bg-[#1e1a38] border border-[#2d2650] rounded-full p-1">
           {FILTERS.map((f) => (
             <button
               key={f.value}
               onClick={() => setFilter(f.value)}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                "px-4 py-1.5 rounded-full text-xs font-semibold transition-all",
                 filter === f.value
-                  ? "bg-[#252525] text-[#e8e8e8]"
-                  : "text-[#555] hover:text-[#aaa]"
+                  ? "bg-[#e8f724] text-[#0d0b1a]"
+                  : "text-[#7b72a8] hover:text-[#f0eeff]"
               )}
             >
               {f.label}
@@ -61,7 +60,7 @@ export default function Gallery() {
       {isLoading ? (
         <div className="columns-2 md:columns-3 lg:columns-4 gap-3 space-y-3">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <Skeleton key={i} className={`w-full rounded-xl mb-3 bg-[#1a1a1a] ${i % 3 === 0 ? "h-64" : "h-48"}`} />
+            <Skeleton key={i} className={`w-full rounded-2xl mb-3 bg-[#1e1a38] ${i % 3 === 0 ? "h-64" : "h-48"}`} />
           ))}
         </div>
       ) : outputs && outputs.length > 0 ? (
@@ -69,44 +68,30 @@ export default function Gallery() {
           {outputs.map((output) => (
             <div
               key={output.id}
-              className="relative border border-[#2a2a2a] bg-[#1a1a1a] rounded-xl overflow-hidden group cursor-pointer break-inside-avoid mb-3 transition-all hover:border-[#d4e84a]/40 hover:shadow-lg"
+              className="relative border border-[#2d2650] bg-[#1e1a38] rounded-2xl overflow-hidden group cursor-pointer break-inside-avoid mb-3 transition-all hover:border-[#e8f724]/40 hover:shadow-lg hover:shadow-purple-900/20"
               onClick={() => setSelectedOutput(output)}
             >
               {output.outputType === "video" ? (
                 <div className="relative">
-                  <video
-                    src={output.comfyUrl}
-                    className="w-full h-auto object-cover block"
+                  <video src={output.comfyUrl} className="w-full h-auto object-cover block"
                     onMouseEnter={(e) => e.currentTarget.play()}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.pause();
-                      e.currentTarget.currentTime = 0;
-                    }}
-                    muted
-                    loop
-                    playsInline
-                  />
+                    onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
+                    muted loop playsInline />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="h-10 w-10 bg-black/60 flex items-center justify-center text-white backdrop-blur-sm rounded-xl">
+                    <div className="h-10 w-10 bg-black/60 flex items-center justify-center text-white backdrop-blur-sm rounded-full">
                       <Play className="h-5 w-5 ml-0.5" />
                     </div>
                   </div>
-                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur rounded-lg px-2 py-1 text-xs text-white flex items-center gap-1 font-mono">
-                    <Video className="h-3 w-3" />
-                    VIDEO
+                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur rounded-full px-2.5 py-1 text-xs text-white flex items-center gap-1 font-medium">
+                    <Video className="h-3 w-3" /> VIDEO
                   </div>
                 </div>
               ) : (
                 <div className="relative">
-                  <img
-                    src={output.thumbnailUrl || output.comfyUrl}
-                    alt={output.filename}
-                    className="w-full h-auto object-cover block"
-                    loading="lazy"
-                  />
-                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur rounded-lg px-2 py-1 text-xs text-white flex items-center gap-1 font-mono opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ImageIcon className="h-3 w-3" />
-                    IMAGE
+                  <img src={output.thumbnailUrl || output.comfyUrl} alt={output.filename}
+                    className="w-full h-auto object-cover block" loading="lazy" />
+                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur rounded-full px-2.5 py-1 text-xs text-white flex items-center gap-1 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ImageIcon className="h-3 w-3" /> IMAGE
                   </div>
                 </div>
               )}
@@ -114,55 +99,42 @@ export default function Gallery() {
           ))}
         </div>
       ) : (
-        <div className="text-center p-16 border border-[#2a2a2a] bg-[#1a1a1a] rounded-xl text-[#444]">
-          <ImageIcon className="mx-auto h-10 w-10 text-[#2a2a2a] mb-3" />
-          <h3 className="text-sm font-medium text-[#666]">No outputs found</h3>
+        <div className="text-center p-16 border border-[#2d2650] bg-[#1e1a38] rounded-2xl text-[#4a4269]">
+          <ImageIcon className="mx-auto h-10 w-10 text-[#2d2650] mb-3" />
+          <h3 className="text-sm font-semibold text-[#7b72a8]">No outputs found</h3>
           <p className="mt-1 text-xs">Nothing to show for the selected filter.</p>
         </div>
       )}
 
       {/* Lightbox */}
       <Dialog open={!!selectedOutput} onOpenChange={(o) => !o && setSelectedOutput(null)}>
-        <DialogContent className="max-w-screen-xl max-h-[95vh] flex flex-col gap-0 p-0 overflow-hidden bg-[#111] border-[#2a2a2a] rounded-2xl">
+        <DialogContent className="max-w-screen-xl max-h-[95vh] flex flex-col gap-0 p-0 overflow-hidden bg-[#16122a] border-[#2d2650] rounded-2xl">
           <div className="sr-only">
             <DialogTitle>View Output</DialogTitle>
             <DialogDescription>Media output viewer</DialogDescription>
           </div>
-          <div className="flex-1 overflow-auto flex items-center justify-center p-6 bg-[#0d0d0d]">
+          <div className="flex-1 overflow-auto flex items-center justify-center p-6 bg-[#0e0b1e]">
             {selectedOutput?.outputType === "video" ? (
-              <video
-                src={selectedOutput.comfyUrl}
-                className="max-w-full max-h-[80vh] rounded-xl shadow-2xl"
-                controls
-                autoPlay
-              />
+              <video src={selectedOutput.comfyUrl} className="max-w-full max-h-[80vh] rounded-xl shadow-2xl" controls autoPlay />
             ) : selectedOutput ? (
-              <img
-                src={selectedOutput.comfyUrl}
-                alt={selectedOutput.filename}
-                className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
-              />
+              <img src={selectedOutput.comfyUrl} alt={selectedOutput.filename}
+                className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl" />
             ) : null}
           </div>
-          <div className="bg-[#1a1a1a] border-t border-[#2a2a2a] p-4 flex items-center justify-between">
+          <div className="bg-[#1e1a38] border-t border-[#2d2650] p-4 flex items-center justify-between">
             <div>
-              <p className="font-mono text-sm text-[#e8e8e8]">{selectedOutput?.filename}</p>
-              <p className="text-xs text-[#555]">Generated {formatDate(selectedOutput?.createdAt)}</p>
+              <p className="font-mono text-sm text-[#f0eeff]">{selectedOutput?.filename}</p>
+              <p className="text-xs text-[#7b72a8]">Generated {formatDate(selectedOutput?.createdAt)}</p>
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
+              <Button variant="outline" size="sm"
                 onClick={() => selectedOutput && handleCopyLink(selectedOutput.comfyUrl)}
-                className="rounded-lg bg-transparent border-[#2a2a2a] hover:bg-[#252525] text-[#e8e8e8]"
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Link
+                className="rounded-full bg-transparent border-[#2d2650] hover:bg-[#2a2448] text-[#f0eeff]">
+                <Copy className="h-4 w-4 mr-2" /> Copy Link
               </Button>
-              <Button size="sm" asChild className="rounded-lg bg-[#d4e84a] text-black hover:bg-[#c8dc3e]">
+              <Button size="sm" asChild className="rounded-full bg-[#e8f724] text-[#0d0b1a] hover:bg-[#d4e010] font-bold">
                 <a href={selectedOutput?.comfyUrl} download target="_blank" rel="noopener noreferrer">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
+                  <Download className="h-4 w-4 mr-2" /> Download
                 </a>
               </Button>
             </div>
