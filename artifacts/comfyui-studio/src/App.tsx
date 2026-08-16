@@ -13,6 +13,7 @@ import Gallery from '@/pages/gallery';
 import Settings from '@/pages/settings';
 import Models from '@/pages/models';
 import Launch from '@/pages/launch';
+import Guide from '@/pages/guide';
 
 import {
   Route,
@@ -35,6 +36,7 @@ function Router() {
           <Route path="/gallery" component={Gallery} />
           <Route path="/models" component={Models} />
           <Route path="/launch" component={Launch} />
+          <Route path="/guide" component={Guide} />
           <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>
