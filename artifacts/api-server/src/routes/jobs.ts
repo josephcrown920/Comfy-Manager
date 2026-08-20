@@ -18,6 +18,7 @@ import { WORKFLOWS } from "./workflows";
 import { getComfyUrl } from "./settings";
 import { fetchComfy } from "./comfy";
 import { getModelAssignments } from "./model-assignments";
+import { withGpuSubmissionLease } from "./gpu-lease";
 
 const router: IRouter = Router();
 
@@ -31,6 +32,8 @@ function buildJobOutput(job: typeof jobsTable.$inferSelect, outputs: typeof outp
     comfyPromptId: job.comfyPromptId ?? null,
     progress: job.progress ?? null,
     errorMessage: job.errorMessage ?? null,
+    batchId: job.batchId ?? null,
+    batchIndex: job.batchIndex ?? null,
     outputs: outputs.map((o) => ({
       id: o.id,
       jobId: o.jobId,
@@ -127,6 +130,16 @@ router.post("/jobs", async (req, res): Promise<void> => {
   }
 
   const { workflowId, params } = parsed.data;
+  await withGpuSubmissionLease(async () => {
+  // Batch Studio owns a user-connected GPU exclusively. Ordinary single-job
+  // submission remains unchanged when the GPU is free, but cannot bypass an
+  // active batch child and contend for the same ComfyUI queue.
+  const [activeBatchChild] = await db.select({ id: jobsTable.id }).from(jobsTable)
+    .where(and(sql`${jobsTable.batchId} IS NOT NULL`, eq(jobsTable.status, "running"))).limit(1);
+  if (activeBatchChild) {
+    res.status(409).json({ error: "A Batch Studio variation is using this GPU. Wait for it to finish or stop its batch queue before starting a single generation." });
+    return;
+  }
 
   // Custom workflow: pass raw JSON directly to ComfyUI unchanged
   if (workflowId === "custom-workflow") {
@@ -285,6 +298,7 @@ router.post("/jobs", async (req, res): Promise<void> => {
     .returning();
 
   res.status(201).json(CreateJobResponse.parse(buildJobOutput(newJobRow!, [])));
+  });
 });
 
 router.get("/jobs/:id", async (req, res): Promise<void> => {
@@ -452,7 +466,7 @@ router.post("/jobs/:id/refresh", async (req, res): Promise<void> => {
  * Audio files are stored in the `audio/` subfolder by the upload endpoint, so
  * their ComfyUI path is `audio/<filename>` (subfolder prefix + name).
  */
-function buildComfyPrompt(
+export function buildComfyPrompt(
   workflowId: string,
   params: Record<string, unknown>
 ): Record<string, unknown> {
@@ -495,6 +509,18 @@ function buildFilmGradePrompt(params: Record<string, unknown>): Record<string, u
   const sourceVideo = String(params.source_video ?? "");
   const grainPower = Number(params.grain_power ?? 60) / 100;
   const style = String(params.grade_style ?? "teal-orange");
+  const aspect = String(params.aspect_ratio ?? "original");
+  const outputSize: Record<string, { width: number; height: number }> = {
+    "16:9": { width: 1280, height: 720 },
+    "9:16": { width: 720, height: 1280 },
+    "1:1": { width: 720, height: 720 },
+  };
+  const size = outputSize[aspect] ?? { width: 0, height: 0 };
+  const duration = Number(params.duration_seconds ?? 0);
+  const frameCap = Number.isFinite(duration) && duration > 0 ? Math.min(Math.round(duration * 24), 1440) : 0;
+  const seed = Number.isFinite(Number(params.seed)) ? Number(params.seed) : Math.floor(Math.random() * 1e9);
+  const captionTreatment = String(params.caption_treatment ?? "safe-lower-third");
+  const captionCenterY = captionTreatment === "safe-lower-third" ? 0.42 : captionTreatment === "safe-upper-third" ? 0.58 : 0.5;
 
   // Map grade style to color-correct settings
   const grades: Record<string, { temperature: number; saturation: number; contrast: number; gamma: number }> = {
@@ -511,9 +537,9 @@ function buildFilmGradePrompt(params: Record<string, unknown>): Record<string, u
       inputs: {
         video: sourceVideo,
         force_rate: 24,
-        custom_width: 0,
-        custom_height: 0,
-        frame_load_cap: 0,
+        custom_width: size.width,
+        custom_height: size.height,
+        frame_load_cap: frameCap,
         skip_first_frames: 0,
         select_every_nth: 1,
       },
@@ -543,12 +569,14 @@ function buildFilmGradePrompt(params: Record<string, unknown>): Record<string, u
         scale: 1.0,
         sharpen: 0,
         src_gamma: 1.0,
-        seed: Math.floor(Math.random() * 1e9),
+        seed,
       },
     },
     "4": {
       class_type: "ProPostVignette",
-      inputs: { image: ["3", 0], intensity: 0.35, center_x: 0.5, center_y: 0.5 },
+      // Shift the visual center away from the caption-safe third so titles
+      // retain contrast and do not sit on the brightest focal area.
+      inputs: { image: ["3", 0], intensity: 0.35, center_x: 0.5, center_y: captionCenterY },
     },
     "5": {
       class_type: "VHS_VideoCombine",
@@ -558,7 +586,7 @@ function buildFilmGradePrompt(params: Record<string, unknown>): Record<string, u
         audio: ["1", 2],
         frame_rate: 24,
         loop_count: 0,
-        filename_prefix: "film-grade",
+        filename_prefix: `film-grade-${aspect.replace(":", "x")}`,
         format: "video/h264-mp4",
         pingpong: false,
         save_output: true,
@@ -601,7 +629,7 @@ function buildCinematicPortraitPrompt(params: Record<string, unknown>): Record<s
     "5": {
       class_type: "KSampler",
       inputs: {
-        seed: Math.floor(Math.random() * 1e9),
+        seed: Number.isFinite(Number(params.seed)) ? Number(params.seed) : Math.floor(Math.random() * 1e9),
         steps: 32,
         cfg: 6.5,
         sampler_name: "dpmpp_2m",
@@ -724,7 +752,7 @@ function buildEpicLandscapePrompt(params: Record<string, unknown>): Record<strin
     "5": {
       class_type: "KSampler",
       inputs: {
-        seed: Math.floor(Math.random() * 1e9),
+        seed: Number.isFinite(Number(params.seed)) ? Number(params.seed) : Math.floor(Math.random() * 1e9),
         steps: 35,
         cfg: 7,
         sampler_name: "dpmpp_2m",
@@ -801,7 +829,7 @@ function buildReelLoopPrompt(params: Record<string, unknown>): Record<string, un
     "9": {
       class_type: "KSampler",
       inputs: {
-        seed: Math.floor(Math.random() * 1e9),
+        seed: Number.isFinite(Number(params.seed)) ? Number(params.seed) : Math.floor(Math.random() * 1e9),
         steps: 25,
         cfg: 8,
         sampler_name: "euler",
@@ -1170,11 +1198,31 @@ function buildMotionControlPrompt(params: Record<string, unknown>): Record<strin
   const motionStrength = Number(params.motion_strength ?? 50) / 100;
   const numFrames = Number(params.num_frames ?? 16);
   const prompt = String(params.prompt ?? `${motionPreset} camera motion`);
+  const aspect = String(params.aspect_ratio ?? "16:9");
+  const dimensions: Record<string, { width: number; height: number }> = {
+    "16:9": { width: 512, height: 288 },
+    "9:16": { width: 288, height: 512 },
+    "1:1": { width: 512, height: 512 },
+  };
+  const frame = dimensions[aspect] ?? dimensions["16:9"]!;
+  const colorGrade = String(params.color_grade ?? "teal-orange");
+  const colorGrades: Record<string, { temperature: number; saturation: number; contrast: number }> = {
+    "teal-orange": { temperature: -12, saturation: -8, contrast: 14 },
+    "warm-vintage": { temperature: 18, saturation: -15, contrast: 6 },
+    "cold-thriller": { temperature: -25, saturation: -20, contrast: 18 },
+  };
+  const grade = colorGrades[colorGrade] ?? colorGrades["teal-orange"]!;
+  const captionTreatment = String(params.caption_treatment ?? "none");
+  const seed = Number.isFinite(Number(params.seed)) ? Number(params.seed) : Math.floor(Math.random() * 1e9);
 
   return {
     "1": {
       class_type: "LoadImage",
       inputs: { image: sourceImage, upload: "image" },
+    },
+    "1b": {
+      class_type: "ImageScale",
+      inputs: { image: ["1", 0], upscale_method: "lanczos", width: frame.width, height: frame.height, crop: "center" },
     },
     "2": {
       class_type: "CheckpointLoaderSimple",
@@ -1206,12 +1254,12 @@ function buildMotionControlPrompt(params: Record<string, unknown>): Record<strin
     },
     "8": {
       class_type: "VAEEncode",
-      inputs: { pixels: ["1", 0], vae: ["2", 2] },
+      inputs: { pixels: ["1b", 0], vae: ["2", 2] },
     },
     "9": {
       class_type: "KSampler",
       inputs: {
-        seed: Math.floor(Math.random() * 1e9),
+        seed,
         steps: 20,
         cfg: 7.5,
         sampler_name: "euler",
@@ -1227,10 +1275,22 @@ function buildMotionControlPrompt(params: Record<string, unknown>): Record<strin
       class_type: "VAEDecode",
       inputs: { samples: ["9", 0], vae: ["2", 2] },
     },
+    "10b": {
+      class_type: "ColorCorrect",
+      inputs: {
+        image: ["10", 0],
+        temperature: grade.temperature,
+        hue: 0,
+        brightness: 0,
+        contrast: grade.contrast,
+        saturation: grade.saturation,
+        gamma: captionTreatment === "safe-lower-third" ? 1.03 : 1.0,
+      },
+    },
     "11": {
       class_type: "VHS_VideoCombine",
       inputs: {
-        images: ["10", 0],
+        images: ["10b", 0],
         frame_rate: 8,
         loop_count: 0,
         filename_prefix: `motion-control-${motionPreset}`,

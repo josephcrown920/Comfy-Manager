@@ -22,6 +22,8 @@ import type {
 import type {
   AssistantChatBody,
   AssistantChatResponse,
+  Batch,
+  BatchInput,
   ComfyModels,
   ComfyQueue,
   ComfyStatus,
@@ -920,6 +922,446 @@ export function useGetJobStats<TData = Awaited<ReturnType<typeof getJobStats>>, 
 
 
 
+
+export const getListBatchesUrl = () => {
+
+
+
+
+  return `/api/batches`
+}
+
+/**
+ * @summary List viral generation batches with child jobs
+ */
+export const listBatches = async ( options?: Parameters<typeof customFetch>[1]): Promise<Batch[]> => {
+
+  return customFetch<Batch[]>(getListBatchesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBatchesQueryKey = () => {
+    return [
+    `/api/batches`
+    ] as const;
+    }
+
+
+export const getListBatchesQueryOptions = <TData = Awaited<ReturnType<typeof listBatches>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBatches>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBatchesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBatches>>> = ({ signal }) => listBatches({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBatches>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBatchesQueryResult = NonNullable<Awaited<ReturnType<typeof listBatches>>>
+export type ListBatchesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List viral generation batches with child jobs
+ */
+
+export function useListBatches<TData = Awaited<ReturnType<typeof listBatches>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBatches>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBatchesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateBatchUrl = () => {
+
+
+
+
+  return `/api/batches`
+}
+
+/**
+ * @summary Create a bounded sequence of related video jobs
+ */
+export const createBatch = async (batchInput: BatchInput, options?: Parameters<typeof customFetch>[1]): Promise<Batch> => {
+
+  return customFetch<Batch>(getCreateBatchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(batchInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBatchMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBatch>>, TError,{data: BodyType<BatchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBatch>>, TError,{data: BodyType<BatchInput>}, TContext> => {
+
+const mutationKey = ['createBatch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBatch>>, {data: BodyType<BatchInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBatch(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBatchMutationResult = NonNullable<Awaited<ReturnType<typeof createBatch>>>
+    export type CreateBatchMutationBody = BodyType<BatchInput>
+    export type CreateBatchMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a bounded sequence of related video jobs
+ */
+export const useCreateBatch = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBatch>>, TError,{data: BodyType<BatchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBatch>>,
+        TError,
+        {data: BodyType<BatchInput>},
+        TContext
+      > => {
+      return useMutation(getCreateBatchMutationOptions(options));
+    }
+
+export const getGetBatchUrl = (id: number,) => {
+
+
+
+
+  return `/api/batches/${id}`
+}
+
+/**
+ * @summary Get one generation batch and all child jobs
+ */
+export const getBatch = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Batch> => {
+
+  return customFetch<Batch>(getGetBatchUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBatchQueryKey = (id: number,) => {
+    return [
+    `/api/batches/${id}`
+    ] as const;
+    }
+
+
+export const getGetBatchQueryOptions = <TData = Awaited<ReturnType<typeof getBatch>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBatch>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBatchQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBatch>>> = ({ signal }) => getBatch(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBatch>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBatchQueryResult = NonNullable<Awaited<ReturnType<typeof getBatch>>>
+export type GetBatchQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get one generation batch and all child jobs
+ */
+
+export function useGetBatch<TData = Awaited<ReturnType<typeof getBatch>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBatch>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBatchQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCancelBatchUrl = (id: number,) => {
+
+
+
+
+  return `/api/batches/${id}`
+}
+
+/**
+ * @summary Stop scheduling queued children in a batch
+ */
+export const cancelBatch = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Batch> => {
+
+  return customFetch<Batch>(getCancelBatchUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getCancelBatchMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelBatch>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelBatch>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['cancelBatch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelBatch>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  cancelBatch(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelBatchMutationResult = NonNullable<Awaited<ReturnType<typeof cancelBatch>>>
+
+    export type CancelBatchMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Stop scheduling queued children in a batch
+ */
+export const useCancelBatch = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelBatch>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelBatch>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getCancelBatchMutationOptions(options));
+    }
+
+export const getRefreshBatchUrl = (id: number,) => {
+
+
+
+
+  return `/api/batches/${id}/refresh`
+}
+
+/**
+ * @summary Refresh active children and submit the next bounded child
+ */
+export const refreshBatch = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Batch> => {
+
+  return customFetch<Batch>(getRefreshBatchUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRefreshBatchMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshBatch>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshBatch>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['refreshBatch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshBatch>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  refreshBatch(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshBatchMutationResult = NonNullable<Awaited<ReturnType<typeof refreshBatch>>>
+
+    export type RefreshBatchMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Refresh active children and submit the next bounded child
+ */
+export const useRefreshBatch = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshBatch>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshBatch>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRefreshBatchMutationOptions(options));
+    }
+
+export const getRetryBatchChildUrl = (id: number,
+    jobId: number,) => {
+
+
+
+
+  return `/api/batches/${id}/children/${jobId}/retry`
+}
+
+/**
+ * @summary Retry a failed child with its original controlled variation
+ */
+export const retryBatchChild = async (id: number,
+    jobId: number, options?: Parameters<typeof customFetch>[1]): Promise<Batch> => {
+
+  return customFetch<Batch>(getRetryBatchChildUrl(id,jobId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRetryBatchChildMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryBatchChild>>, TError,{id: number;jobId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryBatchChild>>, TError,{id: number;jobId: number}, TContext> => {
+
+const mutationKey = ['retryBatchChild'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryBatchChild>>, {id: number;jobId: number}> = (props) => {
+          const {id,jobId} = props ?? {};
+
+          return  retryBatchChild(id,jobId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetryBatchChildMutationResult = NonNullable<Awaited<ReturnType<typeof retryBatchChild>>>
+
+    export type RetryBatchChildMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Retry a failed child with its original controlled variation
+ */
+export const useRetryBatchChild = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryBatchChild>>, TError,{id: number;jobId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof retryBatchChild>>,
+        TError,
+        {id: number;jobId: number},
+        TContext
+      > => {
+      return useMutation(getRetryBatchChildMutationOptions(options));
+    }
 
 export const getGetJobUrl = (id: number,) => {
 

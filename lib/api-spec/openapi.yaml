@@ -206,6 +206,105 @@ paths:
               schema:
                 $ref: "#/components/schemas/JobStats"
 
+  /batches:
+    get:
+      operationId: listBatches
+      tags: [jobs]
+      summary: List viral generation batches with child jobs
+      responses:
+        "200":
+          description: Batches ordered by newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Batch"
+    post:
+      operationId: createBatch
+      tags: [jobs]
+      summary: Create a bounded sequence of related video jobs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchInput"
+      responses:
+        "201":
+          description: Batch created and its first child submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Batch"
+        "400":
+          description: Invalid creative batch setup
+
+  /batches/{id}:
+    get:
+      operationId: getBatch
+      tags: [jobs]
+      summary: Get one generation batch and all child jobs
+      parameters:
+        - $ref: "#/components/parameters/BatchId"
+      responses:
+        "200":
+          description: Batch detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Batch"
+        "404":
+          description: Not found
+    delete:
+      operationId: cancelBatch
+      tags: [jobs]
+      summary: Stop scheduling queued children in a batch
+      parameters:
+        - $ref: "#/components/parameters/BatchId"
+      responses:
+        "200":
+          description: Cancelled batch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Batch"
+
+  /batches/{id}/refresh:
+    post:
+      operationId: refreshBatch
+      tags: [jobs]
+      summary: Refresh active children and submit the next bounded child
+      parameters:
+        - $ref: "#/components/parameters/BatchId"
+      responses:
+        "200":
+          description: Updated batch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Batch"
+
+  /batches/{id}/children/{jobId}/retry:
+    post:
+      operationId: retryBatchChild
+      tags: [jobs]
+      summary: Retry a failed child with its original controlled variation
+      parameters:
+        - $ref: "#/components/parameters/BatchId"
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Updated batch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Batch"
+
   /jobs/{id}:
     get:
       operationId: getJob
@@ -549,6 +648,13 @@ paths:
           description: AI provider error
 
 components:
+  parameters:
+    BatchId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: number
   schemas:
     AssistantChatMessage:
       type: object
@@ -793,6 +899,98 @@ components:
         completedAt:
           type: ["string", "null"]
           format: date-time
+        batchId:
+          type: ["number", "null"]
+        batchIndex:
+          type: ["number", "null"]
+
+    Batch:
+      type: object
+      required: [id, name, batchType, status, totalJobs, completedJobs, failedJobs, cancelledJobs, settings, children, createdAt]
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        batchType:
+          type: string
+          enum: [scene-variation, finished-video-variation]
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        totalJobs:
+          type: number
+        completedJobs:
+          type: number
+        failedJobs:
+          type: number
+        cancelledJobs:
+          type: number
+        settings:
+          type: object
+          additionalProperties: true
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Job"
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+
+    BatchInput:
+      type: object
+      required: [name, batchType, batchSize, masterAsset, scenePrompt, styleAnchor, seedStrategy]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        batchType:
+          type: string
+          enum: [scene-variation, finished-video-variation]
+        batchSize:
+          type: number
+          minimum: 1
+          maximum: 30
+        masterAsset:
+          type: string
+          description: Uploaded image for scenes or uploaded video for finished-video variations
+        scenePrompt:
+          type: string
+          minLength: 2
+          maxLength: 1000
+        styleAnchor:
+          type: string
+          minLength: 2
+          maxLength: 1000
+        identityAnchor:
+          type: string
+        cameraTreatments:
+          type: array
+          items:
+            type: string
+        aspectRatios:
+          type: array
+          items:
+            type: string
+        colorGrades:
+          type: array
+          items:
+            type: string
+        captionTreatment:
+          type: string
+        seedStrategy:
+          type: string
+          enum: [incremental, fixed, random]
+        baseSeed:
+          type: number
+        durationSeconds:
+          type: number
+          minimum: 1
+          maximum: 60
 
     JobInput:
       type: object

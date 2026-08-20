@@ -10,6 +10,13 @@
 export * from './assistantChatMessage';
 export * from './assistantChatMessageRole';
 // export * from './assistantChatResponse'; // excluded: name collides with zod schema in ../api (re-apply after each codegen run)
+export * from './batch';
+export * from './batchBatchType';
+export * from './batchInput';
+export * from './batchInputBatchType';
+export * from './batchInputSeedStrategy';
+export * from './batchSettings';
+export * from './batchStatus';
 export * from './comfyModels';
 export * from './comfyQueue';
 export * from './comfyQueueRunningItemsItem';

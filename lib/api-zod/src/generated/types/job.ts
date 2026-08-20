@@ -28,4 +28,8 @@ export interface Job {
   createdAt: Date;
   /** @nullable */
   completedAt?: Date | null;
+  /** @nullable */
+  batchId?: number | null;
+  /** @nullable */
+  batchIndex?: number | null;
 }

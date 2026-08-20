@@ -169,7 +169,9 @@ export const ListJobsResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })).optional(),
   "createdAt": zod.coerce.date(),
-  "completedAt": zod.coerce.date().nullish()
+  "completedAt": zod.coerce.date().nullish(),
+  "batchId": zod.number().nullish(),
+  "batchIndex": zod.number().nullish()
 })
 export const ListJobsResponse = zod.array(ListJobsResponseItem)
 
@@ -201,7 +203,9 @@ export const CreateJobResponse = zod.object({
   "createdAt": zod.coerce.date()
 })).optional(),
   "createdAt": zod.coerce.date(),
-  "completedAt": zod.coerce.date().nullish()
+  "completedAt": zod.coerce.date().nullish(),
+  "batchId": zod.number().nullish(),
+  "batchIndex": zod.number().nullish()
 })
 
 
@@ -215,6 +219,301 @@ export const GetJobStatsResponse = zod.object({
   "completed": zod.number(),
   "failed": zod.number(),
   "todayCount": zod.number()
+})
+
+
+/**
+ * @summary List viral generation batches with child jobs
+ */
+export const ListBatchesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "totalJobs": zod.number(),
+  "completedJobs": zod.number(),
+  "failedJobs": zod.number(),
+  "cancelledJobs": zod.number(),
+  "settings": zod.record(zod.string(), zod.unknown()),
+  "children": zod.array(zod.object({
+  "id": zod.number(),
+  "workflowId": zod.string(),
+  "workflowName": zod.string(),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "params": zod.record(zod.string(), zod.unknown()),
+  "comfyPromptId": zod.string().nullish(),
+  "progress": zod.number().nullish().describe('0-100'),
+  "errorMessage": zod.string().nullish(),
+  "outputs": zod.array(zod.object({
+  "id": zod.number(),
+  "jobId": zod.number(),
+  "filename": zod.string(),
+  "outputType": zod.enum(['image', 'video', 'audio']),
+  "comfyUrl": zod.string().describe('Proxied URL to fetch the file from ComfyUI'),
+  "thumbnailUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})).optional(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish(),
+  "batchId": zod.number().nullish(),
+  "batchIndex": zod.number().nullish()
+})),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish()
+})
+export const ListBatchesResponse = zod.array(ListBatchesResponseItem)
+
+
+/**
+ * @summary Create a bounded sequence of related video jobs
+ */
+export const createBatchBodyNameMax = 100;
+
+export const createBatchBodyBatchSizeMax = 30;
+
+export const createBatchBodyScenePromptMin = 2;
+export const createBatchBodyScenePromptMax = 1000;
+
+export const createBatchBodyStyleAnchorMin = 2;
+export const createBatchBodyStyleAnchorMax = 1000;
+
+export const createBatchBodyDurationSecondsMax = 60;
+
+
+
+export const CreateBatchBody = zod.object({
+  "name": zod.string().min(1).max(createBatchBodyNameMax),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "batchSize": zod.number().min(1).max(createBatchBodyBatchSizeMax),
+  "masterAsset": zod.string().describe('Uploaded image for scenes or uploaded video for finished-video variations'),
+  "scenePrompt": zod.string().min(createBatchBodyScenePromptMin).max(createBatchBodyScenePromptMax),
+  "styleAnchor": zod.string().min(createBatchBodyStyleAnchorMin).max(createBatchBodyStyleAnchorMax),
+  "identityAnchor": zod.string().optional(),
+  "cameraTreatments": zod.array(zod.string()).optional(),
+  "aspectRatios": zod.array(zod.string()).optional(),
+  "colorGrades": zod.array(zod.string()).optional(),
+  "captionTreatment": zod.string().optional(),
+  "seedStrategy": zod.enum(['incremental', 'fixed', 'random']),
+  "baseSeed": zod.number().optional(),
+  "durationSeconds": zod.number().min(1).max(createBatchBodyDurationSecondsMax).optional()
+})
+
+export const CreateBatchResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "totalJobs": zod.number(),
+  "completedJobs": zod.number(),
+  "failedJobs": zod.number(),
+  "cancelledJobs": zod.number(),
+  "settings": zod.record(zod.string(), zod.unknown()),
+  "children": zod.array(zod.object({
+  "id": zod.number(),
+  "workflowId": zod.string(),
+  "workflowName": zod.string(),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "params": zod.record(zod.string(), zod.unknown()),
+  "comfyPromptId": zod.string().nullish(),
+  "progress": zod.number().nullish().describe('0-100'),
+  "errorMessage": zod.string().nullish(),
+  "outputs": zod.array(zod.object({
+  "id": zod.number(),
+  "jobId": zod.number(),
+  "filename": zod.string(),
+  "outputType": zod.enum(['image', 'video', 'audio']),
+  "comfyUrl": zod.string().describe('Proxied URL to fetch the file from ComfyUI'),
+  "thumbnailUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})).optional(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish(),
+  "batchId": zod.number().nullish(),
+  "batchIndex": zod.number().nullish()
+})),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Get one generation batch and all child jobs
+ */
+export const GetBatchParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetBatchResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "totalJobs": zod.number(),
+  "completedJobs": zod.number(),
+  "failedJobs": zod.number(),
+  "cancelledJobs": zod.number(),
+  "settings": zod.record(zod.string(), zod.unknown()),
+  "children": zod.array(zod.object({
+  "id": zod.number(),
+  "workflowId": zod.string(),
+  "workflowName": zod.string(),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "params": zod.record(zod.string(), zod.unknown()),
+  "comfyPromptId": zod.string().nullish(),
+  "progress": zod.number().nullish().describe('0-100'),
+  "errorMessage": zod.string().nullish(),
+  "outputs": zod.array(zod.object({
+  "id": zod.number(),
+  "jobId": zod.number(),
+  "filename": zod.string(),
+  "outputType": zod.enum(['image', 'video', 'audio']),
+  "comfyUrl": zod.string().describe('Proxied URL to fetch the file from ComfyUI'),
+  "thumbnailUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})).optional(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish(),
+  "batchId": zod.number().nullish(),
+  "batchIndex": zod.number().nullish()
+})),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Stop scheduling queued children in a batch
+ */
+export const CancelBatchParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CancelBatchResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "totalJobs": zod.number(),
+  "completedJobs": zod.number(),
+  "failedJobs": zod.number(),
+  "cancelledJobs": zod.number(),
+  "settings": zod.record(zod.string(), zod.unknown()),
+  "children": zod.array(zod.object({
+  "id": zod.number(),
+  "workflowId": zod.string(),
+  "workflowName": zod.string(),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "params": zod.record(zod.string(), zod.unknown()),
+  "comfyPromptId": zod.string().nullish(),
+  "progress": zod.number().nullish().describe('0-100'),
+  "errorMessage": zod.string().nullish(),
+  "outputs": zod.array(zod.object({
+  "id": zod.number(),
+  "jobId": zod.number(),
+  "filename": zod.string(),
+  "outputType": zod.enum(['image', 'video', 'audio']),
+  "comfyUrl": zod.string().describe('Proxied URL to fetch the file from ComfyUI'),
+  "thumbnailUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})).optional(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish(),
+  "batchId": zod.number().nullish(),
+  "batchIndex": zod.number().nullish()
+})),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Refresh active children and submit the next bounded child
+ */
+export const RefreshBatchParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RefreshBatchResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "totalJobs": zod.number(),
+  "completedJobs": zod.number(),
+  "failedJobs": zod.number(),
+  "cancelledJobs": zod.number(),
+  "settings": zod.record(zod.string(), zod.unknown()),
+  "children": zod.array(zod.object({
+  "id": zod.number(),
+  "workflowId": zod.string(),
+  "workflowName": zod.string(),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "params": zod.record(zod.string(), zod.unknown()),
+  "comfyPromptId": zod.string().nullish(),
+  "progress": zod.number().nullish().describe('0-100'),
+  "errorMessage": zod.string().nullish(),
+  "outputs": zod.array(zod.object({
+  "id": zod.number(),
+  "jobId": zod.number(),
+  "filename": zod.string(),
+  "outputType": zod.enum(['image', 'video', 'audio']),
+  "comfyUrl": zod.string().describe('Proxied URL to fetch the file from ComfyUI'),
+  "thumbnailUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})).optional(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish(),
+  "batchId": zod.number().nullish(),
+  "batchIndex": zod.number().nullish()
+})),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Retry a failed child with its original controlled variation
+ */
+export const RetryBatchChildParams = zod.object({
+  "id": zod.coerce.number(),
+  "jobId": zod.coerce.number()
+})
+
+export const RetryBatchChildResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "totalJobs": zod.number(),
+  "completedJobs": zod.number(),
+  "failedJobs": zod.number(),
+  "cancelledJobs": zod.number(),
+  "settings": zod.record(zod.string(), zod.unknown()),
+  "children": zod.array(zod.object({
+  "id": zod.number(),
+  "workflowId": zod.string(),
+  "workflowName": zod.string(),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "params": zod.record(zod.string(), zod.unknown()),
+  "comfyPromptId": zod.string().nullish(),
+  "progress": zod.number().nullish().describe('0-100'),
+  "errorMessage": zod.string().nullish(),
+  "outputs": zod.array(zod.object({
+  "id": zod.number(),
+  "jobId": zod.number(),
+  "filename": zod.string(),
+  "outputType": zod.enum(['image', 'video', 'audio']),
+  "comfyUrl": zod.string().describe('Proxied URL to fetch the file from ComfyUI'),
+  "thumbnailUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})).optional(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish(),
+  "batchId": zod.number().nullish(),
+  "batchIndex": zod.number().nullish()
+})),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish()
 })
 
 
@@ -244,7 +543,9 @@ export const GetJobResponse = zod.object({
   "createdAt": zod.coerce.date()
 })).optional(),
   "createdAt": zod.coerce.date(),
-  "completedAt": zod.coerce.date().nullish()
+  "completedAt": zod.coerce.date().nullish(),
+  "batchId": zod.number().nullish(),
+  "batchIndex": zod.number().nullish()
 })
 
 
@@ -284,7 +585,9 @@ export const RefreshJobResponse = zod.object({
   "createdAt": zod.coerce.date()
 })).optional(),
   "createdAt": zod.coerce.date(),
-  "completedAt": zod.coerce.date().nullish()
+  "completedAt": zod.coerce.date().nullish(),
+  "batchId": zod.number().nullish(),
+  "batchIndex": zod.number().nullish()
 })
 
 

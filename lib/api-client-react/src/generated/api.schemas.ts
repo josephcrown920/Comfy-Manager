@@ -217,6 +217,102 @@ export interface Job {
   createdAt: string;
   /** @nullable */
   completedAt?: string | null;
+  /** @nullable */
+  batchId?: number | null;
+  /** @nullable */
+  batchIndex?: number | null;
+}
+
+export type BatchBatchType = typeof BatchBatchType[keyof typeof BatchBatchType];
+
+
+export const BatchBatchType = {
+  'scene-variation': 'scene-variation',
+  'finished-video-variation': 'finished-video-variation',
+} as const;
+
+export type BatchStatus = typeof BatchStatus[keyof typeof BatchStatus];
+
+
+export const BatchStatus = {
+  pending: 'pending',
+  running: 'running',
+  completed: 'completed',
+  failed: 'failed',
+  cancelled: 'cancelled',
+} as const;
+
+export type BatchSettings = { [key: string]: unknown };
+
+export interface Batch {
+  id: number;
+  name: string;
+  batchType: BatchBatchType;
+  status: BatchStatus;
+  totalJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+  cancelledJobs: number;
+  settings: BatchSettings;
+  children: Job[];
+  createdAt: string;
+  /** @nullable */
+  completedAt?: string | null;
+}
+
+export type BatchInputBatchType = typeof BatchInputBatchType[keyof typeof BatchInputBatchType];
+
+
+export const BatchInputBatchType = {
+  'scene-variation': 'scene-variation',
+  'finished-video-variation': 'finished-video-variation',
+} as const;
+
+export type BatchInputSeedStrategy = typeof BatchInputSeedStrategy[keyof typeof BatchInputSeedStrategy];
+
+
+export const BatchInputSeedStrategy = {
+  incremental: 'incremental',
+  fixed: 'fixed',
+  random: 'random',
+} as const;
+
+export interface BatchInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  batchType: BatchInputBatchType;
+  /**
+     * @minimum 1
+     * @maximum 30
+     */
+  batchSize: number;
+  /** Uploaded image for scenes or uploaded video for finished-video variations */
+  masterAsset: string;
+  /**
+     * @minLength 2
+     * @maxLength 1000
+     */
+  scenePrompt: string;
+  /**
+     * @minLength 2
+     * @maxLength 1000
+     */
+  styleAnchor: string;
+  identityAnchor?: string;
+  cameraTreatments?: string[];
+  aspectRatios?: string[];
+  colorGrades?: string[];
+  captionTreatment?: string;
+  seedStrategy: BatchInputSeedStrategy;
+  baseSeed?: number;
+  /**
+     * @minimum 1
+     * @maximum 60
+     */
+  durationSeconds?: number;
 }
 
 export type JobInputParams = { [key: string]: unknown };

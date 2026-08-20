@@ -14,6 +14,7 @@ import Settings from '@/pages/settings';
 import Models from '@/pages/models';
 import Launch from '@/pages/launch';
 import Guide from '@/pages/guide';
+import Batches from '@/pages/batches';
 
 import {
   Route,
@@ -31,6 +32,7 @@ function Router() {
         <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/generate" component={Generate} />
+          <Route path="/batches" component={Batches} />
           <Route path="/assistant" component={Assistant} />
           <Route path="/jobs" component={Jobs} />
           <Route path="/gallery" component={Gallery} />

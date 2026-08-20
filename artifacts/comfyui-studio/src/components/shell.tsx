@@ -1,11 +1,12 @@
 import * as React from "react"
 import { Link, useLocation } from "wouter"
-import { LayoutDashboard, Settings2, Images, ListVideo, BrainCircuit, Rocket, Bot, Boxes, Menu, X, BookOpen } from "lucide-react"
+import { LayoutDashboard, Settings2, Images, ListVideo, BrainCircuit, Rocket, Bot, Boxes, Menu, X, BookOpen, GitBranch } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/generate", label: "Workflows", icon: Boxes },
+  { href: "/batches", label: "Batch Studio", icon: GitBranch },
   { href: "/assistant", label: "Assistant", icon: Bot },
   { href: "/jobs", label: "Jobs", icon: ListVideo },
   { href: "/gallery", label: "Gallery", icon: Images },

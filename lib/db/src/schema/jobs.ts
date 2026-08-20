@@ -16,11 +16,14 @@ export const jobsTable = pgTable("jobs", {
   status: text("status").notNull().default("pending"), // pending | running | completed | failed | cancelled
   params: jsonb("params").notNull().default({}),
   comfyPromptId: text("comfy_prompt_id"),
+  batchId: integer("batch_id"),
+  batchIndex: integer("batch_index"),
   progress: integer("progress").default(0),
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });
 

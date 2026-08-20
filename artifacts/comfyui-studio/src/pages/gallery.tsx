@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListOutputs, getListOutputsQueryKey, Output } from "@workspace/api-client-react";
+import { useListOutputs, getListOutputsQueryKey, Output, useListBatches, getListBatchesQueryKey } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Video, Image as ImageIcon, Download, Copy, Play } from "lucide-react";
@@ -22,6 +22,7 @@ export default function Gallery() {
     { type: filter === "all" ? undefined : (filter as any), limit: 50 },
     { query: { queryKey: getListOutputsQueryKey({ type: filter === "all" ? undefined : (filter as any), limit: 50 }) } }
   );
+  const { data: batches } = useListBatches({ query: { refetchInterval: 10000, queryKey: getListBatchesQueryKey() } });
 
   const { toast } = useToast();
   const handleCopyLink = (url: string) => {
@@ -57,6 +58,28 @@ export default function Gallery() {
         </div>
       </div>
 
+      {batches?.some((batch) => batch.children.some((child) => child.outputs?.length)) && (
+        <section className="space-y-4">
+          <div><p className="text-xs font-bold uppercase tracking-[.16em] text-[#e8f724]">Creative campaigns</p><h2 className="mt-1 text-lg font-bold text-[#f0eeff]">Grouped batch results</h2></div>
+          <div className="space-y-4">
+            {batches.filter((batch) => batch.children.some((child) => child.outputs?.length)).map((batch) => (
+              <div key={batch.id} className="overflow-hidden rounded-2xl border border-[#39305f] bg-[#1e1a38]">
+                <div className="flex items-center justify-between gap-4 border-b border-[#39305f] px-4 py-3"><div><p className="font-semibold text-[#f0eeff]">{batch.name}</p><p className="text-xs text-[#7b72a8]">{batch.completedJobs}/{batch.totalJobs} generated · {batch.failedJobs} failed</p></div><span className="rounded-full bg-[#e8f724]/10 px-2.5 py-1 text-xs font-bold text-[#e8f724]">{batch.batchType === "scene-variation" ? "Scene variations" : "Finished-video variations"}</span></div>
+                <div className="grid grid-cols-2 gap-3 p-3 md:grid-cols-3 lg:grid-cols-4">
+                  {batch.children.flatMap((child) => (child.outputs ?? []).map((output) => ({ ...output, batchIndex: child.batchIndex }))).map((output) => (
+                    <button key={output.id} onClick={() => setSelectedOutput(output)} className="group relative overflow-hidden rounded-xl border border-[#39305f] bg-[#151127] text-left transition-colors hover:border-[#e8f724]/70">
+                      {output.outputType === "video" ? <video src={output.comfyUrl} muted loop playsInline preload="metadata" className="aspect-video w-full object-cover" onMouseEnter={(event) => void event.currentTarget.play()} onMouseLeave={(event) => { event.currentTarget.pause(); event.currentTarget.currentTime = 0; }} /> : <img src={output.thumbnailUrl || output.comfyUrl} alt={output.filename} loading="lazy" className="aspect-video w-full object-cover" />}
+                      <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold text-[#e8f724]">V{output.batchIndex}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="pt-2"><p className="text-xs font-bold uppercase tracking-[.16em] text-[#7b72a8]">All outputs</p></div>
       {isLoading ? (
         <div className="columns-2 md:columns-3 lg:columns-4 gap-3 space-y-3">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (

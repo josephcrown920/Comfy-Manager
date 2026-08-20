@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { useListJobs, useDeleteJob, getListJobsQueryKey, refreshJob } from "@workspace/api-client-react";
+import { useListJobs, useDeleteJob, getListJobsQueryKey, refreshJob, useListBatches, useCancelBatch, useRetryBatchChild, refreshBatch, getListBatchesQueryKey } from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Trash2, ExternalLink, Loader2, PlayCircle, CheckCircle2, AlertCircle } from "lucide-react";
+import { Trash2, ExternalLink, Loader2, PlayCircle, CheckCircle2, AlertCircle, GitBranch, RotateCcw, Square } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -75,6 +75,9 @@ export default function Jobs() {
   const { data: jobs, isLoading } = useListJobs(undefined, {
     query: { refetchInterval: 30000, queryKey: getListJobsQueryKey() }
   });
+  const { data: batches } = useListBatches({ query: { refetchInterval: 5000, queryKey: getListBatchesQueryKey() } });
+  const cancelBatch = useCancelBatch();
+  const retryBatchChild = useRetryBatchChild();
 
   const hasRunningJobs = !!jobs?.some((j) => j.status === "running" || j.status === "pending");
   const promptJobMap: PromptJobMap = {};
@@ -90,6 +93,18 @@ export default function Jobs() {
   const deleteJob = useDeleteJob();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const active = batches?.filter((batch) => batch.status === "running" || batch.status === "pending") ?? [];
+    if (!active.length) return;
+    const refresh = () => {
+      void Promise.all(active.map((batch) => refreshBatch(batch.id)))
+        .finally(() => queryClient.invalidateQueries({ queryKey: getListBatchesQueryKey() }));
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 5000);
+    return () => window.clearInterval(timer);
+  }, [batches, queryClient]);
 
   const handleDelete = (id: number) => {
     if (confirm("Are you sure you want to delete this job?")) {
@@ -150,6 +165,49 @@ export default function Jobs() {
           </Button>
         </Link>
       </div>
+
+      {batches && batches.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <GitBranch className="h-4 w-4 text-[#e8f724]" />
+            <h2 className="text-sm font-bold text-[#f0eeff]">Creative batches</h2>
+            <span className="text-xs text-[#7b72a8]">One child runs at a time on your GPU</span>
+          </div>
+          <div className="space-y-3">
+            {batches.map((batch) => {
+              const done = batch.completedJobs + batch.failedJobs + batch.cancelledJobs;
+              const value = batch.totalJobs ? Math.round((done / batch.totalJobs) * 100) : 0;
+              return (
+                <div key={batch.id} className="overflow-hidden rounded-2xl border border-[#39305f] bg-[#1e1a38]">
+                  <div className="flex flex-col gap-3 border-b border-[#39305f] p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div><p className="font-semibold text-[#f0eeff]">{batch.name}</p><p className="mt-0.5 text-xs capitalize text-[#7b72a8]">{batch.batchType.replace(/-/g, " ")} · {batch.totalJobs} controlled variations</p></div>
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${batch.status === "completed" ? "bg-[#4caf50]/10 text-[#7bd47f]" : batch.status === "failed" ? "bg-[#e05555]/10 text-[#e87979]" : batch.status === "cancelled" ? "bg-[#776ca4]/15 text-[#a79dc7]" : "bg-[#e8f724]/10 text-[#e8f724]"}`}>{batch.status}</span>
+                      {(batch.status === "pending" || batch.status === "running") && <Button size="sm" variant="ghost" className="h-8 rounded-full text-[#a79dc7] hover:text-[#e87979]" onClick={() => cancelBatch.mutate({ id: batch.id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListBatchesQueryKey() }) })}><Square className="mr-1 h-3.5 w-3.5 fill-current" /> Stop queue</Button>}
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="mb-3 flex items-center gap-3"><Progress value={value} className="h-1.5 flex-1 bg-[#2a2448]" /><span className="whitespace-nowrap font-mono text-xs text-[#a79dc7]">{done}/{batch.totalJobs} complete · {batch.failedJobs} failed</span></div>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {batch.children.map((child) => (
+                        <div key={child.id} className="rounded-xl border border-[#39305f] bg-[#151127] p-3">
+                          <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-[#e8f724]">V{child.batchIndex}</span><span className="text-xs capitalize text-[#a79dc7]">{child.status}</span></div>
+                          <p className="mt-1 line-clamp-1 text-xs text-[#d4ceed]">{String((child.params as Record<string, any>).variation?.camera ?? (child.params as Record<string, any>).variation?.aspect ?? child.workflowName)}</p>
+                          {child.errorMessage && <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#e87979]">{child.errorMessage}</p>}
+                          <div className="mt-2 flex items-center gap-2">
+                            {child.outputs?.length ? <Link href="/gallery" className="text-[11px] font-bold text-[#e8f724]">View output →</Link> : null}
+                            {child.status === "failed" && <button className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-[#e8f724]" onClick={() => retryBatchChild.mutate({ id: batch.id, jobId: child.id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListBatchesQueryKey() }) })}><RotateCcw className="h-3 w-3" /> Retry</button>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <div className="border border-[#2d2650] bg-[#1e1a38] rounded-2xl overflow-hidden">
         <Table>
