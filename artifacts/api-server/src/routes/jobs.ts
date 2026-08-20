@@ -927,7 +927,7 @@ function buildTalkingAvatarPrompt(params: Record<string, unknown>): Record<strin
         audio: ["5", 1],
         frame_rate: 25,
         loop_count: 0,
-        filename_prefix: "talking-avatar",
+        filename_prefix: String(params.output_prefix ?? "talking-avatar"),
         format: "video/h264-mp4",
         pingpong: false,
         save_output: true,
@@ -992,50 +992,18 @@ function buildBlogHeroPrompt(params: Record<string, unknown>): Record<string, un
 }
 
 /**
- * Lip Sync — SadTalker-style graph.
- * Requires the SadTalker ComfyUI extension (comfyui-sadtalker or similar).
- * face_image  → LoadImage → SadTalker (portrait input)
- * audio_file  → VHS_LoadAudio → SadTalker (audio input)
+ * Lip Sync — LatentSync graph.
+ * Uses the same supported node pack and checkpoints as Talking Avatar.
  */
 function buildLipSyncPrompt(params: Record<string, unknown>): Record<string, unknown> {
   const faceImage = String(params.face_image ?? "");
   const audioFile = String(params.audio_file ?? "");
-  // Audio files are stored under the `audio/` subfolder by the upload endpoint
-  const audioPath = audioFile.startsWith("audio/") ? audioFile : `audio/${audioFile}`;
-
-  return {
-    "1": {
-      class_type: "LoadImage",
-      inputs: { image: faceImage, upload: "image" },
-    },
-    "2": {
-      class_type: "VHS_LoadAudio",
-      inputs: { audio: audioPath, start_time: 0.0, duration: 0.0 },
-    },
-    "3": {
-      class_type: "SadTalker",
-      inputs: {
-        source_image: ["1", 0],
-        driven_audio: ["2", 0],
-        checkpoint: String(params.checkpoint ?? params.sadtalker_model ?? "SadTalker_V0.0.2_256.safetensors"),
-        size: 256,
-        expression_scale: 1.0,
-        still_mode: false,
-        preprocess: "crop",
-      },
-    },
-    "4": {
-      class_type: "VHS_VideoCombine",
-      inputs: {
-        images: ["3", 0],
-        frame_rate: 25,
-        loop_count: 0,
-        filename_prefix: "lip-sync",
-        format: "video/h264-mp4",
-        save_output: true,
-      },
-    },
-  };
+  return buildTalkingAvatarPrompt({
+    portrait_image: faceImage,
+    speech_audio: audioFile,
+    expression_scale: params.expression_scale ?? 50,
+    output_prefix: "lip-sync",
+  });
 }
 export default router;
 
@@ -1078,7 +1046,7 @@ function buildImg2VidPrompt(params: Record<string, unknown>): Record<string, unk
     },
     "5": {
       class_type: "ImageOnlyCheckpointLoader",
-      inputs: { ckpt_name: String(params.checkpoint ?? "svd_xt.safetensors") },
+      inputs: { ckpt_name: String(params.checkpoint ?? "svd_xt_1_1.safetensors") },
     },
     "6": {
       class_type: "VideoLinearCFGGuidance",
@@ -1118,6 +1086,7 @@ function buildImg2VidPrompt(params: Record<string, unknown>): Record<string, unk
         loop_count: 0,
         filename_prefix: "img2vid",
         format: "video/h264-mp4",
+        pingpong: false,
         save_output: true,
       },
     },
@@ -1266,6 +1235,7 @@ function buildMotionControlPrompt(params: Record<string, unknown>): Record<strin
         loop_count: 0,
         filename_prefix: `motion-control-${motionPreset}`,
         format: "video/h264-mp4",
+        pingpong: false,
         save_output: true,
       },
     },

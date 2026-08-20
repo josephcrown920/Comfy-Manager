@@ -126,6 +126,7 @@ router.put("/settings", async (req, res): Promise<void> => {
     UpdateSettingsResponse.parse({
       comfyUrl: parsed.data.comfyUrl,
       updatedAt: new Date(),
+      savedGpus: await getSavedGpus(),
     })
   );
 });

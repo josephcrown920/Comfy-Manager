@@ -29,8 +29,8 @@ Secrets / env it reads (Colab userdata, Kaggle Secrets, or plain env vars):
                         first (stabilityai/stable-diffusion-xl-base-1.0 and
                         stabilityai/stable-video-diffusion-img2vid-xt-1-1).
   COMFY_CAPABILITIES    optional — comma list of what to install:
-                        image, video, lipsync, motion.
-                        Default picks by VRAM: <20 GB -> image,video,lipsync
+                        image, video, lipsync, motion, cinematic.
+                        Default picks by VRAM: <20 GB -> image,video,lipsync,cinematic
                         (video = AnimateDiff text-to-video; SVD image-to-video
                         is skipped on small cards); >=20 GB -> all four.
 """
@@ -102,13 +102,37 @@ CAP_MODELS = {
          "stabilityai/stable-video-diffusion-img2vid-xt-1-1", "svd_xt_1_1.safetensors", 20),
     ],
     # lipsync/motion wrapper packs self-download their weights on first run.
-    "lipsync": [],
-    "motion": [],
+    "lipsync": [
+        # LatentSyncWrapper otherwise downloads these during node startup.
+        ("custom_nodes/ComfyUI-LatentSyncWrapper/checkpoints/latentsync_unet.pt",
+         "ByteDance/LatentSync-1.6", "latentsync_unet.pt", 0),
+        ("custom_nodes/ComfyUI-LatentSyncWrapper/checkpoints/whisper/tiny.pt",
+         "ByteDance/LatentSync-1.6", "whisper/tiny.pt", 0),
+    ],
+    "motion": [
+        # MimicMotion is only installed by default on larger GPUs.
+        ("models/mimicmotion/MimicMotionMergedUnet_1-1-fp16.safetensors",
+         "Kijai/MimicMotion_pruned",
+         "MimicMotionMergedUnet_1-1-fp16.safetensors", 20),
+    ],
     "cinematic": [
         # 2x upscaler for Slow-Motion Upscale (ungated repo). RIFE weights are
         # self-downloaded by ComfyUI-Frame-Interpolation on first use.
         ("models/upscale_models/RealESRGAN_x2.pth",
          "ai-forever/Real-ESRGAN", "RealESRGAN_x2.pth", 0),
+    ],
+}
+
+# Frame Interpolation downloads these lazily on first execution. Download the
+# selected checkpoint during launch so the first real job does not fail or
+# appear stuck while the node fetches a model.
+CAP_URL_MODELS = {
+    "cinematic": [
+        (
+            "custom_nodes/ComfyUI-Frame-Interpolation/ckpts/rife/rife47.pth",
+            "https://huggingface.co/marduk191/rife/resolve/main/rife47.pth",
+            0,
+        ),
     ],
 }
 
@@ -204,12 +228,6 @@ def download_models(caps):
     from huggingface_hub import hf_hub_download  # type: ignore
     token = os.environ.get("HF_TOKEN", "").strip() or None
     needed = [(cap, m) for cap in caps for m in CAP_MODELS[cap]]
-    if needed and not token:
-        raise SystemExit(
-            "[models] HF_TOKEN is required: SDXL / SVD weights are gated on "
-            "Hugging Face. Create a token at huggingface.co/settings/tokens, "
-            "accept the license on each model page, and add HF_TOKEN as a secret."
-        )
     vram = detect_vram_gb()
     for _cap, (rel, repo, fname, min_vram) in needed:
         if min_vram and vram and vram < min_vram:
@@ -231,6 +249,27 @@ def download_models(caps):
                 "and accept the license with the same account as your HF_TOKEN."
             )
         shutil.copyfile(path, dest)
+
+    for cap in caps:
+        for rel, url, min_vram in CAP_URL_MODELS.get(cap, []):
+            if min_vram and vram and vram < min_vram:
+                print(f"[models] skipping {url.rsplit('/', 1)[-1]} — needs a ~{min_vram}+ GB GPU "
+                      f"(this card has {vram:.0f} GB)", flush=True)
+                continue
+            dest = os.path.join(COMFY_DIR, rel)
+            if os.path.isfile(dest):
+                print(f"[models] cached: {rel}", flush=True)
+                continue
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            print(f"[models] downloading {url} -> {rel}", flush=True)
+            try:
+                with urllib.request.urlopen(url, timeout=60) as response, open(dest, "wb") as output:
+                    shutil.copyfileobj(response, output)
+            except Exception as e:
+                raise SystemExit(
+                    f"[models] direct download failed for {url}: {e}\n"
+                    "          Re-run the launcher after checking that the GPU runtime has Internet enabled."
+                )
 
 
 def start_comfyui():
