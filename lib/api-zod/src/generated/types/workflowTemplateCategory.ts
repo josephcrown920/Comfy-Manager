@@ -14,5 +14,7 @@ export const WorkflowTemplateCategory = {
   'motion-control': 'motion-control',
   'video-generation': 'video-generation',
   'image-generation': 'image-generation',
+  cinematic: 'cinematic',
+  'content-creation': 'content-creation',
   custom: 'custom',
 } as const;

@@ -1,0 +1,93 @@
+                    AURORA CANVAS
+                          │
+                 🧠 AURORA BRAIN
+                          │
+                Gemini / GPT / GLM
+                          │
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+      🎨 IMAGE          🎬 VIDEO         🎵 AUDIO
+          │               │               │
+    ┌─────┴─────┐   ┌─────┴─────┐   ┌────┴────┐
+    │           │   │           │   │         │
+ Seedream    Flux Seedance     Wan  Music    Voice
+ Nano Banana Qwen Kling        Veo  SFX      TTS
+ GPT Image             Sora
+          │               │
+          └───────┬───────┘
+                  ▼
+              COMFYUI
+                  │
+          Custom workflows
+          ControlNet / LoRA
+          Upscaling / editing
+
+                    AURORA CANVAS
+                          │
+                 ┌────────▼────────┐
+                 │ GEMINI 3.1 PRO  │
+                 │ CREATIVE BRAIN  │
+                 └────────┬────────┘
+                          │
+          ┌───────────────┼────────────────┐
+          ▼               ▼                ▼
+     CONTENT          IMAGE             VIDEO
+       │                │                 │
+       ▼                ▼                 ▼
+ Gemini Pro       Nano Banana 2      Gemini Omni
+ Gemini Flash     Nano Banana Pro    Veo 3.1
+                                     
+                          │
+                          ▼
+                    GLM-5.2/5.3
+                   AGENT + CODING
+
+                    AURORA CANVAS
+                          │
+                    ┌─────▼─────┐
+                    │ ORCHESTRATOR│
+                    └─────┬─────┘
+                          │
+             ┌────────────┼────────────┐
+             ▼            ▼            ▼
+       Gemini Pro      GLM 5.2    Fable 5
+       HARD TASKS      AGENTS     ULTRA TASKS
+             │            │            │
+             └────────────┼────────────┘
+                          ▼
+                   Gemini Flash
+                   CHEAP WORK
+                          │
+                          ▼
+              IMAGE / VIDEO / AUDIO
+                    MODEL ROUTER
+
+User
+  ↓
+Aurora Orchestrator
+  ↓
+Cheap model
+  ↓
+Can it solve this?
+  ├── YES → execute
+  │
+  └── NO → stronger model
+              ↓
+          still difficult?
+              ↓
+          Fable 5
+
+                    AURORA CANVAS
+                         │
+                 ┌───────▼───────┐
+                 │  ORCHESTRATOR  │
+                 └───────┬───────┘
+                         │
+       ┌─────────┬───────┼────────┬─────────┐
+       ▼         ▼       ▼        ▼         ▼
+   Creative    Image   Video    Motion    Editing
+   Director    Agent   Agent    Agent     Agent
+       │         │       │        │         │
+       ▼         ▼       ▼        ▼         ▼
+     LLMs      FLUX    Kling   Seedance   ComfyUI
+               Seedream VEO    Wan        Upscalers

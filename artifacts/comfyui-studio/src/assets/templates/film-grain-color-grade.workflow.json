@@ -1,0 +1,59 @@
+{
+  "1": {
+    "class_type": "VHS_LoadVideo",
+    "inputs": {
+      "video": "REPLACE_WITH_UPLOADED_VIDEO.mp4",
+      "force_rate": 24,
+      "custom_width": 0,
+      "custom_height": 0,
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1
+    }
+  },
+  "3": {
+    "class_type": "ColorCorrect",
+    "inputs": {
+      "image": ["1", 0],
+      "temperature": -12,
+      "hue": 0,
+      "brightness": -4,
+      "contrast": 14,
+      "saturation": -8,
+      "gamma": 1.05
+    }
+  },
+  "4": {
+    "class_type": "ProPostFilmGrain",
+    "inputs": {
+      "image": ["3", 0],
+      "gray_scale": false,
+      "grain_type": "Fine",
+      "grain_sat": 0.4,
+      "grain_power": 0.6,
+      "shadows": 0.25,
+      "highs": 0.15,
+      "scale": 1.0,
+      "sharpen": 0,
+      "src_gamma": 1.0,
+      "seed": 42
+    }
+  },
+  "5": {
+    "class_type": "ProPostVignette",
+    "inputs": { "image": ["4", 0], "intensity": 0.35, "center_x": 0.5, "center_y": 0.5 }
+  },
+  "6": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["5", 0],
+      "audio": ["1", 2],
+      "frame_rate": 24,
+      "loop_count": 0,
+      "filename_prefix": "FilmGrade",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true
+    }
+  }
+}

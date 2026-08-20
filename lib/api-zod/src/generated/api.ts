@@ -91,7 +91,7 @@ export const ListWorkflowsResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "description": zod.string(),
-  "category": zod.enum(['lip-sync', 'motion-control', 'video-generation', 'image-generation', 'custom']),
+  "category": zod.enum(['lip-sync', 'motion-control', 'video-generation', 'image-generation', 'cinematic', 'content-creation', 'custom']),
   "icon": zod.string().nullish(),
   "estimatedTime": zod.string().nullish(),
   "params": zod.array(zod.object({
@@ -121,7 +121,7 @@ export const GetWorkflowResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "description": zod.string(),
-  "category": zod.enum(['lip-sync', 'motion-control', 'video-generation', 'image-generation', 'custom']),
+  "category": zod.enum(['lip-sync', 'motion-control', 'video-generation', 'image-generation', 'cinematic', 'content-creation', 'custom']),
   "icon": zod.string().nullish(),
   "estimatedTime": zod.string().nullish(),
   "params": zod.array(zod.object({

@@ -53,7 +53,10 @@ CONFIG_KEYS = ["NGROK_AUTHTOKEN", "NGROK_STATIC_DOMAIN", "COMFY_CAPABILITIES", "
 # Custom-node packs per capability. Core nodes (KSampler, CheckpointLoaderSimple,
 # SVD_img2vid_Conditioning, ...) ship with ComfyUI itself.
 CAP_NODE_PACKS = {
-    "image": [],  # SDXL text-to-image uses only core nodes.
+    "image": [
+        # Automatic subject masking for Product Background Swap.
+        "https://github.com/john-mnz/ComfyUI-Inspyrenet-Rembg",
+    ],
     "video": [
         "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite",
         "https://github.com/Kosinkadink/ComfyUI-AnimateDiff-Evolved",
@@ -67,6 +70,14 @@ CAP_NODE_PACKS = {
     "motion": [
         "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite",
         "https://github.com/kijai/ComfyUI-MimicMotionWrapper",
+        "https://github.com/sipherxyz/comfyui-art-venture",
+    ],
+    "cinematic": [
+        # Film Grain & Color Grade (ProPost + art-venture ColorCorrect) and
+        # Slow-Motion Upscale (RIFE frame interpolation).
+        "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite",
+        "https://github.com/digitaljohn/comfyui-propost",
+        "https://github.com/Fannovel16/ComfyUI-Frame-Interpolation",
         "https://github.com/sipherxyz/comfyui-art-venture",
     ],
 }
@@ -93,6 +104,12 @@ CAP_MODELS = {
     # lipsync/motion wrapper packs self-download their weights on first run.
     "lipsync": [],
     "motion": [],
+    "cinematic": [
+        # 2x upscaler for Slow-Motion Upscale (ungated repo). RIFE weights are
+        # self-downloaded by ComfyUI-Frame-Interpolation on first use.
+        ("models/upscale_models/RealESRGAN_x2.pth",
+         "ai-forever/Real-ESRGAN", "RealESRGAN_x2.pth", 0),
+    ],
 }
 
 
@@ -150,9 +167,11 @@ def requested_caps():
                              f"Valid: {sorted(CAP_NODE_PACKS)}")
         return caps
     vram = detect_vram_gb()
-    # Free 16 GB cards get image + video-lite (AnimateDiff) + lipsync.
+    # Free 16 GB cards get image + video-lite (AnimateDiff) + lipsync +
+    # cinematic (post-processing/interpolation — light on VRAM).
     # Motion control (MimicMotion) and SVD need ~24 GB.
-    caps = ["image", "video", "lipsync"] if vram < 20 else ["image", "video", "lipsync", "motion"]
+    caps = (["image", "video", "lipsync", "cinematic"] if vram < 20
+            else ["image", "video", "lipsync", "motion", "cinematic"])
     print(f"[boot] detected {vram:.0f} GB VRAM -> installing {caps}", flush=True)
     return caps
 

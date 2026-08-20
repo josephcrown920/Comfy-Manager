@@ -37,7 +37,7 @@ const SECRETS = [
   {
     key: "COMFY_CAPABILITIES",
     required: false,
-    note: "What to install: image, video, lipsync, motion (default auto-picks by GPU VRAM)",
+    note: "What to install: image, video, lipsync, motion, cinematic (default auto-picks by GPU VRAM)",
   },
 ];
 

@@ -1,0 +1,41 @@
+{
+  "1": { "class_type": "LoadImage", "inputs": { "image": "REPLACE_WITH_UPLOADED_PORTRAIT.png", "upload": "image" } },
+  "2": {
+    "class_type": "VHS_LoadAudio",
+    "inputs": { "audio_file": "audio/REPLACE_WITH_UPLOADED_SPEECH_AUDIO.mp3", "seek_seconds": 0.0 }
+  },
+  "3": { "class_type": "RepeatImageBatch", "inputs": { "image": ["1", 0], "amount": 25 } },
+  "4": {
+    "class_type": "VideoLengthAdjuster",
+    "inputs": {
+      "images": ["3", 0],
+      "audio": ["2", 0],
+      "mode": "loop_to_audio",
+      "fps": 25.0,
+      "silent_padding_sec": 0.5
+    }
+  },
+  "5": {
+    "class_type": "LatentSyncNode",
+    "inputs": {
+      "images": ["4", 0],
+      "audio": ["4", 1],
+      "seed": 1247,
+      "lips_expression": 2.0,
+      "inference_steps": 20
+    }
+  },
+  "6": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["5", 0],
+      "audio": ["5", 1],
+      "frame_rate": 25,
+      "loop_count": 0,
+      "filename_prefix": "TalkingAvatar",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true
+    }
+  }
+}

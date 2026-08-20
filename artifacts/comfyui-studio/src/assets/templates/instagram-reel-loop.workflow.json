@@ -1,0 +1,58 @@
+{
+  "1": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": "v1-5-pruned-emaonly.safetensors" } },
+  "2": { "class_type": "ADE_LoadAnimateDiffModel", "inputs": { "model_name": "mm_sd_v15_v2.ckpt" } },
+  "3": { "class_type": "ADE_ApplyAnimateDiffModelSimple", "inputs": { "motion_model": ["2", 0] } },
+  "4": {
+    "class_type": "ADE_StandardStaticContextOptions",
+    "inputs": { "context_length": 16, "context_stride": 1, "context_overlap": 4, "closed_loop": true }
+  },
+  "5": {
+    "class_type": "ADE_UseEvolvedSampling",
+    "inputs": {
+      "model": ["1", 0],
+      "beta_schedule": "sqrt_linear (AnimateDiff)",
+      "m_models": ["3", 0],
+      "context_options": ["4", 0]
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "seamless looping abstract neon gradient waves, flowing liquid motion, vibrant colors, vertical social media aesthetic, smooth hypnotic movement",
+      "clip": ["1", 1]
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "text": "static, jerky motion, text, watermark, low quality", "clip": ["1", 1] }
+  },
+  "8": { "class_type": "EmptyLatentImage", "inputs": { "width": 512, "height": 896, "batch_size": 32 } },
+  "9": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": 0,
+      "steps": 25,
+      "cfg": 8,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": ["5", 0],
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "latent_image": ["8", 0]
+    }
+  },
+  "10": { "class_type": "VAEDecode", "inputs": { "samples": ["9", 0], "vae": ["1", 2] } },
+  "11": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["10", 0],
+      "frame_rate": 16,
+      "loop_count": 0,
+      "filename_prefix": "ReelLoop",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true
+    }
+  }
+}

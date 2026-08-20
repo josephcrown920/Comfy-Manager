@@ -30,6 +30,14 @@ import animatediffTemplate from "@/assets/templates/animatediff-text-to-video.wo
 import svdTemplate from "@/assets/templates/svd-image-to-video.workflow.json";
 import latentsyncTemplate from "@/assets/templates/latentsync-lipsync.workflow.json";
 import mimicmotionTemplate from "@/assets/templates/mimicmotion-motion.workflow.json";
+import filmGradeTemplate from "@/assets/templates/film-grain-color-grade.workflow.json";
+import cinematicPortraitTemplate from "@/assets/templates/cinematic-portrait.workflow.json";
+import slowmoUpscaleTemplate from "@/assets/templates/slow-motion-upscale.workflow.json";
+import epicLandscapeTemplate from "@/assets/templates/epic-landscape.workflow.json";
+import reelLoopTemplate from "@/assets/templates/instagram-reel-loop.workflow.json";
+import productSwapTemplate from "@/assets/templates/product-background-swap.workflow.json";
+import talkingAvatarTemplate from "@/assets/templates/talking-avatar.workflow.json";
+import blogHeroTemplate from "@/assets/templates/blog-hero-image.workflow.json";
 import { WorkflowVisualizer } from "@/components/workflow-visualizer";
 
 // Image Assets
@@ -38,6 +46,14 @@ import animatediffThumbnail from "@/assets/thumbnails/animatediff.jpg";
 import svdThumbnail from "@/assets/thumbnails/svd.jpg";
 import latentsyncThumbnail from "@/assets/thumbnails/latentsync.jpg";
 import mimicmotionThumbnail from "@/assets/thumbnails/mimicmotion.jpg";
+import filmGradeThumbnail from "@/assets/thumbnails/film-grade.jpg";
+import cinematicPortraitThumbnail from "@/assets/thumbnails/cinematic-portrait.jpg";
+import slowmoUpscaleThumbnail from "@/assets/thumbnails/slowmo-upscale.jpg";
+import epicLandscapeThumbnail from "@/assets/thumbnails/epic-landscape.jpg";
+import reelLoopThumbnail from "@/assets/thumbnails/reel-loop.jpg";
+import productSwapThumbnail from "@/assets/thumbnails/product-swap.jpg";
+import talkingAvatarThumbnail from "@/assets/thumbnails/talking-avatar.jpg";
+import blogHeroThumbnail from "@/assets/thumbnails/blog-hero.jpg";
 
 const CUSTOM_WORKFLOW_ID = "custom-workflow";
 const MOTION_WORKFLOW_ID = "motion-control-animatediff";
@@ -120,6 +136,8 @@ export default function Generate() {
           { value: "video-generation",     label: "Video Generation" },
           { value: "lip-sync",             label: "Lip Sync" },
           { value: "motion-control",       label: "Motion Control" },
+          { value: "cinematic",            label: "Cinematic" },
+          { value: "content-creation",     label: "Content Creation" },
         ].map(({ value, label }) => {
           const active = categoryFilter === value;
           return (
@@ -254,6 +272,14 @@ const DB_WORKFLOW_THUMBNAILS: Record<string, string> = {
   "video-generation-txt2vid": animatediffThumbnail,
   "img2vid-stable-video": svdThumbnail,
   "custom-workflow": sdxlThumbnail,
+  "cinematic-film-grade": filmGradeThumbnail,
+  "cinematic-portrait": cinematicPortraitThumbnail,
+  "cinematic-slowmo-upscale": slowmoUpscaleThumbnail,
+  "cinematic-epic-landscape": epicLandscapeThumbnail,
+  "content-reel-loop": reelLoopThumbnail,
+  "content-product-swap": productSwapThumbnail,
+  "content-talking-avatar": talkingAvatarThumbnail,
+  "content-blog-hero": blogHeroThumbnail,
 };
 
 const WORKFLOW_TEMPLATES: { id: string; label: string; description: string; json: Record<string, unknown>, image?: string }[] = [
@@ -262,6 +288,14 @@ const WORKFLOW_TEMPLATES: { id: string; label: string; description: string; json
   { id: "svd", label: "SVD Image-to-Video", description: "Animate a still image (SVD XT, needs ~24 GB GPU). Paste your image URL or uploaded filename where marked.", json: svdTemplate, image: svdThumbnail },
   { id: "latentsync", label: "LatentSync Lip Sync", description: "Sync a video's mouth to audio. Upload your video & audio on this page first, then replace the REPLACE_WITH_… filenames.", json: latentsyncTemplate, image: latentsyncThumbnail },
   { id: "mimicmotion", label: "MimicMotion", description: "Drive an image with a motion video (needs ~24 GB GPU). Upload image & pose video first, then replace the REPLACE_WITH_… filenames.", json: mimicmotionTemplate, image: mimicmotionThumbnail },
+  { id: "film-grade", label: "Film Grain & Grade", description: "Cinematic color grade + film grain for uploaded video. Upload your clip first, then replace the REPLACE_WITH_… filename.", json: filmGradeTemplate, image: filmGradeThumbnail },
+  { id: "cinematic-portrait", label: "Cinematic Portrait", description: "SDXL movie-still portrait with shallow depth of field (core nodes only). Edit the prompt text.", json: cinematicPortraitTemplate, image: cinematicPortraitThumbnail },
+  { id: "slowmo-upscale", label: "Slow-Mo Upscale", description: "RIFE frame interpolation + 2x upscale for buttery slow motion. Upload your clip first, then replace the REPLACE_WITH_… filename.", json: slowmoUpscaleTemplate, image: slowmoUpscaleThumbnail },
+  { id: "epic-landscape", label: "Epic Landscape", description: "Wide-angle SDXL landscape with dramatic skies (core nodes only). Edit the prompt text.", json: epicLandscapeTemplate, image: epicLandscapeThumbnail },
+  { id: "reel-loop", label: "Reel Loop", description: "Seamless looping vertical video (AnimateDiff closed-loop context). Edit the prompt text.", json: reelLoopTemplate, image: reelLoopThumbnail },
+  { id: "product-swap", label: "Product BG Swap", description: "Auto-mask a product and inpaint a new studio background. Upload your product photo first, then replace the REPLACE_WITH_… filename.", json: productSwapTemplate, image: productSwapThumbnail },
+  { id: "talking-avatar", label: "Talking Avatar", description: "Portrait + speech audio → talking-head video (LatentSync). Upload both files first, then replace the REPLACE_WITH_… filenames.", json: talkingAvatarTemplate, image: talkingAvatarThumbnail },
+  { id: "blog-hero", label: "Blog Hero Image", description: "Wide 16:9 hero illustration with headline space. Replace REPLACE_WITH_YOUR_TOPIC in the prompt.", json: blogHeroTemplate, image: blogHeroThumbnail },
 ];
 
 function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; initialJson?: string }) {

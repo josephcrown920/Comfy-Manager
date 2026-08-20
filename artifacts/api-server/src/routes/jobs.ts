@@ -465,9 +465,530 @@ function buildComfyPrompt(
       return buildImg2VidPrompt(params);
     case "video-generation-txt2vid":
       return buildTxt2VidPrompt(params);
+    case "cinematic-film-grade":
+      return buildFilmGradePrompt(params);
+    case "cinematic-portrait":
+      return buildCinematicPortraitPrompt(params);
+    case "cinematic-slowmo-upscale":
+      return buildSlowmoUpscalePrompt(params);
+    case "cinematic-epic-landscape":
+      return buildEpicLandscapePrompt(params);
+    case "content-reel-loop":
+      return buildReelLoopPrompt(params);
+    case "content-product-swap":
+      return buildProductSwapPrompt(params);
+    case "content-talking-avatar":
+      return buildTalkingAvatarPrompt(params);
+    case "content-blog-hero":
+      return buildBlogHeroPrompt(params);
     default:
       return buildGenericPrompt(workflowId, params);
   }
+}
+
+/**
+ * Film Grain & Color Grade — post-processing on uploaded video.
+ * Requires ComfyUI-VideoHelperSuite, ComfyUI-ProPost, and a color-correct
+ * node pack (comfyui-easy-use / comfyui-art-venture style ColorCorrect).
+ */
+function buildFilmGradePrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const sourceVideo = String(params.source_video ?? "");
+  const grainPower = Number(params.grain_power ?? 60) / 100;
+  const style = String(params.grade_style ?? "teal-orange");
+
+  // Map grade style to color-correct settings
+  const grades: Record<string, { temperature: number; saturation: number; contrast: number; gamma: number }> = {
+    "teal-orange":   { temperature: -12, saturation: -8,  contrast: 14, gamma: 1.05 },
+    "warm-vintage":  { temperature: 18,  saturation: -15, contrast: 6,  gamma: 1.1 },
+    "cold-thriller": { temperature: -25, saturation: -20, contrast: 18, gamma: 0.95 },
+    "bleach-bypass": { temperature: 0,   saturation: -45, contrast: 25, gamma: 1.0 },
+  };
+  const g = grades[style] ?? grades["teal-orange"]!;
+
+  return {
+    "1": {
+      class_type: "VHS_LoadVideo",
+      inputs: {
+        video: sourceVideo,
+        force_rate: 24,
+        custom_width: 0,
+        custom_height: 0,
+        frame_load_cap: 0,
+        skip_first_frames: 0,
+        select_every_nth: 1,
+      },
+    },
+    "2": {
+      class_type: "ColorCorrect",
+      inputs: {
+        image: ["1", 0],
+        temperature: g.temperature,
+        hue: 0,
+        brightness: -4,
+        contrast: g.contrast,
+        saturation: g.saturation,
+        gamma: g.gamma,
+      },
+    },
+    "3": {
+      class_type: "ProPostFilmGrain",
+      inputs: {
+        image: ["2", 0],
+        gray_scale: false,
+        grain_type: "Fine",
+        grain_sat: 0.4,
+        grain_power: grainPower,
+        shadows: 0.25,
+        highs: 0.15,
+        scale: 1.0,
+        sharpen: 0,
+        src_gamma: 1.0,
+        seed: Math.floor(Math.random() * 1e9),
+      },
+    },
+    "4": {
+      class_type: "ProPostVignette",
+      inputs: { image: ["3", 0], intensity: 0.35, center_x: 0.5, center_y: 0.5 },
+    },
+    "5": {
+      class_type: "VHS_VideoCombine",
+      inputs: {
+        images: ["4", 0],
+        // Preserve the source clip's audio track (VHS_LoadVideo output 2)
+        audio: ["1", 2],
+        frame_rate: 24,
+        loop_count: 0,
+        filename_prefix: "film-grade",
+        format: "video/h264-mp4",
+        pingpong: false,
+        save_output: true,
+      },
+    },
+  };
+}
+
+/**
+ * Cinematic Portrait — SDXL text-to-image with lens/lighting language baked
+ * into the prompt. Core nodes only so it runs on any ComfyUI install.
+ */
+function buildCinematicPortraitPrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const subject = String(params.prompt ?? "a person");
+  const bokeh = Number(params.bokeh_strength ?? 70);
+  const lighting = String(params.lighting ?? "golden-hour");
+
+  const lightingText: Record<string, string> = {
+    "golden-hour":  "golden hour rim lighting, warm sun flare",
+    "neon-night":   "neon night lighting, cyan and magenta glow",
+    "soft-window":  "soft window light, gentle shadows",
+    "dramatic-rim": "dramatic rim lighting, deep shadows, chiaroscuro",
+  };
+  const bokehText = bokeh > 66 ? "extremely shallow depth of field, creamy dreamy bokeh" : bokeh > 33 ? "shallow depth of field, soft bokeh background" : "moderate depth of field";
+
+  return {
+    "1": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: String(params.checkpoint ?? "sd_xl_base_1.0.safetensors") } },
+    "2": {
+      class_type: "CLIPTextEncode",
+      inputs: {
+        text: `cinematic portrait photograph of ${subject}, 85mm f/1.2 lens, ${bokehText}, ${lightingText[lighting] ?? lightingText["golden-hour"]}, film still, kodak portra 800, sharp focus on eyes`,
+        clip: ["1", 1],
+      },
+    },
+    "3": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: "flat lighting, deep focus, cartoon, illustration, low quality, watermark", clip: ["1", 1] },
+    },
+    "4": { class_type: "EmptyLatentImage", inputs: { width: 832, height: 1216, batch_size: 1 } },
+    "5": {
+      class_type: "KSampler",
+      inputs: {
+        seed: Math.floor(Math.random() * 1e9),
+        steps: 32,
+        cfg: 6.5,
+        sampler_name: "dpmpp_2m",
+        scheduler: "karras",
+        denoise: 1,
+        model: ["1", 0],
+        positive: ["2", 0],
+        negative: ["3", 0],
+        latent_image: ["4", 0],
+      },
+    },
+    "6": { class_type: "VAEDecode", inputs: { samples: ["5", 0], vae: ["1", 2] } },
+    "7": { class_type: "SaveImage", inputs: { images: ["6", 0], filename_prefix: "cinematic-portrait" } },
+  };
+}
+
+/**
+ * Slow-Motion Upscale — RIFE frame interpolation + optional ESRGAN 2x.
+ * The source is normalized to 24 fps on load (force_rate) and the output is
+ * written at 24 fps, so N× interpolated frames yield an exact N× slowdown
+ * regardless of the source clip's native frame rate. The output is silent by
+ * design: slowed footage cannot keep the original audio in sync.
+ * Requires ComfyUI-Frame-Interpolation and ComfyUI-VideoHelperSuite.
+ */
+function buildSlowmoUpscalePrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const sourceVideo = String(params.source_video ?? "");
+  const multiplier = Number(params.slowdown_factor ?? 4);
+  const doUpscale = String(params.upscale ?? "2x") === "2x";
+
+  const graph: Record<string, unknown> = {
+    "1": {
+      class_type: "VHS_LoadVideo",
+      inputs: {
+        video: sourceVideo,
+        // Normalize to 24 fps so the slowdown factor is exact for any source
+        force_rate: 24,
+        custom_width: 0,
+        custom_height: 0,
+        frame_load_cap: 0,
+        skip_first_frames: 0,
+        select_every_nth: 1,
+      },
+    },
+    "2": {
+      class_type: "RIFE VFI",
+      inputs: {
+        frames: ["1", 0],
+        ckpt_name: "rife47.pth",
+        clear_cache_after_n_frames: 10,
+        multiplier: Math.round(multiplier),
+        fast_mode: true,
+        ensemble: true,
+        scale_factor: 1.0,
+        dtype: "float32",
+        torch_compile: false,
+        batch_size: 1,
+      },
+    },
+  };
+
+  let lastImageNode = "2";
+  if (doUpscale) {
+    graph["3"] = { class_type: "UpscaleModelLoader", inputs: { model_name: "RealESRGAN_x2.pth" } };
+    graph["4"] = { class_type: "ImageUpscaleWithModel", inputs: { upscale_model: ["3", 0], image: ["2", 0] } };
+    lastImageNode = "4";
+  }
+
+  graph["5"] = {
+    class_type: "VHS_VideoCombine",
+    inputs: {
+      images: [lastImageNode, 0],
+      // No audio: original audio cannot stay in sync with slowed footage
+      frame_rate: 24,
+      loop_count: 0,
+      filename_prefix: "slow-motion",
+      format: "video/h264-mp4",
+      pingpong: false,
+      save_output: true,
+    },
+  };
+  return graph;
+}
+
+/**
+ * Epic Landscape — wide SDXL landscape with sky style in the prompt.
+ * Core nodes only for maximum compatibility.
+ */
+function buildEpicLandscapePrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const scene = String(params.prompt ?? "mountain range");
+  const skyStyle = String(params.sky_style ?? "storm-god-rays");
+  const aspect = String(params.aspect ?? "16:9");
+
+  const skyText: Record<string, string> = {
+    "storm-god-rays": "dramatic storm clouds parting with golden god rays",
+    "sunset-fire":    "blazing sunset sky, fiery orange and crimson clouds",
+    "aurora-night":   "night sky with vivid green and violet aurora borealis",
+    "clear-alpine":   "crisp clear blue alpine sky with wispy cirrus clouds",
+  };
+  const dims: Record<string, { width: number; height: number }> = {
+    "16:9": { width: 1344, height: 768 },
+    "21:9": { width: 1536, height: 640 },
+    "3:2":  { width: 1216, height: 832 },
+  };
+  const d = dims[aspect] ?? dims["16:9"]!;
+
+  return {
+    "1": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: String(params.checkpoint ?? "sd_xl_base_1.0.safetensors") } },
+    "2": {
+      class_type: "CLIPTextEncode",
+      inputs: {
+        text: `epic wide-angle landscape photograph, ${scene}, ${skyText[skyStyle] ?? skyText["storm-god-rays"]}, vast cinematic scale, ultra wide 14mm lens, national geographic, hyperdetailed`,
+        clip: ["1", 1],
+      },
+    },
+    "3": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: "people, buildings, text, watermark, low quality, blurry, oversaturated", clip: ["1", 1] },
+    },
+    "4": { class_type: "EmptyLatentImage", inputs: { width: d.width, height: d.height, batch_size: 1 } },
+    "5": {
+      class_type: "KSampler",
+      inputs: {
+        seed: Math.floor(Math.random() * 1e9),
+        steps: 35,
+        cfg: 7,
+        sampler_name: "dpmpp_2m",
+        scheduler: "karras",
+        denoise: 1,
+        model: ["1", 0],
+        positive: ["2", 0],
+        negative: ["3", 0],
+        latent_image: ["4", 0],
+      },
+    },
+    "6": { class_type: "VAEDecode", inputs: { samples: ["5", 0], vae: ["1", 2] } },
+    "7": { class_type: "SaveImage", inputs: { images: ["6", 0], filename_prefix: "epic-landscape" } },
+  };
+}
+
+/**
+ * Instagram Reel Loop — AnimateDiff Evolved with closed-loop context for
+ * seamless looping vertical video. Uses the same load/apply/context pattern
+ * as the proven Motion Control builder (ADE_LoadAnimateDiffModel →
+ * ADE_UseEvolvedSampling with ADE_StandardStaticContextOptions), but with
+ * closed_loop enabled so the last frame flows back into the first.
+ * Requires AnimateDiff-Evolved + VideoHelperSuite.
+ */
+function buildReelLoopPrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const visual = String(params.prompt ?? "abstract flowing gradient waves");
+  const duration = Number(params.duration ?? 2);
+  const style = String(params.style ?? "neon-abstract");
+  const frames = Math.min(Math.max(duration * 16, 16), 96);
+
+  const styleText: Record<string, string> = {
+    "neon-abstract":    "vibrant neon colors, glowing abstract shapes",
+    "nature-calm":      "calm natural tones, organic soft movement",
+    "retro-vhs":        "retro VHS aesthetic, scan lines, 80s color palette",
+    "minimal-gradient": "minimal smooth gradients, muted elegant palette",
+  };
+
+  return {
+    "1": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: String(params.checkpoint ?? "v1-5-pruned-emaonly.safetensors") } },
+    "2": {
+      class_type: "ADE_LoadAnimateDiffModel",
+      inputs: { model_name: "mm_sd_v15_v2.ckpt" },
+    },
+    // Wrap the raw motion model (MOTION_MODEL_ADE) into M_MODELS
+    "3": {
+      class_type: "ADE_ApplyAnimateDiffModelSimple",
+      inputs: { motion_model: ["2", 0] },
+    },
+    "4": {
+      class_type: "ADE_StandardStaticContextOptions",
+      inputs: { context_length: 16, context_stride: 1, context_overlap: 4, closed_loop: true },
+    },
+    "5": {
+      class_type: "ADE_UseEvolvedSampling",
+      inputs: {
+        model: ["1", 0],
+        beta_schedule: "sqrt_linear (AnimateDiff)",
+        m_models: ["3", 0],
+        context_options: ["4", 0],
+      },
+    },
+    "6": {
+      class_type: "CLIPTextEncode",
+      inputs: {
+        text: `seamless looping animation, ${visual}, ${styleText[style] ?? styleText["neon-abstract"]}, smooth hypnotic motion, vertical composition`,
+        clip: ["1", 1],
+      },
+    },
+    "7": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: "static, jerky motion, text, watermark, low quality", clip: ["1", 1] },
+    },
+    "8": { class_type: "EmptyLatentImage", inputs: { width: 512, height: 896, batch_size: frames } },
+    "9": {
+      class_type: "KSampler",
+      inputs: {
+        seed: Math.floor(Math.random() * 1e9),
+        steps: 25,
+        cfg: 8,
+        sampler_name: "euler",
+        scheduler: "normal",
+        denoise: 1,
+        model: ["5", 0],
+        positive: ["6", 0],
+        negative: ["7", 0],
+        latent_image: ["8", 0],
+      },
+    },
+    "10": { class_type: "VAEDecode", inputs: { samples: ["9", 0], vae: ["1", 2] } },
+    "11": {
+      class_type: "VHS_VideoCombine",
+      inputs: {
+        images: ["10", 0],
+        frame_rate: 16,
+        loop_count: 0,
+        filename_prefix: "reel-loop",
+        format: "video/h264-mp4",
+        pingpong: false,
+        save_output: true,
+      },
+    },
+  };
+}
+
+/**
+ * Product Background Swap — automatic product masking (Inspyrenet background
+ * removal) followed by masked inpainting so the product itself is preserved
+ * while only the background is regenerated. The Inspyrenet node is installed
+ * by the GPU launcher's `image` capability and self-downloads its weights.
+ */
+function buildProductSwapPrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const productImage = String(params.product_image ?? "");
+  const backgroundPrompt = String(params.background_prompt ?? "clean minimal studio backdrop, soft shadows");
+
+  return {
+    "1": { class_type: "LoadImage", inputs: { image: productImage, upload: "image" } },
+    // InspyrenetRembg outputs (IMAGE, MASK); the mask covers the product.
+    "2": { class_type: "InspyrenetRembg", inputs: { image: ["1", 0], torchscript_jit: "default" } },
+    // Invert so inpainting only touches the background and the product
+    // pixels are preserved.
+    "3": { class_type: "InvertMask", inputs: { mask: ["2", 1] } },
+    "4": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: String(params.checkpoint ?? "sd_xl_base_1.0.safetensors") } },
+    "5": {
+      class_type: "CLIPTextEncode",
+      inputs: {
+        text: `professional product photography, ${backgroundPrompt}, e-commerce hero shot, studio quality`,
+        clip: ["4", 1],
+      },
+    },
+    "6": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: "cluttered, busy background, text, watermark, low quality", clip: ["4", 1] },
+    },
+    "7": { class_type: "VAEEncode", inputs: { pixels: ["1", 0], vae: ["4", 2] } },
+    "8": { class_type: "SetLatentNoiseMask", inputs: { samples: ["7", 0], mask: ["3", 0] } },
+    "9": {
+      class_type: "KSampler",
+      inputs: {
+        seed: Math.floor(Math.random() * 1e9),
+        steps: 28,
+        cfg: 7,
+        sampler_name: "dpmpp_2m",
+        scheduler: "karras",
+        denoise: 0.85,
+        model: ["4", 0],
+        positive: ["5", 0],
+        negative: ["6", 0],
+        latent_image: ["8", 0],
+      },
+    },
+    "10": { class_type: "VAEDecode", inputs: { samples: ["9", 0], vae: ["4", 2] } },
+    "11": { class_type: "SaveImage", inputs: { images: ["10", 0], filename_prefix: "product-swap" } },
+  };
+}
+
+/**
+ * Talking Avatar — LatentSync graph, using the same node pack the GPU
+ * launcher already installs for the Lip Sync capability (LatentSyncWrapper +
+ * VideoHelperSuite). The still portrait is repeated into a frame batch,
+ * stretched to the audio length, then lip-synced.
+ */
+function buildTalkingAvatarPrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const portrait = String(params.portrait_image ?? "");
+  const audioFile = String(params.speech_audio ?? "");
+  const audioPath = audioFile.startsWith("audio/") ? audioFile : `audio/${audioFile}`;
+  // Map 0-100 expressiveness to LatentSync lips_expression 1.0-3.0
+  const lipsExpression = 1 + (Math.min(Math.max(Number(params.expression_scale ?? 50), 0), 100) / 100) * 2;
+
+  return {
+    "1": { class_type: "LoadImage", inputs: { image: portrait, upload: "image" } },
+    "2": { class_type: "VHS_LoadAudio", inputs: { audio_file: audioPath, seek_seconds: 0.0 } },
+    // Repeat the still portrait into a batch of frames, then loop/trim the
+    // batch to match the audio duration at 25 fps.
+    "3": { class_type: "RepeatImageBatch", inputs: { image: ["1", 0], amount: 25 } },
+    "4": {
+      class_type: "VideoLengthAdjuster",
+      inputs: {
+        images: ["3", 0],
+        audio: ["2", 0],
+        mode: "loop_to_audio",
+        fps: 25.0,
+        silent_padding_sec: 0.5,
+      },
+    },
+    "5": {
+      class_type: "LatentSyncNode",
+      inputs: {
+        images: ["4", 0],
+        audio: ["4", 1],
+        seed: Math.floor(Math.random() * 1e9),
+        lips_expression: Math.round(lipsExpression * 10) / 10,
+        inference_steps: 20,
+      },
+    },
+    "6": {
+      class_type: "VHS_VideoCombine",
+      inputs: {
+        images: ["5", 0],
+        // Mux the speech audio into the output video
+        audio: ["5", 1],
+        frame_rate: 25,
+        loop_count: 0,
+        filename_prefix: "talking-avatar",
+        format: "video/h264-mp4",
+        pingpong: false,
+        save_output: true,
+      },
+    },
+  };
+}
+
+/**
+ * Blog Hero Image — wide SDXL illustration with headline space.
+ */
+function buildBlogHeroPrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const topic = String(params.prompt ?? "modern workspace");
+  const brandStyle = String(params.brand_style ?? "flat-pastel");
+  const textSpace = String(params.text_space ?? "left");
+
+  const styleText: Record<string, string> = {
+    "flat-pastel":    "flat design illustration, soft pastel brand colors, subtle gradients",
+    "bold-editorial": "bold editorial illustration, strong shapes, confident color blocking",
+    "soft-3d":        "soft 3D render style, rounded shapes, gentle studio lighting",
+    "line-art":       "elegant line art illustration, minimal color accents, clean strokes",
+  };
+  const spaceText: Record<string, string> = {
+    left:   "generous negative space on the left side for headline text",
+    right:  "generous negative space on the right side for headline text",
+    center: "generous negative space in the center for headline text",
+    none:   "full-bleed composition",
+  };
+
+  return {
+    "1": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: String(params.checkpoint ?? "sd_xl_base_1.0.safetensors") } },
+    "2": {
+      class_type: "CLIPTextEncode",
+      inputs: {
+        text: `clean modern blog hero illustration about ${topic}, ${styleText[brandStyle] ?? styleText["flat-pastel"]}, ${spaceText[textSpace] ?? spaceText["left"]}, wide 16:9 composition`,
+        clip: ["1", 1],
+      },
+    },
+    "3": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: "photo-realistic, cluttered, busy, text, words, letters, watermark, low quality", clip: ["1", 1] },
+    },
+    "4": { class_type: "EmptyLatentImage", inputs: { width: 1344, height: 768, batch_size: 1 } },
+    "5": {
+      class_type: "KSampler",
+      inputs: {
+        seed: Math.floor(Math.random() * 1e9),
+        steps: 30,
+        cfg: 7,
+        sampler_name: "dpmpp_2m",
+        scheduler: "karras",
+        denoise: 1,
+        model: ["1", 0],
+        positive: ["2", 0],
+        negative: ["3", 0],
+        latent_image: ["4", 0],
+      },
+    },
+    "6": { class_type: "VAEDecode", inputs: { samples: ["5", 0], vae: ["1", 2] } },
+    "7": { class_type: "SaveImage", inputs: { images: ["6", 0], filename_prefix: "blog-hero" } },
+  };
 }
 
 /**
