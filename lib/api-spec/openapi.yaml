@@ -856,7 +856,7 @@ components:
           type: string
         category:
           type: string
-          enum: [lip-sync, motion-control, video-generation, image-generation, cinematic, content-creation, custom]
+          enum: [lip-sync, motion-control, video-generation, image-generation, cinematic, content-creation, seedance-style, custom]
         icon:
           type: ["string", "null"]
         estimatedTime:
