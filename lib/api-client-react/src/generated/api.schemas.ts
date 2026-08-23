@@ -149,6 +149,7 @@ export const WorkflowTemplateCategory = {
   'image-generation': 'image-generation',
   cinematic: 'cinematic',
   'content-creation': 'content-creation',
+  'seedance-style': 'seedance-style',
   custom: 'custom',
 } as const;
 

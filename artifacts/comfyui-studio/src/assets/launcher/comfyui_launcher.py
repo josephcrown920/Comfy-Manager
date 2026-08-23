@@ -315,7 +315,17 @@ def open_tunnel():
     kwargs = {"auth": f"{user}:{password}"}
     if domain:
         kwargs["domain"] = domain
-    tunnel = ngrok.connect(PORT, "http", **kwargs)
+    try:
+        tunnel = ngrok.connect(PORT, "http", **kwargs)
+    except Exception as exc:
+        # A static domain can still be attached to a previous notebook session.
+        # Do not strand a healthy ComfyUI process: use a temporary ngrok URL and
+        # tell the user exactly why the stable URL was not used.
+        if domain:
+            print(f"[tunnel] static domain unavailable ({exc}); retrying with a temporary URL.", flush=True)
+            tunnel = ngrok.connect(PORT, "http", auth=f"{user}:{password}")
+        else:
+            raise
     # Return the URL with credentials embedded so it can be pasted into Studio as-is.
     from urllib.parse import quote, urlsplit, urlunsplit
     parts = urlsplit(tunnel.public_url)
