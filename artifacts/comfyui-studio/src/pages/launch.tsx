@@ -98,6 +98,7 @@ export default function Launch() {
         <TabsList>
           <TabsTrigger value="colab">Google Colab (free T4)</TabsTrigger>
           <TabsTrigger value="kaggle">Kaggle</TabsTrigger>
+          <TabsTrigger value="vast">Vast.ai</TabsTrigger>
         </TabsList>
         <TabsContent value="colab" className="mt-4">
           <Alert className="border-primary/30 bg-primary/5">
@@ -117,6 +118,16 @@ export default function Launch() {
               Free tier: ~12h per session with a weekly GPU quota (T4/P100, 16 GB). Turn{" "}
               <strong>GPU ON</strong> and <strong>Internet ON</strong> in notebook settings. Add secrets
               via <strong>Add-ons → Secrets</strong>.
+            </AlertDescription>
+          </Alert>
+        </TabsContent>
+        <TabsContent value="vast" className="mt-4">
+          <Alert className="border-primary/30 bg-primary/5">
+            <AlertCircle className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-sm">
+              Vast.ai: create a GPU instance with <strong>Internet access</strong>, open a terminal,
+              and run the same launcher script. Vast is better for longer sessions and larger cards;
+              the script still prints one secure URL for Studio when ComfyUI is ready.
             </AlertDescription>
           </Alert>
         </TabsContent>
@@ -167,6 +178,14 @@ export default function Launch() {
             Copy the full script below into one cell and run it. It installs ComfyUI + nodes + models
             (first run takes a few minutes), then prints your public URL.
           </p>
+          <Alert className="border-violet-400/30 bg-violet-500/5">
+            <AlertCircle className="h-4 w-4 text-violet-300" />
+            <AlertDescription className="text-sm">
+              If you previously used Aurora’s <span className="font-mono text-xs">AURORA_URL</span>
+              bootstrap, stop that cell and use this standalone launcher instead. It connects directly
+              to Studio and does not require an Aurora worker-registration secret.
+            </AlertDescription>
+          </Alert>
           <div className="flex items-center gap-2">
             <CopyButton text={launcherScript} label="Copy Full Script" />
             <span className="text-xs">{launcherScript.split("\n").length} lines · Python</span>

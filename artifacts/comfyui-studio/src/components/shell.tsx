@@ -159,7 +159,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* ── Page content ── */}
-      <main className="flex-1 overflow-y-auto relative bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-secondary/20 via-background to-background">
+      <main className="flex-1 overflow-y-auto relative">
+        <span aria-hidden="true" className="aurora-ambient" />
         <div className="px-4 md:px-10 py-6 md:py-10 max-w-[1600px] mx-auto min-h-full">
           {children}
         </div>

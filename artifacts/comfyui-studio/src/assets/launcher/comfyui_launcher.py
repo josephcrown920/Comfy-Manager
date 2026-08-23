@@ -8,10 +8,11 @@ capabilities you pick, starts it headless on :8188, health-gates on
 Paste that URL into ComfyUI Studio -> Settings -> ComfyUI Server URL and
 you're generating.
 
-Run it in ONE cell with GPU ON + Internet ON:
+Run it in ONE cell with GPU ON + Internet ON (or from a Vast.ai terminal):
   - Colab: paste this file into a cell; add secrets via the key panel
     (google.colab.userdata), then run. Free T4 (16 GB) works.
   - Kaggle: paste into a cell (secrets via Add-ons -> Secrets), then Run All.
+  - Vast.ai: paste into a terminal or notebook on the GPU instance.
 
 Secrets / env it reads (Colab userdata, Kaggle Secrets, or plain env vars):
   NGROK_AUTHTOKEN       required — ngrok account token (dashboard.ngrok.com)
@@ -30,6 +31,8 @@ Secrets / env it reads (Colab userdata, Kaggle Secrets, or plain env vars):
                         stabilityai/stable-video-diffusion-img2vid-xt-1-1).
   COMFY_CAPABILITIES    optional — comma list of what to install:
                         image, video, lipsync, motion, cinematic.
+Legacy Aurora workers: this launcher intentionally connects directly to Studio.
+Do not set AURORA_URL or use the old Aurora worker bootstrap with this script.
                         Default picks by VRAM: <20 GB -> image,video,lipsync,cinematic
                         (video = AnimateDiff text-to-video; SVD image-to-video
                         is skipped on small cards); >=20 GB -> all four.
