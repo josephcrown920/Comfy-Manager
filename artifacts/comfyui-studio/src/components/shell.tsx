@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Link, useLocation } from "wouter"
-import { LayoutDashboard, Settings2, Images, ListVideo, BrainCircuit, Rocket, Bot, Boxes, Menu, X, BookOpen, GitBranch } from "lucide-react"
+import { LayoutDashboard, Settings2, Images, ListVideo, BrainCircuit, Rocket, Bot, Boxes, Menu, X, BookOpen, GitBranch, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -13,26 +13,31 @@ const navItems = [
   { href: "/models", label: "Models", icon: BrainCircuit },
   { href: "/launch", label: "Launch GPU", icon: Rocket },
   { href: "/guide", label: "Guide", icon: BookOpen },
-  { href: "/settings", label: "Settings", icon: Settings2 },
 ]
 
 /** comfy.org wordmark — bold italic yellow-green */
-function ComfyWordmark() {
+function ComfyWordmark({ collapsed = false }: { collapsed?: boolean }) {
   return (
-    <span
-      style={{
-        fontFamily: "'Inter', sans-serif",
-        fontWeight: 800,
-        fontStyle: "italic",
-        fontSize: "22px",
-        color: "#e8f724",
-        letterSpacing: "-0.03em",
-        lineHeight: 1,
-        userSelect: "none",
-      }}
-    >
-      Comfy
-    </span>
+    <div className="flex items-center gap-2">
+      <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(232,247,36,0.3)]">
+        <Zap className="w-5 h-5 text-black" strokeWidth={2.5} />
+      </div>
+      {!collapsed && (
+        <span
+          style={{
+            fontFamily: "'Outfit', sans-serif",
+            fontWeight: 800,
+            fontSize: "20px",
+            color: "#ffffff",
+            letterSpacing: "-0.02em",
+            lineHeight: 1,
+            userSelect: "none",
+          }}
+        >
+          Studio
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -44,98 +49,118 @@ export function Shell({ children }: { children: React.ReactNode }) {
   React.useEffect(() => { setMobileOpen(false) }, [location])
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#16122a]">
-
-      {/* ── Top nav bar ── */}
-      <header className="sticky top-0 z-40 border-b border-[#2d2650] bg-[#16122a]/95 backdrop-blur-sm">
-        <div className="flex items-center h-14 px-4 md:px-6 gap-4 max-w-[1400px] mx-auto">
-
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0 mr-2">
-            <ComfyWordmark />
-          </Link>
-
-          {/* Desktop nav links */}
-          <nav className="hidden md:flex items-center gap-1 flex-1">
-            {navItems.map((item) => {
-              const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href))
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
-                    isActive
-                      ? "bg-[#e8f724]/15 text-[#e8f724]"
-                      : "text-[#7b72a8] hover:text-[#f0eeff] hover:bg-[#2a2448]"
-                  )}
-                >
-                  <item.icon className="h-3.5 w-3.5" />
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-
-          {/* Desktop right actions */}
-          <div className="hidden md:flex items-center gap-2 ml-auto">
-            <Link href="/settings">
-              <button className="px-4 py-1.5 rounded-full border border-[#2d2650] text-sm text-[#f0eeff] hover:bg-[#2a2448] transition-colors font-medium">
-                Settings
-              </button>
-            </Link>
-            <Link href="/generate">
-              <button className="px-4 py-1.5 rounded-full bg-[#e8f724] text-[#0d0b1a] text-sm font-bold hover:bg-[#d4e010] transition-colors">
-                Run Workflow
-              </button>
-            </Link>
-          </div>
-
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden ml-auto p-2 rounded-lg text-[#7b72a8] hover:text-[#f0eeff] hover:bg-[#2a2448] transition-colors"
-            onClick={() => setMobileOpen(o => !o)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-
-        {/* Mobile dropdown nav */}
-        {mobileOpen && (
-          <nav className="md:hidden border-t border-[#2d2650] bg-[#1a163a] px-4 py-3 flex flex-col gap-1">
-            {navItems.map((item) => {
-              const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href))
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
-                    isActive
-                      ? "bg-[#e8f724]/15 text-[#e8f724]"
-                      : "text-[#7b72a8] hover:text-[#f0eeff] hover:bg-[#2a2448]"
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              )
-            })}
-            <div className="pt-2 mt-1 border-t border-[#2d2650] flex gap-2">
-              <Link href="/generate" className="flex-1">
-                <button className="w-full px-4 py-2 rounded-full bg-[#e8f724] text-[#0d0b1a] text-sm font-bold hover:bg-[#d4e010] transition-colors">
-                  Run Workflow
-                </button>
-              </Link>
-            </div>
-          </nav>
-        )}
+    <div className="min-h-[100dvh] flex flex-col md:flex-row bg-background selection:bg-primary/30 selection:text-white font-sans text-foreground">
+      
+      {/* ── Mobile Header ── */}
+      <header className="md:hidden sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl flex items-center justify-between h-16 px-4">
+        <Link href="/" className="flex items-center">
+          <ComfyWordmark />
+        </Link>
+        <button
+          className="p-2 -mr-2 text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => setMobileOpen(o => !o)}
+          aria-label="Toggle menu"
+        >
+          {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
       </header>
 
+      {/* ── Mobile Nav Overlay ── */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-40 top-16 bg-background/95 backdrop-blur-3xl overflow-y-auto">
+          <nav className="flex flex-col p-4 gap-2">
+            {navItems.map((item) => {
+              const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href))
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(232,247,36,0.2)]"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.label}
+                </Link>
+              )
+            })}
+            <div className="h-px bg-border my-2" />
+            <Link
+              href="/settings"
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all",
+                location.startsWith("/settings")
+                  ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(232,247,36,0.2)]"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              )}
+            >
+              <Settings2 className="h-5 w-5" />
+              Settings
+            </Link>
+          </nav>
+        </div>
+      )}
+
+      {/* ── Desktop Sidebar ── */}
+      <aside className="hidden md:flex flex-col w-[260px] shrink-0 border-r border-border bg-card/30 backdrop-blur-2xl sticky top-0 h-[100dvh] overflow-y-auto">
+        <div className="h-20 flex items-center px-6">
+          <Link href="/" className="flex items-center">
+            <ComfyWordmark />
+          </Link>
+        </div>
+
+        <div className="px-4 pb-4">
+          <Link href="/generate">
+            <button className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-[0_0_20px_rgba(232,247,36,0.15)] hover:shadow-[0_0_30px_rgba(232,247,36,0.3)] hover:scale-[1.02] transition-all duration-300">
+              <Zap className="h-4 w-4 fill-current" />
+              Run Workflow
+            </button>
+          </Link>
+        </div>
+
+        <nav className="flex-1 px-3 space-y-1 overflow-y-auto py-2">
+          {navItems.map((item) => {
+            const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href))
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                <item.icon className={cn("h-4 w-4 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
+
+        <div className="p-3 border-t border-border mt-auto">
+          <Link
+            href="/settings"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
+              location.startsWith("/settings")
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+            )}
+          >
+            <Settings2 className={cn("h-4 w-4 transition-colors", location.startsWith("/settings") ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+            Settings
+          </Link>
+        </div>
+      </aside>
+
       {/* ── Page content ── */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="px-4 md:px-8 py-8 max-w-[1400px] mx-auto">
+      <main className="flex-1 overflow-y-auto relative bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-secondary/20 via-background to-background">
+        <div className="px-4 md:px-10 py-6 md:py-10 max-w-[1600px] mx-auto min-h-full">
           {children}
         </div>
       </main>

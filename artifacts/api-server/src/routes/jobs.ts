@@ -221,6 +221,10 @@ router.post("/jobs", async (req, res): Promise<void> => {
   const GLOBAL_CHECKPOINT_WORKFLOWS = new Set([
     "video-generation-txt2vid",
     "motion-control-animatediff",
+    "seedance-reference-motion",
+    "seedance-camera-path",
+    "seedance-vertical-social",
+    "seedance-product-reveal",
   ]);
   const wfAssignment = assignments.workflows[workflowId];
   const primaryCheckpoint =
@@ -474,6 +478,10 @@ export function buildComfyPrompt(
     case "lip-sync-basic":
       return buildLipSyncPrompt(params);
     case "motion-control-animatediff":
+    case "seedance-reference-motion":
+    case "seedance-camera-path":
+    case "seedance-vertical-social":
+    case "seedance-product-reveal":
       return buildMotionControlPrompt(params);
     case "img2vid-stable-video":
       return buildImg2VidPrompt(params);

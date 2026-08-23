@@ -118,24 +118,27 @@ export default function Generate() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Header — styled like comfy.org/workflows */}
-      <div className="space-y-2">
-        <p className="text-xs font-semibold tracking-widest uppercase text-[#e8f724]">Browse Workflows</p>
-        <h1 className="text-3xl md:text-4xl font-bold text-[#f0eeff]">
-          {filteredWorkflows.length > 0 ? `${filteredWorkflows.length}+ workflows` : "Workflows"}
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Cinematic Header */}
+      <div className="space-y-3 relative z-10">
+        <p className="text-xs font-bold tracking-[0.2em] uppercase text-primary">Templates</p>
+        <h1 className="text-4xl md:text-5xl font-extrabold text-foreground tracking-tight drop-shadow-lg">
+          {filteredWorkflows.length > 0 ? `${filteredWorkflows.length} Workflows` : "Workflows"}
         </h1>
-        <p className="text-[#7b72a8] text-sm">Select a template to begin generating.</p>
+        <p className="text-muted-foreground text-base max-w-xl">
+          Select a template to begin generating. High-fidelity cinematic tools for your creative pipeline.
+        </p>
       </div>
 
       {/* Category pill filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 relative z-10">
         {[
           { value: null,                   label: "All" },
           { value: "image-generation",     label: "Image Generation" },
           { value: "video-generation",     label: "Video Generation" },
           { value: "lip-sync",             label: "Lip Sync" },
           { value: "motion-control",       label: "Motion Control" },
+          { value: "seedance-style",       label: "Seedance-style" },
           { value: "cinematic",            label: "Cinematic" },
           { value: "content-creation",     label: "Content Creation" },
         ].map(({ value, label }) => {
@@ -147,10 +150,10 @@ export default function Generate() {
                 if (value === null) setLocation("/generate");
                 else setLocation(`/generate?category=${value}`);
               }}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+              className={`px-5 py-2 rounded-full text-sm font-semibold border transition-all duration-300 ${
                 active
-                  ? "bg-[#e8f724] text-[#0d0b1a] border-[#e8f724]"
-                  : "bg-transparent text-[#7b72a8] border-[#2d2650] hover:text-[#f0eeff] hover:border-[#4a4269]"
+                  ? "bg-primary text-primary-foreground border-primary shadow-[0_0_15px_rgba(232,247,36,0.3)]"
+                  : "bg-card/50 text-muted-foreground border-border hover:text-foreground hover:border-primary/50 hover:bg-card backdrop-blur-md"
               }`}
             >
               {label}
@@ -160,47 +163,50 @@ export default function Generate() {
       </div>
 
       {isListLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-72 rounded-2xl bg-[#1e1a38]" />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="aspect-[4/5] rounded-2xl bg-card/50" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredWorkflows.map(workflow => (
             <div
               key={workflow.id}
-              className="bg-[#1e1a38] border border-[#2d2650] rounded-2xl cursor-pointer hover:border-[#e8f724]/40 hover:bg-[#231f42] transition-all overflow-hidden group flex flex-col shadow-lg shadow-black/20"
+              className="relative rounded-3xl cursor-pointer group flex flex-col overflow-hidden aspect-[4/5] border border-white/5 hover:border-primary/50 transition-all duration-500 shadow-2xl bg-card"
               onClick={() => setSelectedWorkflowId(workflow.id)}
             >
               {/* Full-bleed thumbnail */}
               {DB_WORKFLOW_THUMBNAILS[workflow.id] ? (
-                <div className="relative overflow-hidden rounded-t-2xl">
-                  <img
-                    src={DB_WORKFLOW_THUMBNAILS[workflow.id]}
-                    alt={workflow.name}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  {/* "Node graph" pill — matches comfy.org style */}
-                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1 text-xs text-[#e8f724] font-semibold">
-                    <LayoutGrid className="h-3 w-3" />
-                    Node graph
-                  </div>
-                </div>
+                <img
+                  src={DB_WORKFLOW_THUMBNAILS[workflow.id]}
+                  alt={workflow.name}
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                />
               ) : (
-                <div className="w-full h-48 bg-[#16122a] rounded-t-2xl flex items-center justify-center">
-                  <LayoutGrid className="h-10 w-10 text-[#2d2650]" />
+                <div className="absolute inset-0 bg-secondary flex items-center justify-center">
+                  <LayoutGrid className="h-10 w-10 text-muted-foreground/30" />
                 </div>
               )}
-              {/* Info below */}
-              <div className="p-4 flex-1 flex flex-col gap-2">
-                <h3 className="font-bold text-sm text-[#f0eeff] leading-snug">{workflow.name}</h3>
-                <p className="text-xs text-[#7b72a8] line-clamp-2 leading-relaxed">{workflow.description}</p>
-                {/* Tag pills — matches comfy.org "ControlNet Video" pills */}
-                <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#2a2448] border border-[#2d2650] text-xs text-[#7b72a8] font-medium">
+              {/* Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
+              
+              {/* Top info */}
+              <div className="absolute top-4 left-4 flex gap-2 z-10">
+                <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 text-xs text-primary font-bold tracking-wide shadow-lg">
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  Node graph
+                </div>
+              </div>
+
+              {/* Bottom info */}
+              <div className="absolute bottom-0 left-0 right-0 p-6 z-10 flex flex-col gap-3 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                <h3 className="font-extrabold text-2xl text-white leading-tight drop-shadow-md">{workflow.name}</h3>
+                <p className="text-sm text-white/80 line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-75">{workflow.description}</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  <span className="px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs text-white/90 font-semibold shadow-lg">
                     {workflow.category.replace(/-/g, ' ')}
                   </span>
                   {workflow.estimatedTime && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-[#2a2448] border border-[#2d2650] text-xs text-[#7b72a8] font-medium">
+                    <span className="px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs text-white/90 font-semibold shadow-lg">
                       ⏱ {workflow.estimatedTime}
                     </span>
                   )}
@@ -211,22 +217,29 @@ export default function Generate() {
           {visibleSaved.map(saved => (
             <div
               key={`saved-${saved.id}`}
-              className="bg-[#1e1a38] border border-[#2d2650] rounded-2xl cursor-pointer hover:border-[#e8f724]/40 hover:bg-[#231f42] transition-all overflow-hidden group flex flex-col shadow-lg shadow-black/20"
+              className="relative rounded-3xl cursor-pointer group flex flex-col overflow-hidden aspect-[4/5] border border-white/5 hover:border-primary/50 transition-all duration-500 shadow-2xl bg-card"
               onClick={() => {
                 setInitialCustomJson(saved.json);
                 setSelectedWorkflowId(CUSTOM_WORKFLOW_ID);
               }}
             >
-              <div className="w-full h-48 bg-[#16122a] rounded-t-2xl flex items-center justify-center relative">
-                <Bookmark className="h-10 w-10 text-[#2d2650]" />
-                <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1 text-xs text-[#e8f724] font-semibold">
-                  <Bookmark className="h-3 w-3" />
-                  Saved
+              <div className="absolute inset-0 bg-secondary/80 flex items-center justify-center">
+                <Bookmark className="h-16 w-16 text-muted-foreground/30 group-hover:scale-110 transition-transform duration-700 ease-out" />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
+              
+              <div className="absolute top-4 left-4 flex gap-2 z-10">
+                <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 text-xs text-primary font-bold tracking-wide shadow-lg">
+                  <Bookmark className="h-3.5 w-3.5" />
+                  Saved Custom
                 </div>
+              </div>
+
+              <div className="absolute top-4 right-4 z-20">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute top-2 right-2 h-7 w-7 text-[#7b72a8] hover:text-[#e05555] bg-black/60 rounded-full"
+                  className="h-8 w-8 text-white/50 hover:text-destructive bg-black/40 hover:bg-black/80 backdrop-blur-md rounded-full transition-all"
                   aria-label={`Delete saved workflow ${saved.name}`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -241,15 +254,17 @@ export default function Generate() {
                     });
                   }}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="p-4 flex-1 flex flex-col gap-2">
-                <h3 className="font-bold text-sm text-[#f0eeff] truncate">{saved.name}</h3>
-                <p className="text-xs text-[#7b72a8] line-clamp-2">Your saved custom workflow — click to load and run.</p>
-                <div className="flex gap-1.5 mt-auto pt-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#2a2448] border border-[#2d2650] text-xs text-[#7b72a8] font-medium">Saved</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#2a2448] border border-[#2d2650] text-xs text-[#7b72a8] font-medium">{new Date(saved.createdAt).toLocaleDateString()}</span>
+
+              <div className="absolute bottom-0 left-0 right-0 p-6 z-10 flex flex-col gap-3 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                <h3 className="font-extrabold text-2xl text-white leading-tight drop-shadow-md truncate">{saved.name}</h3>
+                <p className="text-sm text-white/80 line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-75">Your saved custom workflow — click to load and run.</p>
+                <div className="flex gap-2 mt-1">
+                  <span className="px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs text-white/90 font-semibold shadow-lg">
+                    {new Date(saved.createdAt).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
             </div>
@@ -258,7 +273,7 @@ export default function Generate() {
       )}
 
       {filteredWorkflows.length === 0 && !isListLoading && (
-        <div className="text-center p-12 border border-dashed border-[#2d2650] rounded-2xl text-[#4a4269]">
+        <div className="text-center p-16 border-2 border-dashed border-border rounded-3xl text-muted-foreground/50 font-medium">
           No workflows found for this category.
         </div>
       )}
@@ -269,6 +284,10 @@ export default function Generate() {
 const DB_WORKFLOW_THUMBNAILS: Record<string, string> = {
   "lip-sync-basic": latentsyncThumbnail,
   "motion-control-animatediff": mimicmotionThumbnail,
+  "seedance-reference-motion": cinematicPortraitThumbnail,
+  "seedance-camera-path": svdThumbnail,
+  "seedance-vertical-social": reelLoopThumbnail,
+  "seedance-product-reveal": productSwapThumbnail,
   "video-generation-txt2vid": animatediffThumbnail,
   "img2vid-stable-video": svdThumbnail,
   "custom-workflow": sdxlThumbnail,

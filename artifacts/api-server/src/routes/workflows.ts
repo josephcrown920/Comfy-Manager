@@ -7,6 +7,54 @@ import {
 
 const router: IRouter = Router();
 
+const seedanceStyleMotionParams = (defaults: {
+  prompt: string;
+  motionPreset: string;
+  strength: string;
+  frames: string;
+  aspect: string;
+  grade: string;
+}) => [
+  {
+    key: "source_image", label: "Reference Frame", type: "file",
+    description: "The hero frame that every generated shot is anchored to",
+    required: true, defaultValue: null, options: null, min: null, max: null, accept: "image/*",
+  },
+  {
+    key: "prompt", label: "Shot Direction", type: "text",
+    description: "Describe the action, performance, environment, and visual continuity",
+    required: true, defaultValue: defaults.prompt, options: null, min: null, max: null, accept: null,
+  },
+  {
+    key: "motion_preset", label: "Camera Path", type: "select",
+    description: "The primary camera movement for this variation",
+    required: false, defaultValue: defaults.motionPreset,
+    options: ["zoom-in", "zoom-out", "pan-left", "pan-right", "tilt-up", "tilt-down", "rotate"],
+    min: null, max: null, accept: null,
+  },
+  {
+    key: "motion_strength", label: "Motion Energy", type: "slider",
+    description: "How strongly the scene departs from the reference frame",
+    required: false, defaultValue: defaults.strength, options: null, min: 10, max: 90, accept: null,
+  },
+  {
+    key: "num_frames", label: "Clip Frames", type: "slider",
+    description: "Longer clips take more GPU time",
+    required: false, defaultValue: defaults.frames, options: null, min: 8, max: 64, accept: null,
+  },
+  {
+    key: "aspect_ratio", label: "Delivery Frame", type: "select",
+    description: "The composition used for the generated clip",
+    required: false, defaultValue: defaults.aspect, options: ["16:9", "9:16", "1:1"], min: null, max: null, accept: null,
+  },
+  {
+    key: "color_grade", label: "Color Direction", type: "select",
+    description: "A controlled grade applied after animation",
+    required: false, defaultValue: defaults.grade,
+    options: ["teal-orange", "warm-vintage", "cold-thriller"], min: null, max: null, accept: null,
+  },
+];
+
 // Built-in workflow templates — no DB needed, these are code-defined
 const WORKFLOWS = [
   {
@@ -209,6 +257,58 @@ const WORKFLOWS = [
         accept: null,
       },
     ],
+  },
+  // ─── Seedance-style local workflows ──────────────────────────
+  // These mirror popular reference-led video workflows using the local,
+  // user-owned AnimateDiff stack. They are intentionally not presented as
+  // access to ByteDance Seedance or any proprietary hosted model.
+  {
+    id: "seedance-reference-motion",
+    name: "Reference Motion",
+    description: "Seedance-style local workflow: animate one hero image into a controlled reference-led shot.",
+    category: "seedance-style",
+    icon: "Sparkles",
+    estimatedTime: "4-10 min",
+    params: seedanceStyleMotionParams({
+      prompt: "A fashion subject holds eye contact as fabric moves in a soft studio breeze, cinematic realism.",
+      motionPreset: "zoom-in", strength: "42", frames: "24", aspect: "16:9", grade: "teal-orange",
+    }),
+  },
+  {
+    id: "seedance-camera-path",
+    name: "Camera Path Shot",
+    description: "Seedance-style local workflow: turn a keyframe into a dramatic dolly, orbit, or lateral camera move.",
+    category: "seedance-style",
+    icon: "Focus",
+    estimatedTime: "4-10 min",
+    params: seedanceStyleMotionParams({
+      prompt: "A cinematic tracking shot with parallax depth, confident subject movement, precise production lighting.",
+      motionPreset: "pan-right", strength: "55", frames: "32", aspect: "16:9", grade: "cold-thriller",
+    }),
+  },
+  {
+    id: "seedance-vertical-social",
+    name: "Vertical Social Cut",
+    description: "Seedance-style local workflow: create a polished 9:16 motion clip with space for social captions.",
+    category: "seedance-style",
+    icon: "Smartphone",
+    estimatedTime: "4-10 min",
+    params: seedanceStyleMotionParams({
+      prompt: "A high-energy vertical campaign clip, subject centered with clean lower-third caption space, premium editorial motion.",
+      motionPreset: "tilt-up", strength: "48", frames: "24", aspect: "9:16", grade: "warm-vintage",
+    }),
+  },
+  {
+    id: "seedance-product-reveal",
+    name: "Product Reveal",
+    description: "Seedance-style local workflow: bring a product keyframe to life with a clean reveal and controlled movement.",
+    category: "seedance-style",
+    icon: "PackageOpen",
+    estimatedTime: "4-10 min",
+    params: seedanceStyleMotionParams({
+      prompt: "Premium product reveal, controlled hero lighting, slow camera push, crisp material detail, commercial finish.",
+      motionPreset: "zoom-in", strength: "35", frames: "24", aspect: "1:1", grade: "teal-orange",
+    }),
   },
   {
     id: "custom-workflow",

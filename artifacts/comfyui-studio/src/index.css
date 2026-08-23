@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @import 'tailwindcss';
 @import 'tw-animate-css';
@@ -42,85 +42,87 @@
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
 
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: 'Outfit', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Mono', monospace;
 
   --radius-sm: 6px;
   --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 12px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 }
 
 :root {
-  /* ── comfy.org purple palette ── */
-  --background:         #16122a;   /* deep indigo-purple page bg */
-  --foreground:         #f0eeff;   /* near-white text */
+  /* ── Cinematic Dark Palette ── */
+  --background:         #050505;   /* deep black page bg */
+  --foreground:         #f5f5f5;   /* sharp white text */
 
-  /* Panel surfaces — slightly lighter than the bg */
-  --card:               #1e1a38;
-  --card-foreground:    #f0eeff;
-  --card-border:        #2d2650;
+  /* Panel surfaces */
+  --card:               #0e0e0e;
+  --card-foreground:    #ffffff;
+  --card-border:        #1f1f1f;
 
-  /* Yellow-green brand accent — exact comfy.org logo colour */
+  /* Yellow-green brand accent — energizing */
   --primary:            #e8f724;
-  --primary-foreground: #0d0b1a;
+  --primary-foreground: #000000;
 
-  --secondary:          #2a2448;
-  --secondary-foreground: #f0eeff;
+  --secondary:          #161616;
+  --secondary-foreground: #a3a3a3;
 
-  --muted:              #1e1a38;
-  --muted-foreground:   #7b72a8;
+  --muted:              #0a0a0a;
+  --muted-foreground:   #737373;
 
-  --accent:             #2a2448;
-  --accent-foreground:  #f0eeff;
+  --accent:             #1f1f1f;
+  --accent-foreground:  #ffffff;
 
-  --destructive:        #e05555;
-  --destructive-foreground: #f0eeff;
+  --destructive:        #ff453a;
+  --destructive-foreground: #ffffff;
 
-  --success:            #4caf50;
-  --success-foreground: #f0eeff;
+  --success:            #32d74b;
+  --success-foreground: #ffffff;
 
-  --info:               #6b8ef0;
-  --info-foreground:    #f0eeff;
+  --info:               #0a84ff;
+  --info-foreground:    #ffffff;
 
-  --input:              #1e1a38;
+  --input:              #0e0e0e;
   --ring:               #e8f724;
-  --border:             #2d2650;
+  --border:             #1f1f1f;
 
-  --radius: 10px;
+  --radius: 12px;
 }
 
-.dark {}
+.dark {
+  /* Same as root since it's dark mode default */
+}
 
 @layer base {
   * { @apply border-border; }
-  body { @apply font-sans antialiased bg-background text-foreground; }
-  h1, h2, h3, h4, h5, h6 { @apply font-sans font-semibold tracking-tight; }
+  body { @apply font-sans antialiased bg-background text-foreground selection:bg-primary/30 selection:text-white; }
+  h1, h2, h3, h4, h5, h6 { @apply font-sans font-semibold tracking-tight text-foreground; }
 
   /* Cards */
   .card, [class*="Card"] {
-    @apply bg-[#1e1a38] border-[#2d2650] rounded-xl shadow-none;
+    @apply bg-card border-card-border rounded-2xl shadow-2xl shadow-black/50 backdrop-blur-xl;
   }
 
   /* Buttons */
-  button, .button, [class*="Button"] { @apply rounded-full; }
+  button, .button, [class*="Button"] { @apply rounded-lg transition-all duration-300; }
   button.bg-primary, .bg-primary {
-    @apply bg-[#e8f724] text-[#0d0b1a] hover:bg-[#d4e010] font-semibold;
+    @apply bg-primary text-primary-foreground hover:brightness-110 hover:shadow-[0_0_20px_rgba(232,247,36,0.3)] font-semibold;
   }
 
   /* Inputs */
   input, textarea, select {
-    @apply bg-[#1e1a38] border-[#2d2650] text-[#f0eeff] rounded-xl text-sm focus:ring-[#e8f724];
+    @apply bg-input border-border text-foreground rounded-lg text-sm focus:ring-1 focus:ring-primary focus:border-primary transition-all;
   }
   [role="combobox"] {
-    @apply bg-[#1e1a38] border-[#2d2650] text-[#f0eeff] rounded-xl text-sm;
+    @apply bg-input border-border text-foreground rounded-lg text-sm;
   }
 
   /* Badges */
   .badge, [class*="Badge"] {
-    @apply rounded-full bg-[#2a2448] border-[#2d2650] text-[#a097c8] font-normal text-xs;
+    @apply rounded-full bg-secondary border-border text-secondary-foreground font-medium text-xs backdrop-blur-md;
   }
 
   /* Progress fill */
-  [role="progressbar"] > div { @apply bg-[#e8f724]; }
+  [role="progressbar"] > div { @apply bg-primary shadow-[0_0_10px_rgba(232,247,36,0.5)]; }
 }
