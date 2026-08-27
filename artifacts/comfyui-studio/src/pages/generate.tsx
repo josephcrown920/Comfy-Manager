@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Play, LayoutGrid, Code, AlertCircle, Bookmark, Trash2, Save, History, BookOpen, Plus, Loader2, CheckCircle2, Sparkles, Video } from "lucide-react";
+import { ArrowLeft, Play, LayoutGrid, Code, AlertCircle, Bookmark, Trash2, Save, History, BookOpen, Plus, Loader2, CheckCircle2, Sparkles, Video, Search, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { uploadFile } from "@/components/ui/file-upload";
 import sdxlImageTemplate from "@/assets/templates/sdxl-image.workflow.json";
@@ -77,6 +77,7 @@ export default function Generate() {
   
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [initialCustomJson, setInitialCustomJson] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   
   useEffect(() => {
     const assistantWorkflow = sessionStorage.getItem("assistant-workflow");
@@ -95,9 +96,16 @@ export default function Generate() {
 
   const filteredWorkflows = useMemo(() => {
     if (!workflows) return [];
-    if (!categoryFilter) return workflows;
-    return workflows.filter(w => w.category === categoryFilter);
-  }, [workflows, categoryFilter]);
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    return workflows.filter(w => {
+      const matchesCategory = !categoryFilter || w.category === categoryFilter;
+      const matchesSearch = !normalizedQuery
+        || w.name.toLowerCase().includes(normalizedQuery)
+        || w.description.toLowerCase().includes(normalizedQuery)
+        || w.category.toLowerCase().includes(normalizedQuery);
+      return matchesCategory && matchesSearch;
+    });
+  }, [workflows, categoryFilter, searchQuery]);
 
   // Saved custom workflows only make sense in the unfiltered view or "custom" category
   const visibleSaved = (!categoryFilter || categoryFilter === "custom") ? (savedWorkflows ?? []) : [];
@@ -128,6 +136,30 @@ export default function Generate() {
         <p className="text-muted-foreground text-base max-w-xl">
           Select a template to begin generating. High-fidelity cinematic tools for your creative pipeline.
         </p>
+      </div>
+
+      <div className="relative z-10 max-w-xl">
+        <label htmlFor="workflow-search" className="sr-only">Search workflows</label>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="workflow-search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search workflows, formats, or capabilities…"
+            className="h-12 rounded-2xl border-border bg-card/60 pl-11 pr-11 text-sm backdrop-blur-md"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              aria-label="Clear workflow search"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Category pill filters */}
@@ -274,7 +306,7 @@ export default function Generate() {
 
       {filteredWorkflows.length === 0 && !isListLoading && (
         <div className="text-center p-16 border-2 border-dashed border-border rounded-3xl text-muted-foreground/50 font-medium">
-          No workflows found for this category.
+          No workflows match your search. Try a different phrase or clear the search.
         </div>
       )}
     </div>

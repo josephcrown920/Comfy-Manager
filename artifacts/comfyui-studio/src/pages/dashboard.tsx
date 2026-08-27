@@ -1,7 +1,11 @@
 import { useGetComfyStatus, useGetJobStats, getGetComfyStatusQueryKey, useGetRecentOutputs, getGetRecentOutputsQueryKey } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { Activity, CheckCircle2, Play, AlertCircle, Image as ImageIcon, Video, Mic, Wand2 } from "lucide-react";
+import { Activity, CheckCircle2, Play, AlertCircle, Video } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import latentsyncThumbnail from "@/assets/thumbnails/latentsync.jpg";
+import animatediffThumbnail from "@/assets/thumbnails/animatediff.jpg";
+import reelLoopThumbnail from "@/assets/thumbnails/reel-loop.jpg";
+import mimicmotionThumbnail from "@/assets/thumbnails/mimicmotion.jpg";
 
 export default function Dashboard() {
   const { data: status, isLoading: isStatusLoading } = useGetComfyStatus({
@@ -86,21 +90,25 @@ export default function Dashboard() {
           <span className="text-xs font-semibold tracking-widest uppercase text-[#4a4269]">Quick Start</span>
           <div className="h-px flex-1 bg-[#2d2650]" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { href: "/generate?category=image-generation", icon: ImageIcon, label: "Image Generation", sub: "Text to Image, Img2Img" },
-            { href: "/generate?category=video-generation", icon: Video,     label: "Video Generation",  sub: "Animate, Text to Video" },
-            { href: "/generate?category=lip-sync",         icon: Mic,       label: "Lip Sync",           sub: "Audio to Face animation" },
-            { href: "/generate?category=motion-control",   icon: Wand2,     label: "Motion Control",     sub: "Advanced controlnets" },
-          ].map(({ href, icon: Icon, label, sub }) => (
+            { href: "/generate?category=image-generation", image: animatediffThumbnail, label: "Image Generation", sub: "Text to Image, Img2Img" },
+            { href: "/generate?category=video-generation", image: reelLoopThumbnail, label: "Video Generation", sub: "Animate, Text to Video" },
+            { href: "/generate?category=lip-sync", image: latentsyncThumbnail, label: "Lip Sync", sub: "Audio to Face animation" },
+            { href: "/generate?category=motion-control", image: mimicmotionThumbnail, label: "Motion Control", sub: "Advanced controlnets" },
+          ].map(({ href, image, label, sub }) => (
             <Link key={href} href={href}>
-              <div className="group p-4 bg-[#1e1a38] border border-[#2d2650] rounded-2xl cursor-pointer hover:border-[#e8f724]/30 hover:bg-[#231f42] transition-all flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#2a2448] flex items-center justify-center shrink-0 group-hover:bg-[#e8f724]/10 transition-colors">
-                  <Icon className="h-4 w-4 text-[#7b72a8] group-hover:text-[#e8f724] transition-colors" />
+              <div className="group overflow-hidden bg-[#1e1a38] border border-[#2d2650] rounded-2xl cursor-pointer hover:border-[#e8f724]/50 hover:bg-[#231f42] transition-all">
+                <div className="relative aspect-[16/8] overflow-hidden">
+                  <img src={image} alt="" className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-100" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#111022] via-transparent to-transparent" />
+                  <div className="absolute bottom-3 left-3 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#e8f724] backdrop-blur-md">
+                    Explore workflow
+                  </div>
                 </div>
-                <div>
+                <div className="p-4">
                   <h3 className="font-semibold text-sm text-[#f0eeff] leading-tight">{label}</h3>
-                  <p className="text-xs text-[#4a4269] mt-0.5">{sub}</p>
+                  <p className="text-xs text-[#7b72a8] mt-1">{sub}</p>
                 </div>
               </div>
             </Link>

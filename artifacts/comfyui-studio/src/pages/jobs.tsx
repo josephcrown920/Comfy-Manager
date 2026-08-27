@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useListJobs, useDeleteJob, getListJobsQueryKey, refreshJob, useListBatches, useCancelBatch, useRetryBatchChild, refreshBatch, getListBatchesQueryKey } from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Trash2, ExternalLink, Loader2, PlayCircle, CheckCircle2, AlertCircle, GitBranch, RotateCcw, Square } from "lucide-react";
+import { Trash2, ExternalLink, Loader2, PlayCircle, CheckCircle2, AlertCircle, GitBranch, RotateCcw, Square, Search, X } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -72,6 +72,8 @@ function useComfyWebSocket(hasRunningJobs: boolean, promptJobMap: PromptJobMap) 
 }
 
 export default function Jobs() {
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [jobSearch, setJobSearch] = useState("");
   const { data: jobs, isLoading } = useListJobs(undefined, {
     query: { refetchInterval: 30000, queryKey: getListJobsQueryKey() }
   });
@@ -93,6 +95,15 @@ export default function Jobs() {
   const deleteJob = useDeleteJob();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const visibleJobs = useMemo(() => {
+    const normalizedSearch = jobSearch.trim().toLowerCase();
+    return (jobs ?? []).filter((job) => {
+      const matchesStatus = statusFilter === "all" || job.status === statusFilter;
+      const matchesSearch = !normalizedSearch || job.workflowId.toLowerCase().includes(normalizedSearch) || String(job.id).includes(normalizedSearch);
+      return matchesStatus && matchesSearch;
+    });
+  }, [jobs, jobSearch, statusFilter]);
 
   useEffect(() => {
     const active = batches?.filter((batch) => batch.status === "running" || batch.status === "pending") ?? [];
@@ -209,6 +220,41 @@ export default function Jobs() {
         </section>
       )}
 
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-2">
+          {["all", "running", "pending", "completed", "failed"].map((status) => (
+            <button
+              key={status}
+              type="button"
+              onClick={() => setStatusFilter(status)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
+                statusFilter === status
+                  ? "border-[#e8f724] bg-[#e8f724] text-[#0d0b1a]"
+                  : "border-[#2d2650] bg-[#1e1a38] text-[#7b72a8] hover:border-[#e8f724]/50 hover:text-[#f0eeff]"
+              }`}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+        <div className="relative w-full sm:max-w-xs">
+          <label htmlFor="job-search" className="sr-only">Search jobs</label>
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7b72a8]" />
+          <input
+            id="job-search"
+            value={jobSearch}
+            onChange={(event) => setJobSearch(event.target.value)}
+            placeholder="Search workflow or job ID"
+            className="h-10 w-full rounded-full border border-[#2d2650] bg-[#1e1a38] pl-10 pr-10 text-sm text-[#f0eeff] outline-none placeholder:text-[#4a4269] focus:border-[#e8f724]/60"
+          />
+          {jobSearch && (
+            <button type="button" aria-label="Clear job search" onClick={() => setJobSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7b72a8] hover:text-[#f0eeff]">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="border border-[#2d2650] bg-[#1e1a38] rounded-2xl overflow-hidden">
         <Table>
           <TableHeader className="bg-[#16122a] border-b border-[#2d2650]">
@@ -228,8 +274,8 @@ export default function Jobs() {
                   <span className="text-sm">Loading jobs…</span>
                 </TableCell>
               </TableRow>
-            ) : jobs && jobs.length > 0 ? (
-              jobs.map((job) => {
+            ) : visibleJobs.length > 0 ? (
+              visibleJobs.map((job) => {
                 const progress = getProgress(job);
                 return (
                   <TableRow key={job.id} className="border-b border-[#2d2650] hover:bg-[#231f42] transition-colors">
@@ -266,7 +312,7 @@ export default function Jobs() {
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="h-32 text-center text-[#4a4269] text-sm">
-                  No jobs found.
+                No jobs match the current filters.
                 </TableCell>
               </TableRow>
             )}
