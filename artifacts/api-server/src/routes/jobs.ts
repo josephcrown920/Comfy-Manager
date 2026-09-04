@@ -19,6 +19,7 @@ import { getComfyUrl } from "./settings";
 import { fetchComfy } from "./comfy";
 import { getModelAssignments } from "./model-assignments";
 import { withGpuSubmissionLease } from "./gpu-lease";
+import { reconcileJob } from "../lib/job-reconciliation";
 
 const router: IRouter = Router();
 
@@ -374,76 +375,10 @@ router.post("/jobs/:id/refresh", async (req, res): Promise<void> => {
     return;
   }
 
-  // Poll ComfyUI for updated status
-  if (job.comfyPromptId && job.status === "running") {
-    const comfyUrl = await getComfyUrl();
-    try {
-      const histRes = await fetchComfy(
-        comfyUrl,
-        `/history/${job.comfyPromptId}`
-      );
-      if (histRes.ok) {
-        const hist = (await histRes.json()) as Record<
-          string,
-          {
-            status?: { completed?: boolean; status_str?: string };
-            outputs?: Record<
-              string,
-              {
-                images?: Array<{ filename: string; subfolder: string; type: string }>;
-                // VideoHelperSuite (VHS_VideoCombine) and other video nodes emit these:
-                gifs?: Array<{ filename: string; subfolder: string; type: string }>;
-                videos?: Array<{ filename: string; subfolder: string; type: string }>;
-                audio?: Array<{ filename: string; subfolder: string; type: string }>;
-              }
-            >;
-          }
-        >;
-        const entry = hist[job.comfyPromptId];
-        if (entry?.status?.completed) {
-          // Collect output files
-          const outputFiles: Array<{ filename: string; subfolder: string; type: string }> = [];
-          for (const nodeOutput of Object.values(entry.outputs ?? {})) {
-            for (const f of [
-              ...(nodeOutput.images ?? []),
-              ...(nodeOutput.gifs ?? []),
-              ...(nodeOutput.videos ?? []),
-              ...(nodeOutput.audio ?? []),
-            ]) {
-              outputFiles.push(f);
-            }
-          }
-
-          // Save outputs to DB
-          for (const f of outputFiles) {
-            const ext = f.filename.split(".").pop()?.toLowerCase() ?? "";
-            const outputType = ["mp4", "webm", "avi", "mov", "gif"].includes(ext)
-              ? "video"
-              : ["wav", "mp3", "ogg", "flac"].includes(ext)
-              ? "audio"
-              : "image";
-            await db.insert(outputsTable).values({
-              jobId: job.id,
-              filename: f.filename,
-              subfolder: f.subfolder,
-              outputType,
-            });
-          }
-
-          await db
-            .update(jobsTable)
-            .set({ status: "completed", progress: 100, completedAt: new Date() })
-            .where(eq(jobsTable.id, job.id));
-        } else if (entry?.status?.status_str === "error") {
-          await db
-            .update(jobsTable)
-            .set({ status: "failed", errorMessage: "ComfyUI reported an error" })
-            .where(eq(jobsTable.id, job.id));
-        }
-      }
-    } catch {
-      // Ignore fetch errors
-    }
+  try {
+    await reconcileJob(job.id);
+  } catch {
+    // Keep refresh available when ComfyUI is temporarily unreachable.
   }
 
   const [updated] = await db

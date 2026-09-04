@@ -3,6 +3,7 @@ import { db, jobsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "./logger";
 import { getComfyUrl } from "../routes/settings";
+import { reconcileJobByPromptId } from "./job-reconciliation";
 
 /**
  * Server-side progress tracker.
@@ -65,10 +66,15 @@ function handleMessage(raw: string): void {
     msg.data &&
     msg.data["node"] == null
   ) {
-    // Execution finished for this prompt — drop throttling state.
-    // Final status/outputs are reconciled via the /jobs/:id/refresh endpoint.
+    // Execution finished for this prompt. Reconcile on the server so completion
+    // does not depend on a browser tab remaining open.
     const promptId = msg.data["prompt_id"] as string | undefined;
-    if (promptId) lastWrittenPct.delete(promptId);
+    if (promptId) {
+      lastWrittenPct.delete(promptId);
+      void reconcileJobByPromptId(promptId).catch((err) => {
+        logger.warn({ err, promptId }, "Failed to reconcile completed job");
+      });
+    }
   }
 }
 
