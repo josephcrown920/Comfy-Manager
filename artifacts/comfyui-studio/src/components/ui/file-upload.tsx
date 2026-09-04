@@ -11,14 +11,29 @@ interface FileUploadProps {
   onFileSelect: (filename: string) => void;
   label?: string;
   description?: string;
+  previouslyUploadedName?: string;
 }
 
-export function FileUpload({ accept, onFileSelect, label, description }: FileUploadProps) {
+export function FileUpload({
+  accept,
+  onFileSelect,
+  label,
+  description,
+  previouslyUploadedName,
+}: FileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [uploadedName, setUploadedName] = useState<string>("");
+  const [uploadedName, setUploadedName] = useState<string>(previouslyUploadedName ?? "");
+  const [isPreviouslyUploaded, setIsPreviouslyUploaded] = useState(Boolean(previouslyUploadedName));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (!previouslyUploadedName) return;
+
+    setUploadedName(previouslyUploadedName ?? "");
+    setIsPreviouslyUploaded(true);
+  }, [previouslyUploadedName]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -27,10 +42,11 @@ export function FileUpload({ accept, onFileSelect, label, description }: FileUpl
     setIsUploading(true);
     setProgress(0);
     setUploadedName("");
+    setIsPreviouslyUploaded(false);
 
     try {
       const comfyName = await uploadFile(file, (pct) => setProgress(pct), accept);
-      setUploadedName(file.name);
+      setUploadedName(comfyName);
       onFileSelect(comfyName);
       toast({ title: "File uploaded", description: `Stored as: ${comfyName}` });
     } catch (err: any) {
@@ -75,7 +91,9 @@ export function FileUpload({ accept, onFileSelect, label, description }: FileUpl
             {isUploading
               ? `Uploading… ${progress}%`
               : uploadedName
-                ? `Uploaded: ${uploadedName}`
+                ? isPreviouslyUploaded
+                  ? `Previously uploaded: ${uploadedName}`
+                  : `Uploaded: ${uploadedName}`
                 : "Click to upload a file"}
           </span>
         </Button>

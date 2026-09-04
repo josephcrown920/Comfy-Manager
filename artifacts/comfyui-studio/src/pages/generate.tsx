@@ -56,6 +56,8 @@ import talkingAvatarThumbnail from "@/assets/thumbnails/talking-avatar.jpg";
 import blogHeroThumbnail from "@/assets/thumbnails/blog-hero.jpg";
 
 const CUSTOM_WORKFLOW_ID = "custom-workflow";
+
+const UPLOAD_STORAGE_PREFIX = "comfyui-upload:";
 const MOTION_WORKFLOW_ID = "motion-control-animatediff";
 
 const LIME = "#c8f135";
@@ -644,9 +646,42 @@ function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBack: () =
 
   const createJob = useCreateJob();
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [rehydratedFiles, setRehydratedFiles] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!workflow) return;
+
+    const restoredFiles = workflow.params.reduce<Record<string, string>>((restored, param) => {
+      if (param.type !== "file") return restored;
+
+      try {
+        const storedFilename = sessionStorage.getItem(getUploadStorageKey(workflow.id, param.key));
+        if (storedFilename) restored[param.key] = storedFilename;
+      } catch {
+        // Storage can be unavailable in privacy-restricted browser contexts.
+      }
+
+      return restored;
+    }, {});
+
+    setRehydratedFiles(restoredFiles);
+    if (Object.keys(restoredFiles).length > 0) {
+      setFormData((previous) => ({ ...previous, ...restoredFiles }));
+    }
+  }, [workflow]);
 
   const handleParamChange = (key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleFileSelect = (paramKey: string, filename: string) => {
+    handleParamChange(paramKey, filename);
+
+    try {
+      sessionStorage.setItem(getUploadStorageKey(workflowId, paramKey), filename);
+    } catch {
+      // Storage can be unavailable in privacy-restricted browser contexts.
+    }
   };
 
   const onSubmit = (e: React.FormEvent) => {
@@ -778,7 +813,8 @@ function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBack: () =
                     {param.type === 'file' && (
                       <FileUpload 
                         accept={param.accept || undefined}
-                        onFileSelect={(filename) => handleParamChange(param.key, filename)}
+                        previouslyUploadedName={rehydratedFiles[param.key]}
+                        onFileSelect={(filename) => handleFileSelect(param.key, filename)}
                       />
                     )}
                   </div>
@@ -1102,4 +1138,8 @@ function MotionControlForm({ onBack }: { onBack: () => void }) {
       </div>
     </div>
   );
+}
+
+function getUploadStorageKey(workflowId: string, paramKey: string): string {
+  return `${UPLOAD_STORAGE_PREFIX}${encodeURIComponent(workflowId)}:${encodeURIComponent(paramKey)}`;
 }
