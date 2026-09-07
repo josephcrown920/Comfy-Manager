@@ -688,7 +688,7 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
   );
 }
 
-function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBack: () => void }) {
+export function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBack: () => void }) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { data: workflow, isLoading } = useGetWorkflow(workflowId, {
@@ -1251,6 +1251,6 @@ function MotionControlForm({ onBack }: { onBack: () => void }) {
   );
 }
 
-function getUploadStorageKey(workflowId: string, paramKey: string): string {
+export function getUploadStorageKey(workflowId: string, paramKey: string): string {
   return `${UPLOAD_STORAGE_PREFIX}${encodeURIComponent(workflowId)}:${encodeURIComponent(paramKey)}`;
 }
