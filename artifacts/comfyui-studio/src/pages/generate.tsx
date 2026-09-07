@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Play, LayoutGrid, Code, AlertCircle, Bookmark, Trash2, Save, History, BookOpen, Plus, Loader2, CheckCircle2, Sparkles, Video, Search, X } from "lucide-react";
+import { ArrowLeft, Play, LayoutGrid, Code, AlertCircle, Bookmark, Trash2, Save, History, BookOpen, Plus, Loader2, CheckCircle2, Sparkles, Video, Search, X, Download, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { uploadFile } from "@/components/ui/file-upload";
 import sdxlImageTemplate from "@/assets/templates/sdxl-image.workflow.json";
@@ -61,6 +61,37 @@ const UPLOAD_STORAGE_PREFIX = "comfyui-upload:";
 const MOTION_WORKFLOW_ID = "motion-control-animatediff";
 
 const LIME = "#c8f135";
+
+const WORKFLOW_GUIDANCE: Record<string, { bestFor: string; output: string }> = {
+  "perform-anywhere-angles": {
+    bestFor: "Build a consistent five-angle reference set before choosing the strongest still for motion.",
+    output: "Five generated cinematic stills",
+  },
+  "perform-anywhere-seedance": {
+    bestFor: "Transfer movement from a phone performance recording onto a selected generated still through hosted ModelArk Seedance.",
+    output: "Hosted Seedance motion video",
+  },
+  "perform-anywhere-motion": {
+    bestFor: "Transfer a phone performance recording onto a selected still using your connected ComfyUI GPU.",
+    output: "Local MimicMotion video",
+  },
+  "motion-control-animatediff": {
+    bestFor: "Create a controlled camera move from a single still without a performance recording.",
+    output: "Local AnimateDiff video",
+  },
+};
+
+function downloadJsonFile(filename: string, payload: unknown) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
 
 const MOTION_PRESETS = [
   { id: "zoom-in",   label: "Zoom In",    icon: "🔍", description: "Slow push toward the subject" },
@@ -173,6 +204,7 @@ export default function Generate() {
           { value: "lip-sync",             label: "Lip Sync" },
           { value: "motion-control",       label: "Motion Control" },
           { value: "seedance-style",       label: "Seedance-style" },
+           { value: "perform-anywhere",     label: "Perform Anywhere" },
           { value: "cinematic",            label: "Cinematic" },
           { value: "content-creation",     label: "Content Creation" },
         ].map(({ value, label }) => {
@@ -322,6 +354,9 @@ const DB_WORKFLOW_THUMBNAILS: Record<string, string> = {
   "seedance-camera-path": svdThumbnail,
   "seedance-vertical-social": reelLoopThumbnail,
   "seedance-product-reveal": productSwapThumbnail,
+  "perform-anywhere-seedance": mimicmotionThumbnail,
+  "perform-anywhere-angles": cinematicPortraitThumbnail,
+  "perform-anywhere-motion": mimicmotionThumbnail,
   "video-generation-txt2vid": animatediffThumbnail,
   "img2vid-stable-video": svdThumbnail,
   "custom-workflow": sdxlThumbnail,
@@ -457,6 +492,12 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
         },
       }
     );
+  };
+
+  const onDownloadApiJson = () => {
+    if (!validateJson(workflowJson)) return;
+    downloadJsonFile("comfyui-studio-workflow-api.json", JSON.parse(workflowJson));
+    toast({ title: "Workflow JSON downloaded", description: "Import this API-format graph into another ComfyUI-compatible app." });
   };
 
   return (
@@ -597,6 +638,19 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
               <div className="text-xs text-[#7b72a8] text-center font-mono">
                 This job will be added to your queue.
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-lg border-[#2d2650] bg-transparent hover:bg-[#2a2448]"
+                onClick={onDownloadApiJson}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download API JSON
+              </Button>
+              <div className="flex gap-2 rounded-lg border border-[#2d2650] bg-[#17132b] p-3 text-xs text-[#9b93bd]">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#e8f724]" />
+                Import this file in another ComfyUI-compatible app using its API-format workflow option.
+              </div>
             </div>
           </div>
 
@@ -690,7 +744,10 @@ function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBack: () =
 
     // Validate required fields
     for (const param of workflow.params) {
-      if (param.required && formData[param.key] === undefined && param.defaultValue === undefined) {
+      const value = formData[param.key];
+      const hasValue = value !== undefined && value !== null && String(value).trim().length > 0;
+      const hasDefault = param.defaultValue !== undefined && param.defaultValue !== null && String(param.defaultValue).trim().length > 0;
+      if (param.required && !hasValue && !hasDefault) {
         toast({ title: `Missing required field: ${param.label}`, variant: "destructive" });
         return;
       }
@@ -720,6 +777,22 @@ function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBack: () =
     });
   };
 
+  const onExportPreset = () => {
+    if (!workflow) return;
+    downloadJsonFile(`${workflow.id}-preset.json`, {
+      format: "comfyui-studio-preset",
+      version: 1,
+      workflowId: workflow.id,
+      name: workflow.name,
+      description: workflow.description,
+      params: workflow.params,
+    });
+    toast({
+      title: "Preset downloaded",
+      description: "This portable settings file can be shared with another Studio installation.",
+    });
+  };
+
   if (isLoading || !workflow) {
     return (
       <div className="space-y-6">
@@ -728,6 +801,12 @@ function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBack: () =
       </div>
     );
   }
+
+  const guidance = WORKFLOW_GUIDANCE[workflow.id] ?? {
+    bestFor: workflow.description,
+    output: "Generated media output",
+  };
+  const thumbnail = DB_WORKFLOW_THUMBNAILS[workflow.id];
 
   return (
     <div className="animate-in slide-in-from-right-8 duration-300">
@@ -738,9 +817,28 @@ function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBack: () =
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
         <Card className="border-border">
-          <CardHeader className="bg-secondary/30 border-b">
-            <CardTitle className="text-2xl">{workflow.name}</CardTitle>
-            <CardDescription>{workflow.description}</CardDescription>
+          <CardHeader className="overflow-hidden bg-secondary/30 border-b p-0">
+            {thumbnail && (
+              <img
+                src={thumbnail}
+                alt={`${workflow.name} workflow thumbnail`}
+                className="h-48 w-full object-cover"
+              />
+            )}
+            <div className="space-y-2 p-6">
+              <CardTitle className="text-2xl">{workflow.name}</CardTitle>
+              <CardDescription>{workflow.description}</CardDescription>
+              <div className="grid gap-3 pt-3 text-sm sm:grid-cols-2">
+                <div className="rounded-xl border border-border/70 bg-background/30 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">Best for</p>
+                  <p className="mt-1 text-muted-foreground">{guidance.bestFor}</p>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-background/30 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">Output</p>
+                  <p className="mt-1 text-muted-foreground">{guidance.output}</p>
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-6">
             <form id="workflow-form" onSubmit={onSubmit} className="space-y-6">
@@ -846,6 +944,19 @@ function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBack: () =
               </Button>
               <div className="text-xs text-muted-foreground text-center">
                 This job will be added to your queue.
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={onExportPreset}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export preset
+              </Button>
+              <div className="flex gap-2 rounded-lg border border-border bg-secondary/40 p-3 text-xs text-muted-foreground">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                Built-in presets export their settings. For a runnable ComfyUI node graph, use Custom Workflow and download API JSON.
               </div>
             </CardContent>
           </Card>

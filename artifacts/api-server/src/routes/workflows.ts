@@ -409,7 +409,7 @@ const WORKFLOWS = [
     id: "perform-anywhere-seedance",
     name: "Perform Anywhere — Seedance API",
     description:
-      "Send a selected cinematic still and performance reference to ModelArk's hosted Seedance video API. No local ComfyUI GPU is used for the motion stage.",
+      "Upload a selected cinematic still and your phone performance recording to ModelArk's hosted Seedance video API. No local ComfyUI GPU is used for the motion stage.",
     category: "perform-anywhere",
     icon: "Sparkles",
     estimatedTime: "1-5 min",

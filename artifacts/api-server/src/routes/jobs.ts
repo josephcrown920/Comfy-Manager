@@ -1438,7 +1438,7 @@ function buildPerformAnywhereAnglePrompt(params: Record<string, unknown>): Recor
  */
 function buildPerformAnywhereMotionPrompt(params: Record<string, unknown>): Record<string, unknown> {
   const sourceImage = String(params.source_image ?? "");
-  const performanceVideo = String(params.performance_video ?? "");
+  const performanceVideo = String(params.performance_video ?? params.source_video ?? "");
   const context = String(params.motion_context ?? "a performer moving naturally inside the scene");
   const numFrames = Math.min(Math.max(Number(params.num_frames ?? 48), 16), 72);
   const aspect = String(params.aspect_ratio ?? "16:9");

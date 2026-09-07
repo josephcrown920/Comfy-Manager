@@ -267,6 +267,7 @@ export default function PerformAnywhere() {
                 params: {
                   source_image: imported.name,
                   source_video: performanceVideo,
+                   performance_video: performanceVideo,
                   selected_angle: selectedChild?.batchIndex ?? 1,
                     motion_context: motionContext.trim(),
                     aspect_ratio: "16:9",
