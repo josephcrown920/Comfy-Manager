@@ -213,7 +213,7 @@ export default function PerformAnywhere() {
     if (!canStart) {
       toast({
         title: "Complete the reference room",
-        description: "Upload all five references and add both pieces of direction before building the shot list.",
+        description: `Upload all ${activePreset.keys.length} references and add both pieces of direction before building the shot list.`,
         variant: "destructive",
       });
       return;
@@ -366,7 +366,7 @@ export default function PerformAnywhere() {
             <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#c8f135]"><span className="font-mono">01</span><span className="h-px w-8 bg-[#c8f135]/40" /> Build the moodboard</div>
-                <h2 className="mt-3 text-2xl font-bold text-white">Five anchors. One world.</h2>
+                <h2 className="mt-3 text-2xl font-bold text-white">{activePreset.keys.length === 5 ? "Five anchors. One world." : "Three anchors. One interior."}</h2>
                 <p className="mt-1 max-w-xl text-sm text-white/45">Give the scene enough visual evidence to stay recognizably yours from every angle.</p>
               </div>
               <div data-testid="text-reference-count" className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[11px] text-white/45">
