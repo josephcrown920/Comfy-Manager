@@ -85,6 +85,36 @@ CAP_NODE_PACKS = {
     ],
 }
 
+# Sentinel node classes used by Studio workflows. Checking one representative
+# class per installed pack catches clone, dependency, and import failures without
+# requiring every node version to expose an identical full catalog.
+CAP_NODE_SENTINELS = {
+    "image": [
+        ("ComfyUI-Inspyrenet-Rembg", "InspyrenetRembg"),
+    ],
+    "video": [
+        ("ComfyUI-VideoHelperSuite", "VHS_VideoCombine"),
+        ("ComfyUI-AnimateDiff-Evolved", "ADE_AnimateDiffLoaderGen1"),
+        ("comfyui-art-venture", "ColorCorrect"),
+    ],
+    "lipsync": [
+        ("ComfyUI-VideoHelperSuite", "VHS_VideoCombine"),
+        ("ComfyUI-LatentSyncWrapper", "LatentSyncNode"),
+        ("comfyui-art-venture", "ColorCorrect"),
+    ],
+    "motion": [
+        ("ComfyUI-VideoHelperSuite", "VHS_VideoCombine"),
+        ("ComfyUI-MimicMotionWrapper", "MimicMotionSampler"),
+        ("comfyui-art-venture", "ColorCorrect"),
+    ],
+    "cinematic": [
+        ("ComfyUI-VideoHelperSuite", "VHS_VideoCombine"),
+        ("comfyui-propost", "ProPostFilmGrain"),
+        ("ComfyUI-Frame-Interpolation", "RIFE VFI"),
+        ("comfyui-art-venture", "ColorCorrect"),
+    ],
+}
+
 # Model weights per capability: (dest_rel_path, hf_repo, hf_file, min_vram_gb).
 # Entries with min_vram_gb > 0 are skipped on smaller cards so a free 16 GB T4
 # still gets a working "video-lite" path (AnimateDiff text-to-video at 512px)
@@ -297,6 +327,48 @@ def wait_healthy(proc, timeout=300):
     return False
 
 
+def check_node_packs(caps):
+    url = f"http://127.0.0.1:{PORT}/object_info"
+    expected = []
+    seen = set()
+    for cap in caps:
+        for pack, node_class in CAP_NODE_SENTINELS[cap]:
+            if (pack, node_class) not in seen:
+                seen.add((pack, node_class))
+                expected.append((pack, node_class))
+
+    try:
+        with urllib.request.urlopen(url, timeout=30) as response:
+            if response.status != 200:
+                raise RuntimeError(f"HTTP {response.status}")
+            registered = json.load(response)
+        if not isinstance(registered, dict):
+            raise RuntimeError("response was not a node catalog")
+    except Exception as exc:
+        print("\n" + "!" * 72)
+        print("  WARNING: COULD NOT VERIFY CUSTOM NODE PACKS")
+        print(f"  ComfyUI is running, but /object_info could not be read: {exc}")
+        print("  Jobs may fail because required custom nodes could be missing.")
+        print("!" * 72 + "\n", flush=True)
+        return False
+
+    missing = [(pack, node_class) for pack, node_class in expected
+               if node_class not in registered]
+    if not missing:
+        print(f"[nodes] verified {len(expected)} custom node pack sentinels.", flush=True)
+        return True
+
+    print("\n" + "!" * 72)
+    print("  WARNING: CUSTOM NODE PACKS FAILED TO REGISTER")
+    print("  ComfyUI is running, but these required nodes are missing:")
+    for pack, node_class in missing:
+        print(f"    - {pack}: {node_class}")
+    print("  Jobs using these packs will fail. Review the install/startup logs above")
+    print("  and re-run this launcher after fixing the reported dependency errors.")
+    print("!" * 72 + "\n", flush=True)
+    return False
+
+
 def open_tunnel():
     from pyngrok import ngrok  # type: ignore
     token = os.environ.get("NGROK_AUTHTOKEN", "").strip()
@@ -349,6 +421,7 @@ def main():
         raise SystemExit("[serve] ComfyUI never became healthy on /system_stats — "
                          "check the install logs above.")
 
+    check_node_packs(caps)
     public_url = open_tunnel()
     print("\n" + "=" * 64)
     print("  ComfyUI is LIVE on this GPU!")
