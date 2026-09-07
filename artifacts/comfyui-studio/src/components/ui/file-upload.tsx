@@ -6,12 +6,53 @@ import { Loader2, UploadCloud, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "./progress";
 
+const MB = 1024 * 1024;
+const FILE_SIZE_LIMITS = {
+  image: 20 * MB,
+  audio: 100 * MB,
+  video: 250 * MB,
+  other: 20 * MB,
+} as const;
+
 interface FileUploadProps {
   accept?: string;
   onFileSelect: (filename: string) => void;
   label?: string;
   description?: string;
   previouslyUploadedName?: string;
+}
+
+function fileSizeLimit(file: File): { bytes: number; label: string } {
+  if (file.type.startsWith("image/")) {
+    return { bytes: FILE_SIZE_LIMITS.image, label: "Images" };
+  }
+  if (file.type.startsWith("audio/")) {
+    return { bytes: FILE_SIZE_LIMITS.audio, label: "Audio files" };
+  }
+  if (file.type.startsWith("video/")) {
+    return { bytes: FILE_SIZE_LIMITS.video, label: "Videos" };
+  }
+  return { bytes: FILE_SIZE_LIMITS.other, label: "Files" };
+}
+
+function acceptedSizeDescription(accept?: string): string {
+  if (!accept) return "Maximum size: images 20 MB, audio 100 MB, video 250 MB.";
+
+  const normalized = accept.toLowerCase();
+  const limits: string[] = [];
+  if (normalized.includes("image/") || /\.(png|jpe?g|webp|gif|bmp|tiff?|avif|heic)\b/.test(normalized)) {
+    limits.push("images 20 MB");
+  }
+  if (normalized.includes("audio/") || /\.(mp3|wav|flac|aac|m4a|ogg|opus)\b/.test(normalized)) {
+    limits.push("audio 100 MB");
+  }
+  if (normalized.includes("video/") || /\.(mp4|mov|webm|mkv|avi|m4v)\b/.test(normalized)) {
+    limits.push("video 250 MB");
+  }
+
+  return limits.length > 0
+    ? `Maximum size: ${limits.join(", ")}.`
+    : "Maximum file size: 20 MB.";
 }
 
 export function FileUpload({
@@ -38,6 +79,17 @@ export function FileUpload({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const sizeLimit = fileSizeLimit(file);
+    if (file.size > sizeLimit.bytes) {
+      toast({
+        title: "File too large",
+        description: `${sizeLimit.label} must be ${sizeLimit.bytes / MB} MB or smaller.`,
+        variant: "destructive",
+      });
+      e.target.value = "";
+      return;
+    }
 
     setIsUploading(true);
     setProgress(0);
@@ -102,7 +154,9 @@ export function FileUpload({
           <Progress value={progress} className="h-1.5" />
         )}
       </div>
-      {description && <p className="text-xs text-muted-foreground">{description}</p>}
+      <p className="text-xs text-muted-foreground">
+        {[description, acceptedSizeDescription(accept)].filter(Boolean).join(" ")}
+      </p>
     </div>
   );
 }

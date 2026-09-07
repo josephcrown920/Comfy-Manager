@@ -6,10 +6,77 @@ import { ImportOutputBody, ImportOutputResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
-// Store uploads in memory — files are forwarded immediately to ComfyUI
+const MB = 1024 * 1024;
+const FILE_SIZE_LIMITS = {
+  image: 20 * MB,
+  audio: 100 * MB,
+  video: 250 * MB,
+  other: 20 * MB,
+} as const;
+
+class UploadSizeError extends Error {
+  constructor(
+    readonly limitBytes: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "UploadSizeError";
+  }
+}
+
+/**
+ * Buffer only up to the MIME-specific limit. Multer's memoryStorage cannot
+ * enforce dynamic limits and would retain the whole request up to the global
+ * ceiling before route validation runs.
+ */
+const sizeLimitedMemoryStorage: multer.StorageEngine = {
+  _handleFile(_req, file, callback) {
+    const limit = fileSizeLimit(file.mimetype);
+    let chunks: Buffer[] = [];
+    let size = 0;
+    let settled = false;
+
+    const fail = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      chunks = [];
+      callback(error);
+    };
+
+    file.stream.on("data", (chunk: Buffer) => {
+      if (settled) return;
+      size += chunk.length;
+      if (size > limit.bytes) {
+        fail(
+          new UploadSizeError(
+            limit.bytes,
+            `${limit.label} must be ${formatMegabytes(limit.bytes)} or smaller. "${file.originalname}" is too large.`,
+          ),
+        );
+        return;
+      }
+      chunks.push(chunk);
+    });
+    file.stream.once("error", fail);
+    file.stream.once("end", () => {
+      if (settled) return;
+      settled = true;
+      callback(null, {
+        buffer: Buffer.concat(chunks, size),
+        size,
+      });
+    });
+  },
+  _removeFile(_req, file, callback) {
+    file.buffer = Buffer.alloc(0);
+    callback(null);
+  },
+};
+
 const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB
+  storage: sizeLimitedMemoryStorage,
+  // Preserve an absolute ceiling in addition to the streaming per-type cap.
+  limits: { fileSize: FILE_SIZE_LIMITS.video },
 });
 
 /** Wrap multer.single() as a Promise so we can catch MulterError with typed responses. */
@@ -34,6 +101,23 @@ function comfyUploadParams(mimetype: string): { subfolder: string } {
     return { subfolder: "audio" };
   }
   return { subfolder: "" };
+}
+
+function fileSizeLimit(mimetype: string): { bytes: number; label: string } {
+  if (mimetype.startsWith("image/")) {
+    return { bytes: FILE_SIZE_LIMITS.image, label: "Images" };
+  }
+  if (mimetype.startsWith("audio/")) {
+    return { bytes: FILE_SIZE_LIMITS.audio, label: "Audio files" };
+  }
+  if (mimetype.startsWith("video/")) {
+    return { bytes: FILE_SIZE_LIMITS.video, label: "Videos" };
+  }
+  return { bytes: FILE_SIZE_LIMITS.other, label: "Files" };
+}
+
+function formatMegabytes(bytes: number): string {
+  return `${bytes / MB} MB`;
 }
 
 /**
@@ -83,8 +167,12 @@ router.post("/files/upload", async (req: Request, res: Response): Promise<void> 
   try {
     await runMulter(req, res);
   } catch (err) {
+    if (err instanceof UploadSizeError) {
+      res.status(413).json({ error: err.message });
+      return;
+    }
     if (err instanceof MulterError && err.code === "LIMIT_FILE_SIZE") {
-      res.status(413).json({ error: "File too large. Maximum size is 100 MB." });
+      res.status(413).json({ error: "File too large. Maximum size is 250 MB." });
       return;
     }
     res.status(400).json({ error: err instanceof Error ? err.message : "Upload parse error" });
