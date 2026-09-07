@@ -11,6 +11,7 @@ import savedWorkflowsRouter from "./saved-workflows";
 import assistantRouter from "./assistant";
 import batchesRouter from "./batches";
 import modelarkRouter from "./modelark";
+import runpodRouter from "./runpod";
 import { getComfyUrl } from "./settings";
 import { fetchComfy } from "./comfy";
 
@@ -28,6 +29,7 @@ router.use(savedWorkflowsRouter);
 router.use(assistantRouter);
 router.use(batchesRouter);
 router.use(modelarkRouter);
+router.use(runpodRouter);
 
 // Proxy ComfyUI view requests (for serving generated images/videos)
 router.get("/comfy/view", async (req, res): Promise<void> => {
