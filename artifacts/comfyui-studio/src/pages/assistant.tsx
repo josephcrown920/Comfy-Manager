@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
+import { Show } from "@clerk/react";
 import { 
   useAssistantChat, 
   useAssistantVideoPlan, 
@@ -17,6 +18,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Assistant() {
   return (
+    <>
+      <Show when="signed-in">
     <div className="space-y-6 animate-in fade-in duration-300 h-full flex flex-col">
       <div>
         <h1 className="text-2xl font-semibold flex items-center gap-3">
@@ -50,6 +53,24 @@ export default function Assistant() {
         </div>
       </Tabs>
     </div>
+      </Show>
+      <Show when="signed-out">
+        <div className="mx-auto flex min-h-[65vh] max-w-xl items-center justify-center">
+          <div className="w-full rounded-2xl border border-[#2d2650] bg-[#111022] p-8 text-center">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#e8f724]/10">
+              <Bot className="h-8 w-8 text-[#e8f724]" />
+            </div>
+            <h1 className="text-2xl font-semibold text-white">Sign in to use the AI Assistant</h1>
+            <p className="mx-auto mt-3 max-w-md text-sm text-[#b4afd0]">
+              Your account keeps AI requests protected and gives you a personal usage limit.
+            </p>
+            <Button asChild className="mt-6 rounded-xl bg-[#e8f724] text-black hover:bg-[#d4e010]">
+              <a href={`${import.meta.env.BASE_URL}sign-in`}>Sign in or create an account</a>
+            </Button>
+          </div>
+        </div>
+      </Show>
+    </>
   );
 }
 

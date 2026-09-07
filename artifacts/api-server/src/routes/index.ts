@@ -14,6 +14,7 @@ import modelarkRouter from "./modelark";
 import runpodRouter from "./runpod";
 import { getComfyUrl } from "./settings";
 import { fetchComfy } from "./comfy";
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 
@@ -21,15 +22,15 @@ router.use(healthRouter);
 router.use(settingsRouter);
 router.use(comfyRouter);
 router.use(workflowsRouter);
-router.use(jobsRouter);
+router.use(requireAuth, jobsRouter);
 router.use(outputsRouter);
 router.use(filesRouter);
 router.use(modelAssignmentsRouter);
 router.use(savedWorkflowsRouter);
 router.use(assistantRouter);
-router.use(batchesRouter);
-router.use(modelarkRouter);
-router.use(runpodRouter);
+router.use(requireAuth, batchesRouter);
+router.use(requireAuth, modelarkRouter);
+router.use(requireAuth, runpodRouter);
 
 // Proxy ComfyUI view requests (for serving generated images/videos)
 router.get("/comfy/view", async (req, res): Promise<void> => {

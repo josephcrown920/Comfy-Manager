@@ -1,15 +1,16 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { AssistantChatBody, AssistantVideoPlanBody } from "@workspace/api-zod";
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 
 const MODEL = "gpt-5.6-terra";
 
-// --- Abuse guards: input bounds + a simple per-IP rate limiter -------------
+// --- Abuse guards: input bounds + a simple per-user rate limiter -------------
 const MAX_MESSAGES = 40;
 const MAX_MESSAGE_CHARS = 8000;
 const MAX_IDEA_CHARS = 4000;
@@ -21,12 +22,12 @@ const MAX_CONCURRENT = 2;
 const rateBuckets = new Map<string, number[]>();
 let inFlight = 0;
 
-function checkRateLimit(ip: string): boolean {
+function checkRateLimit(userId: string): boolean {
   const now = Date.now();
-  const bucket = (rateBuckets.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  const bucket = (rateBuckets.get(userId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
   if (bucket.length >= RATE_MAX_REQUESTS) return false;
   bucket.push(now);
-  rateBuckets.set(ip, bucket);
+  rateBuckets.set(userId, bucket);
   if (rateBuckets.size > 1000) {
     for (const [k, v] of rateBuckets) {
       if (v.every((t) => now - t >= RATE_WINDOW_MS)) rateBuckets.delete(k);
@@ -35,8 +36,8 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-function guard(req: { ip?: string }, res: { status: (n: number) => { json: (b: unknown) => void } }): boolean {
-  if (!checkRateLimit(req.ip ?? "unknown")) {
+function guard(userId: string, res: Response): boolean {
+  if (!checkRateLimit(userId)) {
     res.status(429).json({ error: "Too many AI requests — please wait a minute and try again." });
     return false;
   }
@@ -46,6 +47,8 @@ function guard(req: { ip?: string }, res: { status: (n: number) => { json: (b: u
   }
   return true;
 }
+
+router.use(requireAuth);
 
 // The server may run from src (tsx), from dist (bundled), or with cwd at the
 // repo root (deployment) — try each candidate and use the first that exists.
@@ -133,7 +136,7 @@ router.post("/assistant/chat", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Message too long or too many messages." });
     return;
   }
-  if (!guard(req, res)) return;
+  if (!guard(res.locals.userId as string, res)) return;
   inFlight++;
   try {
     const system =
@@ -170,7 +173,7 @@ router.post("/assistant/video-plan", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Idea must be between 1 and 4000 characters." });
     return;
   }
-  if (!guard(req, res)) return;
+  if (!guard(res.locals.userId as string, res)) return;
   inFlight++;
   try {
     const videoTemplates = ["animatediff", "svd", "latentsync", "mimicmotion", "sdxl-image"];
