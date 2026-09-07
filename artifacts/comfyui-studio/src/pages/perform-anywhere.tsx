@@ -43,6 +43,7 @@ const CAMERA_TREATMENTS = [
 
 type ReferenceKey = "identity" | "outfit" | "location" | "pose" | "prop";
 type PresetId = "perform-anywhere" | "luxury-interior";
+type MotionProvider = "seedance" | "mimicmotion";
 
 const REFERENCE_SLOTS: Array<{ key: ReferenceKey; label: string; eyebrow: string; description: string }> = [
   { key: "identity", label: "Identity / face", eyebrow: "01", description: "A clear face and shoulders. This anchors who is on camera." },
@@ -157,6 +158,7 @@ export default function PerformAnywhere() {
   const [visualDirection, setVisualDirection] = useState("35mm cinematic texture, deep indigo shadows, warm amber practicals, restrained film grain, confident editorial framing.");
   const [motionContext, setMotionContext] = useState("a performer moving naturally inside the scene");
   const [performanceVideo, setPerformanceVideo] = useState("");
+  const [motionProvider, setMotionProvider] = useState<MotionProvider>("seedance");
   const [preset, setPreset] = useState<PresetId>("perform-anywhere");
   const [activeBatchId, setActiveBatchId] = useState<number | null>(null);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
@@ -261,14 +263,17 @@ export default function PerformAnywhere() {
           createJob.mutate(
             {
               data: {
-                workflowId: "perform-anywhere-motion",
+                 workflowId: motionProvider === "seedance" ? "perform-anywhere-seedance" : "perform-anywhere-motion",
                 params: {
                   source_image: imported.name,
                   source_video: performanceVideo,
                   selected_angle: selectedChild?.batchIndex ?? 1,
-                   motion_context: motionContext.trim(),
-                   aspect_ratio: "16:9",
-                   num_frames: 48,
+                    motion_context: motionContext.trim(),
+                    aspect_ratio: "16:9",
+                    ratio: "16:9",
+                    resolution: "720p",
+                    duration: 5,
+                    num_frames: 48,
                    scene_description: sceneDescription,
                    visual_direction: visualDirection,
                 },
@@ -276,7 +281,7 @@ export default function PerformAnywhere() {
             },
             {
               onSuccess: () => {
-                toast({ title: "Motion transfer is queued", description: "Your selected angle and performance are now becoming a shot." });
+                 toast({ title: motionProvider === "seedance" ? "Seedance render is queued" : "Motion transfer is queued", description: "Your selected angle and performance are now becoming a shot." });
                 setLocation("/jobs");
               },
               onError: (error: Error) => toast({ title: "Could not queue motion transfer", description: error.message, variant: "destructive" }),
@@ -466,6 +471,29 @@ export default function PerformAnywhere() {
               <div><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#ffb88b]"><span className="font-mono">04</span><span className="h-px w-8 bg-[#ffb88b]/40" /> Bring the performance</div><h2 className="mt-1 text-xl font-bold text-white">Make it move.</h2></div>
             </div>
             <p className="mt-4 text-xs leading-relaxed text-white/50">Choose one finished still, then upload the original phone clip whose movement you want to transfer.</p>
+             <div className="mt-5 space-y-2">
+               <Label className="text-xs font-semibold text-white/70">Motion provider</Label>
+               <div className="grid grid-cols-2 gap-2">
+                 <button
+                   type="button"
+                   data-testid="button-motion-provider-seedance"
+                   onClick={() => setMotionProvider("seedance")}
+                   className={`rounded-xl border px-3 py-3 text-left transition-colors ${motionProvider === "seedance" ? "border-[#ffb88b] bg-[#ffb88b]/10" : "border-white/10 bg-black/15 hover:border-white/20"}`}
+                 >
+                   <p className={`text-xs font-bold ${motionProvider === "seedance" ? "text-[#ffb88b]" : "text-white/75"}`}>Seedance API</p>
+                   <p className="mt-1 text-[10px] leading-relaxed text-white/35">ModelArk hosted video. No local GPU for this stage.</p>
+                 </button>
+                 <button
+                   type="button"
+                   data-testid="button-motion-provider-mimicmotion"
+                   onClick={() => setMotionProvider("mimicmotion")}
+                   className={`rounded-xl border px-3 py-3 text-left transition-colors ${motionProvider === "mimicmotion" ? "border-[#ffb88b] bg-[#ffb88b]/10" : "border-white/10 bg-black/15 hover:border-white/20"}`}
+                 >
+                   <p className={`text-xs font-bold ${motionProvider === "mimicmotion" ? "text-[#ffb88b]" : "text-white/75"}`}>MimicMotion</p>
+                   <p className="mt-1 text-[10px] leading-relaxed text-white/35">Local ComfyUI workflow. Uses your connected GPU.</p>
+                 </button>
+               </div>
+             </div>
             <div data-testid="upload-performance-video" className="mt-5">
               <FileUpload accept="video/*" label="Performance video" description="A clean 3–30 second phone performance works best." onFileSelect={setPerformanceVideo} previouslyUploadedName={performanceVideo || undefined} />
             </div>
@@ -484,7 +512,7 @@ export default function PerformAnywhere() {
               ) : <p className="mt-2 text-xs leading-relaxed text-white/35">Select a completed camera treatment above.</p>}
             </div>
             <Button data-testid="button-submit-motion" onClick={submitMotion} disabled={!canHandoff || busy} className="mt-5 w-full rounded-full bg-[#ffb88b] py-6 font-bold text-[#24131b] hover:bg-[#ffc9a9]">
-              {importOutput.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Preparing still</> : createJob.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Queueing motion</> : <><Upload className="mr-2 h-4 w-4" />Send to motion</>}
+               {importOutput.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Preparing still</> : createJob.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Queueing {motionProvider === "seedance" ? "Seedance" : "motion"}</> : <><Upload className="mr-2 h-4 w-4" />Send to {motionProvider === "seedance" ? "Seedance" : "motion"}</>}
             </Button>
             {!selectedOutput && <p className="mt-3 text-center text-[11px] text-white/30">The handoff unlocks when a finished angle is selected.</p>}
           </section>

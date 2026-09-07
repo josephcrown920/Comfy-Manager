@@ -2,6 +2,11 @@ import { db, jobsTable, outputsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { fetchComfy } from "../routes/comfy";
 import { getComfyUrl } from "../routes/settings";
+import {
+  getSeedanceTask,
+  MODELARK_OUTPUT_SUBFOLDER,
+  MODELARK_WORKFLOW_ID,
+} from "./modelark";
 
 type ComfyOutputFile = {
   filename: string;
@@ -44,6 +49,41 @@ export async function reconcileJob(jobId: number): Promise<void> {
     .limit(1);
 
   if (!job?.comfyPromptId || job.status !== "running") return;
+
+  if (job.workflowId === MODELARK_WORKFLOW_ID && job.comfyPromptId.startsWith("modelark:")) {
+    const taskId = job.comfyPromptId.slice("modelark:".length);
+    try {
+      const task = await getSeedanceTask(taskId);
+      const status = String(task.status ?? "").toLowerCase();
+      if (["succeeded", "completed", "success"].includes(status) && task.content?.video_url) {
+        await db.transaction(async (tx) => {
+          const claimed = await tx
+            .update(jobsTable)
+            .set({ status: "completed", progress: 100, completedAt: new Date() })
+            .where(and(eq(jobsTable.id, job.id), eq(jobsTable.status, "running")))
+            .returning({ id: jobsTable.id });
+          if (!claimed.length) return;
+          await tx.insert(outputsTable).values({
+            jobId: job.id,
+            filename: taskId,
+            subfolder: MODELARK_OUTPUT_SUBFOLDER,
+            outputType: "video",
+          });
+        });
+      } else if (["failed", "error", "cancelled", "canceled"].includes(status)) {
+        await db.update(jobsTable)
+          .set({ status: "failed", errorMessage: task.error?.message || "ModelArk reported an error." })
+          .where(and(eq(jobsTable.id, job.id), eq(jobsTable.status, "running")));
+      } else {
+        await db.update(jobsTable)
+          .set({ progress: Math.min(Math.max(job.progress ?? 5, 5) + 5, 95) })
+          .where(and(eq(jobsTable.id, job.id), eq(jobsTable.status, "running")));
+      }
+    } catch {
+      // ModelArk is asynchronous; a transient status failure should not fail the job.
+    }
+    return;
+  }
 
   const comfyUrl = await getComfyUrl();
   const historyResponse = await fetchComfy(

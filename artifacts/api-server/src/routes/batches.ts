@@ -18,6 +18,7 @@ import { getComfyUrl } from "./settings";
 import { fetchComfy } from "./comfy";
 import { buildComfyPrompt } from "./jobs";
 import { withGpuSubmissionLease } from "./gpu-lease";
+import { MODELARK_OUTPUT_SUBFOLDER, modelArkOutputUrl } from "../lib/modelark";
 
 const router: IRouter = Router();
 const TERMINAL = new Set(["completed", "failed", "cancelled"]);
@@ -38,7 +39,9 @@ function formatChild(job: typeof jobsTable.$inferSelect, outputs: typeof outputs
       jobId: output.jobId,
       filename: output.filename,
       outputType: output.outputType,
-      comfyUrl: `/api/comfy/view?filename=${encodeURIComponent(output.filename)}&subfolder=${encodeURIComponent(output.subfolder)}&type=output`,
+    comfyUrl: output.subfolder === MODELARK_OUTPUT_SUBFOLDER
+      ? modelArkOutputUrl(output.filename)
+      : `/api/comfy/view?filename=${encodeURIComponent(output.filename)}&subfolder=${encodeURIComponent(output.subfolder)}&type=output`,
       thumbnailUrl: null,
       createdAt: output.createdAt,
     })),

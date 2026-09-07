@@ -10,6 +10,7 @@ import modelAssignmentsRouter from "./model-assignments";
 import savedWorkflowsRouter from "./saved-workflows";
 import assistantRouter from "./assistant";
 import batchesRouter from "./batches";
+import modelarkRouter from "./modelark";
 import { getComfyUrl } from "./settings";
 import { fetchComfy } from "./comfy";
 
@@ -26,6 +27,7 @@ router.use(modelAssignmentsRouter);
 router.use(savedWorkflowsRouter);
 router.use(assistantRouter);
 router.use(batchesRouter);
+router.use(modelarkRouter);
 
 // Proxy ComfyUI view requests (for serving generated images/videos)
 router.get("/comfy/view", async (req, res): Promise<void> => {

@@ -6,6 +6,7 @@ import {
   GetRecentOutputsResponse,
 } from "@workspace/api-zod";
 import { eq, desc, and } from "drizzle-orm";
+import { MODELARK_OUTPUT_SUBFOLDER, modelArkOutputUrl } from "../lib/modelark";
 
 const router: IRouter = Router();
 
@@ -15,7 +16,9 @@ function formatOutput(o: typeof outputsTable.$inferSelect) {
     jobId: o.jobId,
     filename: o.filename,
     outputType: o.outputType,
-    comfyUrl: `/api/comfy/view?filename=${encodeURIComponent(o.filename)}&subfolder=${encodeURIComponent(o.subfolder)}&type=output`,
+    comfyUrl: o.subfolder === MODELARK_OUTPUT_SUBFOLDER
+      ? modelArkOutputUrl(o.filename)
+      : `/api/comfy/view?filename=${encodeURIComponent(o.filename)}&subfolder=${encodeURIComponent(o.subfolder)}&type=output`,
     thumbnailUrl: null,
     createdAt: o.createdAt,
   };

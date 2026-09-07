@@ -20,6 +20,7 @@ import { fetchComfy } from "./comfy";
 import { getModelAssignments } from "./model-assignments";
 import { withGpuSubmissionLease } from "./gpu-lease";
 import { reconcileJob } from "../lib/job-reconciliation";
+import { createSeedanceTask, MODELARK_OUTPUT_SUBFOLDER, MODELARK_WORKFLOW_ID, modelArkOutputUrl } from "../lib/modelark";
 
 const router: IRouter = Router();
 
@@ -40,7 +41,9 @@ function buildJobOutput(job: typeof jobsTable.$inferSelect, outputs: typeof outp
       jobId: o.jobId,
       filename: o.filename,
       outputType: o.outputType,
-      comfyUrl: `/api/comfy/view?filename=${encodeURIComponent(o.filename)}&subfolder=${encodeURIComponent(o.subfolder)}&type=output`,
+       comfyUrl: o.subfolder === MODELARK_OUTPUT_SUBFOLDER
+         ? modelArkOutputUrl(o.filename)
+         : `/api/comfy/view?filename=${encodeURIComponent(o.filename)}&subfolder=${encodeURIComponent(o.subfolder)}&type=output`,
       thumbnailUrl: null,
       createdAt: o.createdAt,
     })),
@@ -131,6 +134,27 @@ router.post("/jobs", async (req, res): Promise<void> => {
   }
 
   const { workflowId, params } = parsed.data;
+
+  if (workflowId === MODELARK_WORKFLOW_ID) {
+    try {
+      const task = await createSeedanceTask(params as Record<string, unknown>);
+      const [job] = await db
+        .insert(jobsTable)
+        .values({
+          workflowId: MODELARK_WORKFLOW_ID,
+          workflowName: "Perform Anywhere — Seedance",
+          status: "running",
+          params: params as Record<string, unknown>,
+          comfyPromptId: `modelark:${task.id}`,
+          progress: 5,
+        })
+        .returning();
+      res.status(201).json(CreateJobResponse.parse(buildJobOutput(job!, [])));
+    } catch (error) {
+      res.status(502).json({ error: error instanceof Error ? error.message : "Could not start the ModelArk Seedance task." });
+    }
+    return;
+  }
   await withGpuSubmissionLease(async () => {
   // Batch Studio owns a user-connected GPU exclusively. Ordinary single-job
   // submission remains unchanged when the GPU is free, but cannot bypass an
