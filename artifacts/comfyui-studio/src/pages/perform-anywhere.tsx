@@ -42,6 +42,7 @@ const CAMERA_TREATMENTS = [
 ] as const;
 
 type ReferenceKey = "identity" | "outfit" | "location" | "pose" | "prop";
+type PresetId = "perform-anywhere" | "luxury-interior";
 
 const REFERENCE_SLOTS: Array<{ key: ReferenceKey; label: string; eyebrow: string; description: string }> = [
   { key: "identity", label: "Identity / face", eyebrow: "01", description: "A clear face and shoulders. This anchors who is on camera." },
@@ -50,6 +51,32 @@ const REFERENCE_SLOTS: Array<{ key: ReferenceKey; label: string; eyebrow: string
   { key: "pose", label: "Pose", eyebrow: "04", description: "A body position or gesture that sets the performance energy." },
   { key: "prop", label: "Prop / car", eyebrow: "05", description: "The hero object that makes the frame yours." },
 ];
+
+const PRESETS: Array<{ id: PresetId; label: string; description: string; keys: ReferenceKey[] }> = [
+  {
+    id: "perform-anywhere",
+    label: "Perform Anywhere",
+    description: "Five anchors for a flexible music-video world.",
+    keys: ["identity", "outfit", "location", "pose", "prop"],
+  },
+  {
+    id: "luxury-interior",
+    label: "Luxury Vehicle Interior",
+    description: "Identity, vehicle interior, and seated composition.",
+    keys: ["identity", "location", "pose"],
+  },
+];
+
+const LUXURY_SLOT_OVERRIDES: Partial<Record<ReferenceKey, { label: string; description: string }>> = {
+  location: {
+    label: "Vehicle interior",
+    description: "The cabin, lighting, trim, and luxury details the generated scene should preserve.",
+  },
+  pose: {
+    label: "Seated composition",
+    description: "The seated performance position and framing to match before motion transfer.",
+  },
+};
 
 function statusLabel(status: string | undefined) {
   if (status === "completed") return "Ready";
@@ -128,10 +155,16 @@ export default function PerformAnywhere() {
   });
   const [sceneDescription, setSceneDescription] = useState("A midnight performance beneath sodium streetlights, rain caught in the air, the city stretching behind the performer.");
   const [visualDirection, setVisualDirection] = useState("35mm cinematic texture, deep indigo shadows, warm amber practicals, restrained film grain, confident editorial framing.");
+  const [motionContext, setMotionContext] = useState("a performer moving naturally inside the scene");
   const [performanceVideo, setPerformanceVideo] = useState("");
+  const [preset, setPreset] = useState<PresetId>("perform-anywhere");
   const [activeBatchId, setActiveBatchId] = useState<number | null>(null);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
 
+  const activePreset = PRESETS.find((item) => item.id === preset) ?? PRESETS[0];
+  const activeReferenceSlots = REFERENCE_SLOTS
+    .filter((slot) => activePreset.keys.includes(slot.key))
+    .map((slot) => preset === "luxury-interior" ? { ...slot, ...LUXURY_SLOT_OVERRIDES[slot.key] } : slot);
   const batches = batchesQuery.data ?? [];
   const activeBatch = useMemo(() => {
     if (activeBatchId !== null) return batches.find((batch) => batch.id === activeBatchId);
@@ -145,7 +178,7 @@ export default function PerformAnywhere() {
   const selectedChild = completedChildren.find((child) => child.id === selectedChildId);
   const selectedOutput = selectedChild?.outputs?.[0];
   const completedCount = activeBatch?.completedJobs ?? 0;
-  const allReferencesReady = Object.values(references).every(Boolean);
+  const allReferencesReady = activePreset.keys.every((key) => Boolean(references[key]));
   const canStart = allReferencesReady && sceneDescription.trim().length >= 2 && visualDirection.trim().length >= 2;
   const canHandoff = Boolean(selectedOutput && performanceVideo);
 
@@ -157,6 +190,21 @@ export default function PerformAnywhere() {
 
   const updateReference = (key: ReferenceKey, filename: string) => {
     setReferences((current) => ({ ...current, [key]: filename }));
+  };
+
+  const selectPreset = (nextPreset: PresetId) => {
+    setPreset(nextPreset);
+    setReferences({ identity: "", outfit: "", location: "", pose: "", prop: "" });
+    setSelectedChildId(null);
+    if (nextPreset === "luxury-interior") {
+      setSceneDescription("A man rapping inside a luxury vehicle interior at night, seated performance, star-lit ceiling, cream leather, city lights drifting across the glass.");
+      setVisualDirection("Premium automotive campaign, ARRI Alexa 35, Cooke anamorphic lens, crisp leather texture, practical LED lighting, shallow depth of field, controlled reflections.");
+      setMotionContext("a seated performer rapping naturally inside the same luxury vehicle interior, subtle head movement and hand gestures within frame");
+    } else {
+      setSceneDescription("A midnight performance beneath sodium streetlights, rain caught in the air, the city stretching behind the performer.");
+      setVisualDirection("35mm cinematic texture, deep indigo shadows, warm amber practicals, restrained film grain, confident editorial framing.");
+      setMotionContext("a performer moving naturally inside the scene");
+    }
   };
 
   const startAngles = () => {
@@ -171,15 +219,15 @@ export default function PerformAnywhere() {
     createBatch.mutate(
       {
         data: {
-          name: `Perform Anywhere · ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}`,
+           name: `${activePreset.label} · ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}`,
           batchType: "perform-anywhere-angles",
           batchSize: 5,
           masterAsset: references.identity,
           identityAnchor: references.identity,
-          outfitAsset: references.outfit,
+           outfitAsset: preset === "luxury-interior" ? references.identity : references.outfit,
           locationAsset: references.location,
           poseAsset: references.pose,
-          propAsset: references.prop,
+           propAsset: preset === "luxury-interior" ? references.location : references.prop,
           scenePrompt: sceneDescription.trim(),
           styleAnchor: visualDirection.trim(),
           cameraTreatments: CAMERA_TREATMENTS.map((camera) => camera.id),
@@ -218,8 +266,11 @@ export default function PerformAnywhere() {
                   source_image: imported.name,
                   source_video: performanceVideo,
                   selected_angle: selectedChild?.batchIndex ?? 1,
-                  scene_description: sceneDescription,
-                  visual_direction: visualDirection,
+                   motion_context: motionContext.trim(),
+                   aspect_ratio: "16:9",
+                   num_frames: 48,
+                   scene_description: sceneDescription,
+                   visual_direction: visualDirection,
                 },
               },
             },
@@ -251,10 +302,10 @@ export default function PerformAnywhere() {
               <p data-testid="text-workflow-eyebrow" className="font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-[#c8f135]">Perform Anywhere / room 01</p>
             </div>
             <h1 data-testid="text-page-title" className="max-w-3xl text-4xl font-black leading-[0.98] tracking-[-0.045em] text-white sm:text-6xl">
-              Turn five references into a <span className="text-[#c8f135]">shot list.</span>
+               Turn {activePreset.keys.length} references into a <span className="text-[#c8f135]">shot list.</span>
             </h1>
             <p data-testid="text-page-description" className="mt-5 max-w-2xl text-sm leading-relaxed text-white/55 sm:text-base">
-              Build a consistent cinematic scene from your moodboard, audition five camera treatments, then carry the strongest still into motion with your original performance.
+               Build a consistent cinematic scene from your references, audition five camera treatments, then carry the strongest still into motion with your original performance.
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4 backdrop-blur">
@@ -275,6 +326,38 @@ export default function PerformAnywhere() {
       <div className="grid gap-7 xl:grid-cols-[1fr_360px]">
         <main className="space-y-7">
           <section className="aurora-glass rounded-3xl p-5 sm:p-7">
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#bba3ff]"><span className="font-mono">00</span><span className="h-px w-8 bg-[#bba3ff]/40" /> Choose a starting room</div>
+                <h2 className="mt-3 text-2xl font-bold text-white">Pick the world you want to build.</h2>
+                <p className="mt-1 max-w-xl text-sm text-white/45">Both presets use the same five-angle audition and motion handoff. The luxury interior preset keeps the reference room focused on a seated performance inside the vehicle.</p>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {PRESETS.map((option) => {
+                const selected = option.id === preset;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    data-testid={`button-preset-${option.id}`}
+                    onClick={() => selectPreset(option.id)}
+                    className={`rounded-2xl border p-4 text-left transition-all ${selected ? "border-[#c8f135] bg-[#c8f135]/[0.08] shadow-[0_12px_35px_rgba(200,241,53,.08)]" : "border-white/[0.09] bg-black/10 hover:border-white/20"}`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className={`font-semibold ${selected ? "text-[#c8f135]" : "text-white"}`}>{option.label}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-white/45">{option.description}</p>
+                      </div>
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${selected ? "border-[#c8f135] bg-[#c8f135] text-[#10110a]" : "border-white/15 text-transparent"}`}><Check className="h-3.5 w-3.5" /></span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="aurora-glass rounded-3xl p-5 sm:p-7">
             <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#c8f135]"><span className="font-mono">01</span><span className="h-px w-8 bg-[#c8f135]/40" /> Build the moodboard</div>
@@ -282,11 +365,11 @@ export default function PerformAnywhere() {
                 <p className="mt-1 max-w-xl text-sm text-white/45">Give the scene enough visual evidence to stay recognizably yours from every angle.</p>
               </div>
               <div data-testid="text-reference-count" className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[11px] text-white/45">
-                {Object.values(references).filter(Boolean).length} / 5 uploaded
+                 {activePreset.keys.filter((key) => Boolean(references[key])).length} / {activePreset.keys.length} uploaded
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {REFERENCE_SLOTS.map((slot) => (
+               {activeReferenceSlots.map((slot) => (
                 <ReferenceCard key={slot.key} slot={slot} value={references[slot.key]} onUploaded={(filename) => updateReference(slot.key, filename)} />
               ))}
             </div>
@@ -310,7 +393,7 @@ export default function PerformAnywhere() {
               </div>
             </div>
             <div className="mt-6 flex flex-col justify-between gap-4 rounded-2xl border border-[#c8f135]/20 bg-[#c8f135]/[0.06] p-4 sm:flex-row sm:items-center">
-              <div className="flex gap-3"><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[#c8f135]" /><p className="max-w-xl text-xs leading-relaxed text-white/55">We will create exactly five children with the camera treatments below. They share your references, scene, and visual direction.</p></div>
+               <div className="flex gap-3"><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[#c8f135]" /><p className="max-w-xl text-xs leading-relaxed text-white/55">We will create exactly five children with the camera treatments below. They share your {activePreset.keys.length} references, scene, and visual direction.</p></div>
               <Button data-testid="button-start-angles" onClick={startAngles} disabled={createBatch.isPending} className="shrink-0 rounded-full bg-[#c8f135] px-5 font-bold text-[#10110a] hover:bg-[#d9f85d]">
                 {createBatch.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Building angles</> : <><Sparkles className="mr-2 h-4 w-4" />Build five angles</>}
               </Button>
@@ -386,6 +469,11 @@ export default function PerformAnywhere() {
             <div data-testid="upload-performance-video" className="mt-5">
               <FileUpload accept="video/*" label="Performance video" description="A clean 3–30 second phone performance works best." onFileSelect={setPerformanceVideo} previouslyUploadedName={performanceVideo || undefined} />
             </div>
+             <div className="mt-5 space-y-2">
+               <Label htmlFor="motion-context" className="text-xs font-semibold text-white/70">Motion context</Label>
+               <Textarea data-testid="input-motion-context" id="motion-context" value={motionContext} onChange={(event) => setMotionContext(event.target.value)} className="min-h-24 resize-none border-white/10 bg-black/20 text-sm leading-relaxed text-white placeholder:text-white/25" placeholder="Describe the movement and the scene context so the transfer stays grounded." />
+               <p className="text-[11px] text-white/30">This prompt guides the animation stage and helps prevent vehicle or environment morphing.</p>
+             </div>
             <div data-testid="status-selected-angle" className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/35">Selected still</p>
               {selectedOutput ? (

@@ -16,7 +16,6 @@ import Launch from '@/pages/launch';
 import Guide from '@/pages/guide';
 import Batches from '@/pages/batches';
 import PerformAnywhere from '@/pages/perform-anywhere';
-import PerformAnywhere from '@/pages/perform-anywhere';
 
 import {
   Route,
@@ -35,7 +34,6 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/generate" component={Generate} />
           <Route path="/batches" component={Batches} />
-          <Route path="/perform-anywhere" component={PerformAnywhere} />
           <Route path="/perform-anywhere" component={PerformAnywhere} />
           <Route path="/assistant" component={Assistant} />
           <Route path="/jobs" component={Jobs} />
