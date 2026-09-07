@@ -605,6 +605,29 @@ paths:
         "502":
           description: ComfyUI upstream unreachable or returned an error
 
+  /files/import-output:
+    post:
+      operationId: importOutput
+      tags: [files]
+      summary: Copy a generated ComfyUI output into the input directory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportOutputInput"
+      responses:
+        "200":
+          description: Imported input file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadedFile"
+        "400":
+          description: Invalid output reference
+        "502":
+          description: ComfyUI could not be reached
+
   /assistant/chat:
     post:
       operationId: assistantChat
@@ -856,7 +879,7 @@ components:
           type: string
         category:
           type: string
-          enum: [lip-sync, motion-control, video-generation, image-generation, cinematic, content-creation, seedance-style, custom]
+          enum: [lip-sync, motion-control, video-generation, image-generation, cinematic, content-creation, seedance-style, perform-anywhere, custom]
         icon:
           type: ["string", "null"]
         estimatedTime:
@@ -914,7 +937,7 @@ components:
           type: string
         batchType:
           type: string
-          enum: [scene-variation, finished-video-variation]
+          enum: [scene-variation, finished-video-variation, perform-anywhere-angles]
         status:
           type: string
           enum: [pending, running, completed, failed, cancelled]
@@ -950,7 +973,7 @@ components:
           maxLength: 100
         batchType:
           type: string
-          enum: [scene-variation, finished-video-variation]
+          enum: [scene-variation, finished-video-variation, perform-anywhere-angles]
         batchSize:
           type: number
           minimum: 1
@@ -967,6 +990,14 @@ components:
           minLength: 2
           maxLength: 1000
         identityAnchor:
+          type: string
+        outfitAsset:
+          type: string
+        locationAsset:
+          type: string
+        poseAsset:
+          type: string
+        propAsset:
           type: string
         cameraTreatments:
           type: array
@@ -1001,6 +1032,19 @@ components:
         params:
           type: object
           additionalProperties: true
+
+    ImportOutputInput:
+      type: object
+      required: [filename]
+      properties:
+        filename:
+          type: string
+          minLength: 1
+        subfolder:
+          type: string
+        type:
+          type: string
+          enum: [output]
 
     JobStats:
       type: object

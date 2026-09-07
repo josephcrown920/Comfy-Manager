@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import multer, { MulterError } from "multer";
 import { getComfyUrl } from "./settings";
 import { fetchComfy } from "./comfy";
+import { ImportOutputBody, ImportOutputResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -150,6 +151,62 @@ router.post("/files/upload", async (req: Request, res: Response): Promise<void> 
     });
   } catch (err: any) {
     res.status(502).json({ error: `Could not reach ComfyUI: ${err.message}` });
+  }
+});
+
+/**
+ * Copy a generated image back into ComfyUI's input directory so it can become
+ * the source image for a later workflow stage.
+ */
+router.post("/files/import-output", async (req: Request, res: Response): Promise<void> => {
+  const parsed = ImportOutputBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { filename, subfolder = "", type = "output" } = parsed.data;
+  const comfyUrl = await getComfyUrl();
+
+  try {
+    const query = new URLSearchParams({
+      filename,
+      subfolder,
+      type,
+    });
+    const source = await fetchComfy(comfyUrl, `/view?${query.toString()}`, {
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!source.ok) {
+      res.status(502).json({ error: `Could not read the generated output (${source.status}).` });
+      return;
+    }
+
+    const bytes = new Uint8Array(await source.arrayBuffer());
+    const contentType = source.headers.get("content-type") || "image/png";
+    const formData = new FormData();
+    formData.append("image", new Blob([bytes], { type: contentType }), filename);
+    formData.append("type", "input");
+
+    const uploaded = await fetchComfy(comfyUrl, "/upload/image", {
+      method: "POST",
+      body: formData,
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!uploaded.ok) {
+      const detail = await uploaded.text().catch(() => "");
+      res.status(502).json({ error: `Could not import the generated output (${uploaded.status}): ${detail.slice(0, 300)}` });
+      return;
+    }
+
+    const data = (await uploaded.json()) as { name: string; subfolder?: string; type?: string };
+    res.json(ImportOutputResponse.parse({
+      name: data.name,
+      subfolder: data.subfolder ?? "",
+      type: data.type ?? "input",
+    }));
+  } catch (err) {
+    res.status(502).json({ error: `Could not reach ComfyUI: ${err instanceof Error ? err.message : "unknown error"}` });
   }
 });
 

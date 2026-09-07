@@ -91,7 +91,7 @@ export const ListWorkflowsResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "description": zod.string(),
-  "category": zod.enum(['lip-sync', 'motion-control', 'video-generation', 'image-generation', 'cinematic', 'content-creation', 'seedance-style', 'custom']),
+  "category": zod.enum(['lip-sync', 'motion-control', 'video-generation', 'image-generation', 'cinematic', 'content-creation', 'seedance-style', 'perform-anywhere', 'custom']),
   "icon": zod.string().nullish(),
   "estimatedTime": zod.string().nullish(),
   "params": zod.array(zod.object({
@@ -121,7 +121,7 @@ export const GetWorkflowResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "description": zod.string(),
-  "category": zod.enum(['lip-sync', 'motion-control', 'video-generation', 'image-generation', 'cinematic', 'content-creation', 'seedance-style', 'custom']),
+  "category": zod.enum(['lip-sync', 'motion-control', 'video-generation', 'image-generation', 'cinematic', 'content-creation', 'seedance-style', 'perform-anywhere', 'custom']),
   "icon": zod.string().nullish(),
   "estimatedTime": zod.string().nullish(),
   "params": zod.array(zod.object({
@@ -228,7 +228,7 @@ export const GetJobStatsResponse = zod.object({
 export const ListBatchesResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation', 'perform-anywhere-angles']),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "totalJobs": zod.number(),
   "completedJobs": zod.number(),
@@ -283,12 +283,16 @@ export const createBatchBodyDurationSecondsMax = 60;
 
 export const CreateBatchBody = zod.object({
   "name": zod.string().min(1).max(createBatchBodyNameMax),
-  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation', 'perform-anywhere-angles']),
   "batchSize": zod.number().min(1).max(createBatchBodyBatchSizeMax),
   "masterAsset": zod.string().describe('Uploaded image for scenes or uploaded video for finished-video variations'),
   "scenePrompt": zod.string().min(createBatchBodyScenePromptMin).max(createBatchBodyScenePromptMax),
   "styleAnchor": zod.string().min(createBatchBodyStyleAnchorMin).max(createBatchBodyStyleAnchorMax),
   "identityAnchor": zod.string().optional(),
+  "outfitAsset": zod.string().optional(),
+  "locationAsset": zod.string().optional(),
+  "poseAsset": zod.string().optional(),
+  "propAsset": zod.string().optional(),
   "cameraTreatments": zod.array(zod.string()).optional(),
   "aspectRatios": zod.array(zod.string()).optional(),
   "colorGrades": zod.array(zod.string()).optional(),
@@ -301,7 +305,7 @@ export const CreateBatchBody = zod.object({
 export const CreateBatchResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation', 'perform-anywhere-angles']),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "totalJobs": zod.number(),
   "completedJobs": zod.number(),
@@ -346,7 +350,7 @@ export const GetBatchParams = zod.object({
 export const GetBatchResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation', 'perform-anywhere-angles']),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "totalJobs": zod.number(),
   "completedJobs": zod.number(),
@@ -391,7 +395,7 @@ export const CancelBatchParams = zod.object({
 export const CancelBatchResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation', 'perform-anywhere-angles']),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "totalJobs": zod.number(),
   "completedJobs": zod.number(),
@@ -436,7 +440,7 @@ export const RefreshBatchParams = zod.object({
 export const RefreshBatchResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation', 'perform-anywhere-angles']),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "totalJobs": zod.number(),
   "completedJobs": zod.number(),
@@ -482,7 +486,7 @@ export const RetryBatchChildParams = zod.object({
 export const RetryBatchChildResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "batchType": zod.enum(['scene-variation', 'finished-video-variation']),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation', 'perform-anywhere-angles']),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "totalJobs": zod.number(),
   "completedJobs": zod.number(),
@@ -773,6 +777,25 @@ export const UploadFileBody = zod.object({
 })
 
 export const UploadFileResponse = zod.object({
+  "name": zod.string(),
+  "subfolder": zod.string(),
+  "type": zod.string()
+})
+
+
+/**
+ * @summary Copy a generated ComfyUI output into the input directory
+ */
+
+
+
+export const ImportOutputBody = zod.object({
+  "filename": zod.string().min(1),
+  "subfolder": zod.string().optional(),
+  "type": zod.enum(['output']).optional()
+})
+
+export const ImportOutputResponse = zod.object({
   "name": zod.string(),
   "subfolder": zod.string(),
   "type": zod.string()

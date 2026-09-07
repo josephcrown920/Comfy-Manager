@@ -150,6 +150,7 @@ export const WorkflowTemplateCategory = {
   cinematic: 'cinematic',
   'content-creation': 'content-creation',
   'seedance-style': 'seedance-style',
+  'perform-anywhere': 'perform-anywhere',
   custom: 'custom',
 } as const;
 
@@ -230,6 +231,7 @@ export type BatchBatchType = typeof BatchBatchType[keyof typeof BatchBatchType];
 export const BatchBatchType = {
   'scene-variation': 'scene-variation',
   'finished-video-variation': 'finished-video-variation',
+  'perform-anywhere-angles': 'perform-anywhere-angles',
 } as const;
 
 export type BatchStatus = typeof BatchStatus[keyof typeof BatchStatus];
@@ -267,6 +269,7 @@ export type BatchInputBatchType = typeof BatchInputBatchType[keyof typeof BatchI
 export const BatchInputBatchType = {
   'scene-variation': 'scene-variation',
   'finished-video-variation': 'finished-video-variation',
+  'perform-anywhere-angles': 'perform-anywhere-angles',
 } as const;
 
 export type BatchInputSeedStrategy = typeof BatchInputSeedStrategy[keyof typeof BatchInputSeedStrategy];
@@ -303,6 +306,10 @@ export interface BatchInput {
      */
   styleAnchor: string;
   identityAnchor?: string;
+  outfitAsset?: string;
+  locationAsset?: string;
+  poseAsset?: string;
+  propAsset?: string;
   cameraTreatments?: string[];
   aspectRatios?: string[];
   colorGrades?: string[];
@@ -321,6 +328,20 @@ export type JobInputParams = { [key: string]: unknown };
 export interface JobInput {
   workflowId: string;
   params: JobInputParams;
+}
+
+export type ImportOutputInputType = typeof ImportOutputInputType[keyof typeof ImportOutputInputType];
+
+
+export const ImportOutputInputType = {
+  output: 'output',
+} as const;
+
+export interface ImportOutputInput {
+  /** @minLength 1 */
+  filename: string;
+  subfolder?: string;
+  type?: ImportOutputInputType;
 }
 
 export interface JobStats {

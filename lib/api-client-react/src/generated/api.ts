@@ -30,6 +30,7 @@ import type {
   DeleteSavedGpu200,
   DeleteSavedWorkflow200,
   HealthStatus,
+  ImportOutputInput,
   Job,
   JobInput,
   JobStats,
@@ -2402,6 +2403,77 @@ export const useUploadFile = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUploadFileMutationOptions(options));
+    }
+
+export const getImportOutputUrl = () => {
+
+
+
+
+  return `/api/files/import-output`
+}
+
+/**
+ * @summary Copy a generated ComfyUI output into the input directory
+ */
+export const importOutput = async (importOutputInput: ImportOutputInput, options?: Parameters<typeof customFetch>[1]): Promise<UploadedFile> => {
+
+  return customFetch<UploadedFile>(getImportOutputUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(importOutputInput)
+  }
+);}
+
+
+
+
+
+export const getImportOutputMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importOutput>>, TError,{data: BodyType<ImportOutputInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importOutput>>, TError,{data: BodyType<ImportOutputInput>}, TContext> => {
+
+const mutationKey = ['importOutput'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importOutput>>, {data: BodyType<ImportOutputInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  importOutput(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportOutputMutationResult = NonNullable<Awaited<ReturnType<typeof importOutput>>>
+    export type ImportOutputMutationBody = BodyType<ImportOutputInput>
+    export type ImportOutputMutationError = ErrorType<void>
+
+    /**
+ * @summary Copy a generated ComfyUI output into the input directory
+ */
+export const useImportOutput = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importOutput>>, TError,{data: BodyType<ImportOutputInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importOutput>>,
+        TError,
+        {data: BodyType<ImportOutputInput>},
+        TContext
+      > => {
+      return useMutation(getImportOutputMutationOptions(options));
     }
 
 export const getAssistantChatUrl = () => {

@@ -33,6 +33,10 @@ export interface BatchInput {
      */
   styleAnchor: string;
   identityAnchor?: string;
+  outfitAsset?: string;
+  locationAsset?: string;
+  poseAsset?: string;
+  propAsset?: string;
   cameraTreatments?: string[];
   aspectRatios?: string[];
   colorGrades?: string[];

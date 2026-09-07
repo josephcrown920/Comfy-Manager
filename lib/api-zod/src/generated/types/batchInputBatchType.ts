@@ -12,4 +12,5 @@ export type BatchInputBatchType = typeof BatchInputBatchType[keyof typeof BatchI
 export const BatchInputBatchType = {
   'scene-variation': 'scene-variation',
   'finished-video-variation': 'finished-video-variation',
+  'perform-anywhere-angles': 'perform-anywhere-angles',
 } as const;

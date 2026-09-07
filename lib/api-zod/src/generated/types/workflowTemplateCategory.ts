@@ -17,5 +17,6 @@ export const WorkflowTemplateCategory = {
   cinematic: 'cinematic',
   'content-creation': 'content-creation',
   'seedance-style': 'seedance-style',
+  'perform-anywhere': 'perform-anywhere',
   custom: 'custom',
 } as const;

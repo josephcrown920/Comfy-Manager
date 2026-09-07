@@ -418,6 +418,10 @@ export function buildComfyPrompt(
     case "seedance-vertical-social":
     case "seedance-product-reveal":
       return buildMotionControlPrompt(params);
+    case "perform-anywhere-angles":
+      return buildPerformAnywhereAnglePrompt(params);
+    case "perform-anywhere-motion":
+      return buildPerformAnywhereMotionPrompt(params);
     case "img2vid-stable-video":
       return buildImg2VidPrompt(params);
     case "video-generation-txt2vid":
@@ -1237,6 +1241,254 @@ function buildMotionControlPrompt(params: Record<string, unknown>): Record<strin
         frame_rate: 8,
         loop_count: 0,
         filename_prefix: `motion-control-${motionPreset}`,
+        format: "video/h264-mp4",
+        pingpong: false,
+        save_output: true,
+      },
+    },
+  };
+}
+
+/**
+ * Perform Anywhere angle still — SDXL plus five reference images through
+ * IPAdapter Plus. Each batch child changes only the camera treatment, keeping
+ * the identity, wardrobe, location, pose, and prop anchors stable.
+ *
+ * Requires ComfyUI_IPAdapter_plus and its SDXL IP-Adapter / CLIP Vision files.
+ */
+function buildPerformAnywhereAnglePrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const identity = String(params.identity_image ?? "");
+  const outfit = String(params.outfit_image ?? "");
+  const location = String(params.location_image ?? "");
+  const pose = String(params.pose_image ?? "");
+  const prop = String(params.prop_image ?? "");
+  const camera = String(params.camera_treatment ?? "wide shot");
+  const scenePrompt = String(params.scene_prompt ?? params.prompt ?? "cinematic performance scene");
+  const style = String(params.style_anchor ?? "photorealistic cinematic lighting, natural skin texture, shallow depth of field");
+  const aspect = String(params.aspect_ratio ?? "16:9");
+  const dims: Record<string, { width: number; height: number }> = {
+    "16:9": { width: 1024, height: 576 },
+    "9:16": { width: 576, height: 1024 },
+    "1:1": { width: 768, height: 768 },
+  };
+  const frame = dims[aspect] ?? dims["16:9"]!;
+  const seed = Number.isFinite(Number(params.seed)) ? Number(params.seed) : Math.floor(Math.random() * 1e9);
+  const prompt = [
+    scenePrompt,
+    style,
+    `camera treatment: ${camera}`,
+    "preserve the same performer identity, facial structure, outfit, environment, and prop",
+    "professional music-video still, ARRI Alexa 35, Cooke anamorphic lens, cinematic color science, realistic optical depth",
+    "high-fidelity skin texture, natural highlights, accurate anatomy, no text or logos",
+  ].join(", ");
+
+  return {
+    "1": { class_type: "LoadImage", inputs: { image: identity, upload: "image" } },
+    "2": { class_type: "LoadImage", inputs: { image: outfit, upload: "image" } },
+    "3": { class_type: "LoadImage", inputs: { image: location, upload: "image" } },
+    "4": { class_type: "LoadImage", inputs: { image: pose, upload: "image" } },
+    "5": { class_type: "LoadImage", inputs: { image: prop, upload: "image" } },
+    "6": {
+      class_type: "CheckpointLoaderSimple",
+      inputs: { ckpt_name: String(params.checkpoint ?? "sd_xl_base_1.0.safetensors") },
+    },
+    "7": {
+      class_type: "IPAdapterModelLoader",
+      inputs: { ipadapter_file: String(params.ipadapter_model ?? "ip-adapter-plus_sdxl_vit-h.safetensors") },
+    },
+    "8": {
+      class_type: "CLIPVisionLoader",
+      inputs: { clip_name: String(params.clip_vision_model ?? "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors") },
+    },
+    "9": { class_type: "CLIPVisionEncode", inputs: { clip: ["8", 0], image: ["1", 0], crop: "center" } },
+    "10": { class_type: "CLIPVisionEncode", inputs: { clip: ["8", 0], image: ["2", 0], crop: "center" } },
+    "11": { class_type: "CLIPVisionEncode", inputs: { clip: ["8", 0], image: ["3", 0], crop: "center" } },
+    "12": { class_type: "CLIPVisionEncode", inputs: { clip: ["8", 0], image: ["4", 0], crop: "center" } },
+    "13": { class_type: "CLIPVisionEncode", inputs: { clip: ["8", 0], image: ["5", 0], crop: "center" } },
+    "14": {
+      class_type: "IPAdapterAdvanced",
+      inputs: {
+        model: ["6", 0],
+        ipadapter: ["7", 0],
+        image: ["9", 0],
+        weight: 0.9,
+        weight_type: "strong",
+        combine_embeds: "concat",
+        start_at: 0,
+        end_at: 1,
+        embeds_scaling: "V only",
+      },
+    },
+    "15": {
+      class_type: "IPAdapterAdvanced",
+      inputs: {
+        model: ["14", 0],
+        ipadapter: ["7", 0],
+        image: ["10", 0],
+        weight: 0.55,
+        weight_type: "style transfer",
+        combine_embeds: "concat",
+        start_at: 0,
+        end_at: 1,
+        embeds_scaling: "V only",
+      },
+    },
+    "16": {
+      class_type: "IPAdapterAdvanced",
+      inputs: {
+        model: ["15", 0],
+        ipadapter: ["7", 0],
+        image: ["11", 0],
+        weight: 0.55,
+        weight_type: "style transfer",
+        combine_embeds: "concat",
+        start_at: 0,
+        end_at: 1,
+        embeds_scaling: "V only",
+      },
+    },
+    "17": {
+      class_type: "IPAdapterAdvanced",
+      inputs: {
+        model: ["16", 0],
+        ipadapter: ["7", 0],
+        image: ["12", 0],
+        weight: 0.45,
+        weight_type: "composition",
+        combine_embeds: "concat",
+        start_at: 0,
+        end_at: 1,
+        embeds_scaling: "V only",
+      },
+    },
+    "18": {
+      class_type: "IPAdapterAdvanced",
+      inputs: {
+        model: ["17", 0],
+        ipadapter: ["7", 0],
+        image: ["13", 0],
+        weight: 0.4,
+        weight_type: "style transfer",
+        combine_embeds: "concat",
+        start_at: 0,
+        end_at: 1,
+        embeds_scaling: "V only",
+      },
+    },
+    "19": { class_type: "CLIPTextEncode", inputs: { text: prompt, clip: ["6", 1] } },
+    "20": {
+      class_type: "CLIPTextEncode",
+      inputs: {
+        text: "different person, changed outfit, warped face, duplicate subject, bad hands, extra limbs, distorted vehicle, text, watermark, logo, blurry, low quality",
+        clip: ["6", 1],
+      },
+    },
+    "21": { class_type: "EmptyLatentImage", inputs: { width: frame.width, height: frame.height, batch_size: 1 } },
+    "22": {
+      class_type: "KSampler",
+      inputs: {
+        seed,
+        steps: 30,
+        cfg: 6.5,
+        sampler_name: "dpmpp_2m",
+        scheduler: "karras",
+        denoise: 1,
+        model: ["18", 0],
+        positive: ["19", 0],
+        negative: ["20", 0],
+        latent_image: ["21", 0],
+      },
+    },
+    "23": { class_type: "VAEDecode", inputs: { samples: ["22", 0], vae: ["6", 2] } },
+    "24": {
+      class_type: "SaveImage",
+      inputs: { images: ["23", 0], filename_prefix: `perform-anywhere-${camera.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}` },
+    },
+  };
+}
+
+/**
+ * Perform Anywhere motion transfer — MimicMotion driven by the user's
+ * original performance recording. This preserves movement while changing the
+ * visual world from the selected generated still.
+ */
+function buildPerformAnywhereMotionPrompt(params: Record<string, unknown>): Record<string, unknown> {
+  const sourceImage = String(params.source_image ?? "");
+  const performanceVideo = String(params.performance_video ?? "");
+  const context = String(params.motion_context ?? "a performer moving naturally inside the scene");
+  const numFrames = Math.min(Math.max(Number(params.num_frames ?? 48), 16), 72);
+  const aspect = String(params.aspect_ratio ?? "16:9");
+  const dims: Record<string, { width: number; height: number }> = {
+    "16:9": { width: 576, height: 324 },
+    "9:16": { width: 576, height: 1024 },
+    "1:1": { width: 576, height: 576 },
+  };
+  const frame = dims[aspect] ?? dims["16:9"]!;
+
+  return {
+    "1": {
+      class_type: "LoadImage",
+      inputs: { image: sourceImage, upload: "image" },
+    },
+    "1b": {
+      class_type: "ImageScale",
+      inputs: { image: ["1", 0], upscale_method: "lanczos", width: frame.width, height: frame.height, crop: "center" },
+    },
+    "2": {
+      class_type: "VHS_LoadVideo",
+      inputs: {
+        video: performanceVideo,
+        force_rate: 15,
+        custom_width: frame.width,
+        custom_height: frame.height,
+        frame_load_cap: numFrames,
+        skip_first_frames: 0,
+        select_every_nth: 1,
+      },
+    },
+    "3": {
+      class_type: "DownloadAndLoadMimicMotionModel",
+      inputs: { model: "MimicMotionMergedUnet_1-1-fp16.safetensors", precision: "fp16" },
+    },
+    "4": {
+      class_type: "MimicMotionGetPoses",
+      inputs: {
+        ref_image: ["1b", 0],
+        pose_images: ["2", 0],
+        include_body: true,
+        include_hand: true,
+        include_face: true,
+      },
+    },
+    "5": {
+      class_type: "MimicMotionSampler",
+      inputs: {
+        mimic_pipeline: ["3", 0],
+        ref_image: ["1b", 0],
+        pose_images: ["4", 1],
+        steps: 25,
+        cfg_min: 2,
+        cfg_max: 2,
+        seed: Number.isFinite(Number(params.seed)) ? Number(params.seed) : Math.floor(Math.random() * 1e9),
+        fps: 15,
+        noise_aug_strength: 0,
+        context_size: 16,
+        context_overlap: 6,
+        keep_model_loaded: true,
+        prompt: context,
+      },
+    },
+    "6": {
+      class_type: "MimicMotionDecode",
+      inputs: { mimic_pipeline: ["3", 0], samples: ["5", 0], decode_chunk_size: 4 },
+    },
+    "7": {
+      class_type: "VHS_VideoCombine",
+      inputs: {
+        images: ["6", 0],
+        frame_rate: 15,
+        loop_count: 0,
+        filename_prefix: "perform-anywhere-motion",
         format: "video/h264-mp4",
         pingpong: false,
         save_output: true,

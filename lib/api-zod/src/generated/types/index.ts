@@ -6,10 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-// export * from './assistantChatBody'; // excluded: name collides with zod schema in ../api (re-apply after each codegen run)
+// AssistantChatBody, AssistantChatResponse, and UploadFileBody are exported
+// as Zod schemas from generated/api.ts; excluding the duplicate TS types keeps
+// the package barrel unambiguous after Orval regeneration.
 export * from './assistantChatMessage';
 export * from './assistantChatMessageRole';
-// export * from './assistantChatResponse'; // excluded: name collides with zod schema in ../api (re-apply after each codegen run)
 export * from './batch';
 export * from './batchBatchType';
 export * from './batchInput';
@@ -24,6 +25,8 @@ export * from './comfyStatus';
 export * from './deleteSavedGpu200';
 export * from './deleteSavedWorkflow200';
 export * from './healthStatus';
+export * from './importOutputInput';
+export * from './importOutputInputType';
 export * from './job';
 export * from './jobInput';
 export * from './jobInputParams';
@@ -48,7 +51,6 @@ export * from './savedWorkflowInput';
 export * from './settings';
 export * from './settingsInput';
 export * from './uploadedFile';
-// export * from './uploadFileBody'; // excluded: name collides with zod schema in ../api (re-apply after each codegen run)
 export * from './uploadFileParams';
 export * from './validateNodesInput';
 export * from './videoPlanBody';

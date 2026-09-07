@@ -106,6 +106,34 @@ function sceneChildParams(input: ReturnType<typeof CreateBatchBody.parse>, index
   };
 }
 
+function performAnywhereChildParams(input: ReturnType<typeof CreateBatchBody.parse>, index: number) {
+  const cameras = input.cameraTreatments?.length
+    ? input.cameraTreatments
+    : ["wide shot", "low angle", "close-up face", "over shoulder", "dutch angle"];
+  const camera = cameras[index % cameras.length]!;
+  const seed = seedFor(input.seedStrategy, input.baseSeed ?? 24681357, index);
+  return {
+    identity_image: input.identityAnchor || input.masterAsset,
+    outfit_image: input.outfitAsset || input.masterAsset,
+    location_image: input.locationAsset || input.masterAsset,
+    pose_image: input.poseAsset || input.masterAsset,
+    prop_image: input.propAsset || input.masterAsset,
+    scene_prompt: input.scenePrompt,
+    style_anchor: input.styleAnchor,
+    motion_context: input.captionTreatment || "a performer moving naturally inside the scene",
+    camera_treatment: camera,
+    aspect_ratio: input.aspectRatios?.[0] ?? "16:9",
+    color_grade: input.colorGrades?.[0] ?? "teal-orange",
+    seed,
+    variation: {
+      camera,
+      aspect: input.aspectRatios?.[0] ?? "16:9",
+      colorGrade: input.colorGrades?.[0] ?? "teal-orange",
+      seed,
+    },
+  };
+}
+
 function finishedChildParams(input: ReturnType<typeof CreateBatchBody.parse>, index: number) {
   const aspects = input.aspectRatios?.length ? input.aspectRatios : ["16:9", "9:16", "1:1"];
   const grades = input.colorGrades?.length ? input.colorGrades : ["teal-orange", "warm-vintage", "cold-thriller"];
@@ -305,6 +333,19 @@ router.post("/batches", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Scene batches require a reference identity anchor. This prevents a plain checkpoint from being presented as identity preservation." });
     return;
   }
+  if (input.batchType === "perform-anywhere-angles") {
+    const missing = [
+      ["identityAnchor", input.identityAnchor],
+      ["outfitAsset", input.outfitAsset],
+      ["locationAsset", input.locationAsset],
+      ["poseAsset", input.poseAsset],
+      ["propAsset", input.propAsset],
+    ].filter(([, value]) => !value?.trim()).map(([key]) => key);
+    if (missing.length > 0) {
+      res.status(400).json({ error: `Perform Anywhere requires all five reference images: ${missing.join(", ")}.` });
+      return;
+    }
+  }
   const [batch] = await db.insert(batchesTable).values({
     name: input.name.trim(),
     batchType: input.batchType,
@@ -312,13 +353,27 @@ router.post("/batches", async (req, res): Promise<void> => {
     totalJobs: input.batchSize,
     settings: input,
   }).returning();
-  const workflowId = input.batchType === "scene-variation" ? "motion-control-animatediff" : "cinematic-film-grade";
-  const workflowName = input.batchType === "scene-variation" ? "Cinematic Scene Variation" : "Finished Video Variation";
+  const workflowId =
+    input.batchType === "scene-variation"
+      ? "motion-control-animatediff"
+      : input.batchType === "perform-anywhere-angles"
+        ? "perform-anywhere-angles"
+        : "cinematic-film-grade";
+  const workflowName =
+    input.batchType === "scene-variation"
+      ? "Cinematic Scene Variation"
+      : input.batchType === "perform-anywhere-angles"
+        ? "Perform Anywhere Angle"
+        : "Finished Video Variation";
   await db.insert(jobsTable).values(Array.from({ length: input.batchSize }, (_, index) => ({
     workflowId,
     workflowName,
     status: "pending",
-    params: input.batchType === "scene-variation" ? sceneChildParams(input, index) : finishedChildParams(input, index),
+    params: input.batchType === "scene-variation"
+      ? sceneChildParams(input, index)
+      : input.batchType === "perform-anywhere-angles"
+        ? performAnywhereChildParams(input, index)
+        : finishedChildParams(input, index),
     batchId: batch!.id,
     batchIndex: index + 1,
     progress: 0,
