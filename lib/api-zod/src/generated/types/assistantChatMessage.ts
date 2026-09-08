@@ -9,5 +9,6 @@ import type { AssistantChatMessageRole } from './assistantChatMessageRole';
 
 export interface AssistantChatMessage {
   role: AssistantChatMessageRole;
+  /** @maxLength 8000 */
   content: string;
 }

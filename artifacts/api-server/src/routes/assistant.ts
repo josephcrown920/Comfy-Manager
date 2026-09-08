@@ -5,6 +5,10 @@ import { fileURLToPath } from "node:url";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { AssistantChatBody, AssistantVideoPlanBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import {
+  MAX_ASSISTANT_REQUESTS_PER_DAY,
+  reserveAssistantRequest,
+} from "../lib/resource-quotas";
 
 const router: IRouter = Router();
 
@@ -16,7 +20,7 @@ const MAX_MESSAGE_CHARS = 8000;
 const MAX_IDEA_CHARS = 4000;
 const MAX_WORKFLOW_CHARS = 100_000;
 const RATE_WINDOW_MS = 60_000;
-const RATE_MAX_REQUESTS = 10;
+const RATE_MAX_REQUESTS = 5;
 const MAX_CONCURRENT = 2;
 
 const rateBuckets = new Map<string, number[]>();
@@ -24,7 +28,9 @@ let inFlight = 0;
 
 function checkRateLimit(userId: string): boolean {
   const now = Date.now();
-  const bucket = (rateBuckets.get(userId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  const bucket = (rateBuckets.get(userId) ?? []).filter(
+    (t) => now - t < RATE_WINDOW_MS,
+  );
   if (bucket.length >= RATE_MAX_REQUESTS) return false;
   bucket.push(now);
   rateBuckets.set(userId, bucket);
@@ -38,14 +44,47 @@ function checkRateLimit(userId: string): boolean {
 
 function guard(userId: string, res: Response): boolean {
   if (!checkRateLimit(userId)) {
-    res.status(429).json({ error: "Too many AI requests — please wait a minute and try again." });
+    res
+      .status(429)
+      .json({
+        error: "Too many AI requests — please wait a minute and try again.",
+      });
     return false;
   }
   if (inFlight >= MAX_CONCURRENT) {
-    res.status(429).json({ error: "The assistant is busy — please try again in a moment." });
+    res
+      .status(429)
+      .json({ error: "The assistant is busy — please try again in a moment." });
     return false;
   }
+  inFlight++;
   return true;
+}
+
+async function reserveAssistant(
+  userId: string,
+  res: Response,
+): Promise<boolean> {
+  try {
+    const reserved = await reserveAssistantRequest(userId);
+    if (!reserved) {
+      res.status(429).json({
+        error: `Daily assistant limit reached (${MAX_ASSISTANT_REQUESTS_PER_DAY} requests). Please try again tomorrow.`,
+      });
+      return false;
+    }
+    return true;
+  } catch (err) {
+    // Quota storage is part of the cost-control boundary. Never fail open if
+    // PostgreSQL is unavailable.
+    console.error("assistant quota check failed:", err);
+    res
+      .status(503)
+      .json({
+        error: "The assistant is temporarily unavailable. Please try again.",
+      });
+    return false;
+  }
 }
 
 router.use(requireAuth);
@@ -55,7 +94,10 @@ router.use(requireAuth);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_DIR_CANDIDATES = [
   path.resolve(here, "../../../comfyui-studio/src/assets/templates"),
-  path.resolve(here, "../../../../artifacts/comfyui-studio/src/assets/templates"),
+  path.resolve(
+    here,
+    "../../../../artifacts/comfyui-studio/src/assets/templates",
+  ),
   path.resolve(process.cwd(), "../comfyui-studio/src/assets/templates"),
   path.resolve(process.cwd(), "artifacts/comfyui-studio/src/assets/templates"),
 ];
@@ -78,23 +120,28 @@ async function getTemplatesDir(): Promise<string> {
 const TEMPLATE_FILES: Record<string, { file: string; summary: string }> = {
   "sdxl-image": {
     file: "sdxl-image.workflow.json",
-    summary: "Text-to-image with SDXL. Needs ~12 GB VRAM. Edit the two CLIPTextEncode prompts.",
+    summary:
+      "Text-to-image with SDXL. Needs ~12 GB VRAM. Edit the two CLIPTextEncode prompts.",
   },
   animatediff: {
     file: "animatediff-text-to-video.workflow.json",
-    summary: "Text-to-video, SD1.5 + AnimateDiff. Runs on a free 16 GB T4. Edit the two CLIPTextEncode prompts (positive and negative).",
+    summary:
+      "Text-to-video, SD1.5 + AnimateDiff. Runs on a free 16 GB T4. Edit the two CLIPTextEncode prompts (positive and negative).",
   },
   svd: {
     file: "svd-image-to-video.workflow.json",
-    summary: "Animate a still image with Stable Video Diffusion XT. Needs ~20+ GB VRAM. User must supply an image URL or uploaded filename in the LoadImageFromUrl node.",
+    summary:
+      "Animate a still image with Stable Video Diffusion XT. Needs ~20+ GB VRAM. User must supply an image URL or uploaded filename in the LoadImageFromUrl node.",
   },
   latentsync: {
     file: "latentsync-lipsync.workflow.json",
-    summary: "Lip-sync a talking-head video to an audio track (LatentSync). Runs on 16 GB. User must upload a video and an audio file and put the filenames in VHS_LoadVideo and LoadAudio.",
+    summary:
+      "Lip-sync a talking-head video to an audio track (LatentSync). Runs on 16 GB. User must upload a video and an audio file and put the filenames in VHS_LoadVideo and LoadAudio.",
   },
   mimicmotion: {
     file: "mimicmotion-motion.workflow.json",
-    summary: "Drive a still image with a pose/motion video (MimicMotion). Needs ~20+ GB VRAM. User must upload a reference image and a pose video.",
+    summary:
+      "Drive a still image with a pose/motion video (MimicMotion). Needs ~20+ GB VRAM. User must upload a reference image and a pose video.",
   },
 };
 
@@ -136,8 +183,12 @@ router.post("/assistant/chat", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Message too long or too many messages." });
     return;
   }
-  if (!guard(res.locals.userId as string, res)) return;
-  inFlight++;
+  const userId = res.locals.userId as string;
+  if (!guard(userId, res)) return;
+  if (!(await reserveAssistant(userId, res))) {
+    inFlight--;
+    return;
+  }
   try {
     const system =
       STUDIO_CONTEXT +
@@ -146,7 +197,7 @@ router.post("/assistant/chat", async (req, res): Promise<void> => {
         : "");
     const completion = await openai.chat.completions.create({
       model: MODEL,
-      max_completion_tokens: 8192,
+      max_completion_tokens: 2048,
       messages: [
         { role: "system", content: system },
         ...messages.map((m) => ({ role: m.role, content: m.content })),
@@ -170,22 +221,36 @@ router.post("/assistant/video-plan", async (req, res): Promise<void> => {
   }
   const { idea } = parsed.data;
   if (idea.length === 0 || idea.length > MAX_IDEA_CHARS) {
-    res.status(400).json({ error: "Idea must be between 1 and 4000 characters." });
+    res
+      .status(400)
+      .json({ error: "Idea must be between 1 and 4000 characters." });
     return;
   }
-  if (!guard(res.locals.userId as string, res)) return;
-  inFlight++;
+  const userId = res.locals.userId as string;
+  if (!guard(userId, res)) return;
+  if (!(await reserveAssistant(userId, res))) {
+    inFlight--;
+    return;
+  }
   try {
-    const videoTemplates = ["animatediff", "svd", "latentsync", "mimicmotion", "sdxl-image"];
+    const videoTemplates = [
+      "animatediff",
+      "svd",
+      "latentsync",
+      "mimicmotion",
+      "sdxl-image",
+    ];
     const templateDump = (
       await Promise.all(
-        videoTemplates.map(async (id) => `### ${id}\n${await loadTemplate(id)}`),
+        videoTemplates.map(
+          async (id) => `### ${id}\n${await loadTemplate(id)}`,
+        ),
       )
     ).join("\n\n");
 
     const completion = await openai.chat.completions.create({
       model: MODEL,
-      max_completion_tokens: 8192,
+      max_completion_tokens: 4096,
       response_format: { type: "json_object" },
       messages: [
         {
@@ -204,9 +269,23 @@ ${templateDump}`,
       ],
     });
     const raw = completion.choices[0]?.message?.content ?? "";
-    const plan = JSON.parse(raw) as { templateId?: string; workflow?: unknown; notes?: string };
-    if (!plan.templateId || !TEMPLATE_FILES[plan.templateId] || typeof plan.workflow !== "object" || plan.workflow === null) {
-      res.status(502).json({ error: "AI returned an unusable plan. Please try rephrasing your idea." });
+    const plan = JSON.parse(raw) as {
+      templateId?: string;
+      workflow?: unknown;
+      notes?: string;
+    };
+    if (
+      !plan.templateId ||
+      !TEMPLATE_FILES[plan.templateId] ||
+      typeof plan.workflow !== "object" ||
+      plan.workflow === null
+    ) {
+      res
+        .status(502)
+        .json({
+          error:
+            "AI returned an unusable plan. Please try rephrasing your idea.",
+        });
       return;
     }
     // Structural validation: the filled workflow must have exactly the same
@@ -222,10 +301,17 @@ ${templateDump}`,
     const structureOk =
       canonicalIds.length === filledIds.length &&
       canonicalIds.every(
-        (id, i) => filledIds[i] === id && filled[id]?.class_type === canonical[id]?.class_type,
+        (id, i) =>
+          filledIds[i] === id &&
+          filled[id]?.class_type === canonical[id]?.class_type,
       );
     if (!structureOk) {
-      res.status(502).json({ error: "AI produced an invalid workflow. Please try rephrasing your idea." });
+      res
+        .status(502)
+        .json({
+          error:
+            "AI produced an invalid workflow. Please try rephrasing your idea.",
+        });
       return;
     }
     res.json({

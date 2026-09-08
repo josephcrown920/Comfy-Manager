@@ -15,12 +15,17 @@ export const AssistantChatMessageRole = {
 
 export interface AssistantChatMessage {
   role: AssistantChatMessageRole;
+  /** @maxLength 8000 */
   content: string;
 }
 
 export interface AssistantChatBody {
+  /** @maxItems 40 */
   messages: AssistantChatMessage[];
-  /** Optional workflow JSON the user is currently editing, for context */
+  /**
+     * Optional workflow JSON the user is currently editing, for context
+     * @maxLength 100000
+     */
   workflowJson?: string;
 }
 
@@ -29,7 +34,11 @@ export interface AssistantChatResponse {
 }
 
 export interface VideoPlanBody {
-  /** Plain-language description of the video the user wants */
+  /**
+     * Plain-language description of the video the user wants
+     * @minLength 1
+     * @maxLength 4000
+     */
   idea: string;
 }
 

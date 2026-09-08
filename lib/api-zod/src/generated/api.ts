@@ -855,12 +855,20 @@ export const ImportOutputResponse = zod.object({
 /**
  * @summary Chat with the ComfyUI Studio assistant
  */
+export const assistantChatBodyMessagesItemContentMax = 8000;
+
+export const assistantChatBodyMessagesMax = 40;
+
+export const assistantChatBodyWorkflowJsonMax = 100000;
+
+
+
 export const AssistantChatBody = zod.object({
   "messages": zod.array(zod.object({
   "role": zod.enum(['user', 'assistant']),
-  "content": zod.string()
-})),
-  "workflowJson": zod.string().optional().describe('Optional workflow JSON the user is currently editing, for context')
+  "content": zod.string().max(assistantChatBodyMessagesItemContentMax)
+})).max(assistantChatBodyMessagesMax),
+  "workflowJson": zod.string().max(assistantChatBodyWorkflowJsonMax).optional().describe('Optional workflow JSON the user is currently editing, for context')
 })
 
 export const AssistantChatResponse = zod.object({
@@ -871,8 +879,12 @@ export const AssistantChatResponse = zod.object({
 /**
  * @summary Turn a video idea into a ready-to-run workflow
  */
+export const assistantVideoPlanBodyIdeaMax = 4000;
+
+
+
 export const AssistantVideoPlanBody = zod.object({
-  "idea": zod.string().describe('Plain-language description of the video the user wants')
+  "idea": zod.string().min(1).max(assistantVideoPlanBodyIdeaMax).describe('Plain-language description of the video the user wants')
 })
 
 export const AssistantVideoPlanResponse = zod.object({

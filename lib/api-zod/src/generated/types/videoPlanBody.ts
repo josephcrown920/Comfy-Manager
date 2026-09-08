@@ -7,6 +7,10 @@
  */
 
 export interface VideoPlanBody {
-  /** Plain-language description of the video the user wants */
+  /**
+     * Plain-language description of the video the user wants
+     * @minLength 1
+     * @maxLength 4000
+     */
   idea: string;
 }

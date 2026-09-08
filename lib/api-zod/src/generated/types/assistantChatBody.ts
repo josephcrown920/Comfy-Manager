@@ -8,7 +8,11 @@
 import type { AssistantChatMessage } from './assistantChatMessage';
 
 export interface AssistantChatBody {
+  /** @maxItems 40 */
   messages: AssistantChatMessage[];
-  /** Optional workflow JSON the user is currently editing, for context */
+  /**
+     * Optional workflow JSON the user is currently editing, for context
+     * @maxLength 100000
+     */
   workflowJson?: string;
 }

@@ -591,7 +591,7 @@ paths:
                 file:
                   type: string
                   format: binary
-                  description: The file to upload (image or audio)
+                  description: The file to upload (image, audio, or video)
       responses:
         "200":
           description: Uploaded file reference returned by ComfyUI
@@ -603,6 +603,12 @@ paths:
           description: No file provided or parse error
         "413":
           description: File too large (limit is 100 MB)
+        "415":
+          description: File is not a recognized image, audio, or video
+        "429":
+          description: Upload concurrency or daily quota exceeded
+        "503":
+          description: Upload quota storage unavailable
         "422":
           description: File type not allowed by the accept filter
         "502":
@@ -697,6 +703,7 @@ components:
           enum: [user, assistant]
         content:
           type: string
+          maxLength: 8000
 
     AssistantChatBody:
       type: object
@@ -704,10 +711,12 @@ components:
       properties:
         messages:
           type: array
+          maxItems: 40
           items:
             $ref: "#/components/schemas/AssistantChatMessage"
         workflowJson:
           type: string
+          maxLength: 100000
           description: Optional workflow JSON the user is currently editing, for context
 
     AssistantChatResponse:
@@ -723,6 +732,8 @@ components:
       properties:
         idea:
           type: string
+          minLength: 1
+          maxLength: 4000
           description: Plain-language description of the video the user wants
 
     VideoPlanResponse:
@@ -918,7 +929,18 @@ components:
           type: string
         category:
           type: string
-          enum: [lip-sync, motion-control, video-generation, image-generation, cinematic, content-creation, seedance-style, perform-anywhere, custom]
+          enum:
+            [
+              lip-sync,
+              motion-control,
+              video-generation,
+              image-generation,
+              cinematic,
+              content-creation,
+              seedance-style,
+              perform-anywhere,
+              custom,
+            ]
         icon:
           type: ["string", "null"]
         estimatedTime:
@@ -930,7 +952,17 @@ components:
 
     Job:
       type: object
-      required: [id, workflowId, workflowName, status, params, workerId, workerLabel, createdAt]
+      required:
+        [
+          id,
+          workflowId,
+          workflowName,
+          status,
+          params,
+          workerId,
+          workerLabel,
+          createdAt,
+        ]
       properties:
         id:
           type: number
@@ -972,7 +1004,20 @@ components:
 
     Batch:
       type: object
-      required: [id, name, batchType, status, totalJobs, completedJobs, failedJobs, cancelledJobs, settings, children, createdAt]
+      required:
+        [
+          id,
+          name,
+          batchType,
+          status,
+          totalJobs,
+          completedJobs,
+          failedJobs,
+          cancelledJobs,
+          settings,
+          children,
+          createdAt,
+        ]
       properties:
         id:
           type: number
@@ -980,7 +1025,8 @@ components:
           type: string
         batchType:
           type: string
-          enum: [scene-variation, finished-video-variation, perform-anywhere-angles]
+          enum:
+            [scene-variation, finished-video-variation, perform-anywhere-angles]
         status:
           type: string
           enum: [pending, running, completed, failed, cancelled]
@@ -1008,7 +1054,16 @@ components:
 
     BatchInput:
       type: object
-      required: [name, batchType, batchSize, masterAsset, scenePrompt, styleAnchor, seedStrategy]
+      required:
+        [
+          name,
+          batchType,
+          batchSize,
+          masterAsset,
+          scenePrompt,
+          styleAnchor,
+          seedStrategy,
+        ]
       properties:
         name:
           type: string
@@ -1016,7 +1071,8 @@ components:
           maxLength: 100
         batchType:
           type: string
-          enum: [scene-variation, finished-video-variation, perform-anywhere-angles]
+          enum:
+            [scene-variation, finished-video-variation, perform-anywhere-angles]
         batchSize:
           type: number
           minimum: 1
@@ -1115,7 +1171,8 @@ components:
 
     Output:
       type: object
-      required: [id, jobId, filename, subfolder, outputType, comfyUrl, createdAt]
+      required:
+        [id, jobId, filename, subfolder, outputType, comfyUrl, createdAt]
       properties:
         id:
           type: number
