@@ -7,6 +7,6 @@
  */
 
 export type UploadFileBody = {
-  /** The file to upload (image or audio) */
+  /** The file to upload (image, audio, or video) */
   file: Blob;
 };

@@ -821,7 +821,7 @@ export const UploadFileQueryParams = zod.object({
 })
 
 export const UploadFileBody = zod.object({
-  "file": zod.instanceof(File).describe('The file to upload (image or audio)')
+  "file": zod.instanceof(File).describe('The file to upload (image, audio, or video)')
 })
 
 export const UploadFileResponse = zod.object({

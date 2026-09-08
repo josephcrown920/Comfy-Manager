@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+// AssistantChatBody is exported from generated/api.ts as the runtime Zod schema.
 export * from './assistantChatMessage';
 export * from './assistantChatMessageRole';
+// AssistantChatResponse is exported from generated/api.ts as the runtime Zod schema.
 export * from './batch';
 export * from './batchBatchType';
 export * from './batchInput';
@@ -51,6 +53,7 @@ export * from './settingsInput';
 export * from './settingsInputRoutingMode';
 export * from './settingsRoutingMode';
 export * from './uploadedFile';
+// UploadFileBody is exported from generated/api.ts as the runtime Zod schema.
 export * from './uploadFileParams';
 export * from './validateNodesInput';
 export * from './videoPlanBody';
@@ -60,6 +63,3 @@ export * from './workflowParam';
 export * from './workflowParamType';
 export * from './workflowTemplate';
 export * from './workflowTemplateCategory';
-
-// These generated types intentionally stay out of the barrel because the Zod
-// runtime schemas with the same names are exported from generated/api.ts.
