@@ -16,6 +16,10 @@ export interface Job {
   status: JobStatus;
   params: JobParams;
   /** @nullable */
+  workerId: number | null;
+  /** @nullable */
+  workerLabel: string | null;
+  /** @nullable */
   comfyPromptId?: string | null;
   /**
      * 0-100

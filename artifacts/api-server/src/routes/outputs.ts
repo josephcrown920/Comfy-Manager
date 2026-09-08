@@ -18,7 +18,7 @@ function formatOutput(o: typeof outputsTable.$inferSelect) {
     outputType: o.outputType,
     comfyUrl: o.subfolder === MODELARK_OUTPUT_SUBFOLDER
       ? modelArkOutputUrl(o.filename)
-      : `/api/comfy/view?filename=${encodeURIComponent(o.filename)}&subfolder=${encodeURIComponent(o.subfolder)}&type=output`,
+      : `/api/comfy/view?filename=${encodeURIComponent(o.filename)}&subfolder=${encodeURIComponent(o.subfolder)}&type=output&jobId=${o.jobId}`,
     thumbnailUrl: null,
     createdAt: o.createdAt,
   };

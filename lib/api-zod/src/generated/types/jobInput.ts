@@ -10,4 +10,9 @@ import type { JobInputParams } from './jobInputParams';
 export interface JobInput {
   workflowId: string;
   params: JobInputParams;
+  /**
+     * Optional saved GPU id override. Omit to use Settings routing.
+     * @nullable
+     */
+  workerId?: number | null;
 }

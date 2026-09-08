@@ -6,10 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { SavedGpu } from './savedGpu';
+import type { SettingsRoutingMode } from './settingsRoutingMode';
 
 export interface Settings {
   /** URL of the ComfyUI server (e.g. http://localhost:8188) */
   comfyUrl: string;
   updatedAt: Date;
   savedGpus: SavedGpu[];
+  routingMode: SettingsRoutingMode;
+  /** @nullable */
+  selectedGpuId: number | null;
 }

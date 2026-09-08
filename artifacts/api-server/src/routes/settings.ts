@@ -22,6 +22,14 @@ async function getComfyUrl(): Promise<string> {
 }
 
 type SavedGpu = { id: number; label: string; url: string };
+export type ComfyWorker = SavedGpu;
+export type RoutingMode = "auto" | "manual";
+
+export type RoutingSettings = {
+  comfyUrl: string;
+  routingMode: RoutingMode;
+  selectedGpuId: number | null;
+};
 
 async function getSavedGpus(): Promise<SavedGpu[]> {
   const row = await db
@@ -36,6 +44,34 @@ async function getSavedGpus(): Promise<SavedGpu[]> {
   } catch {
     return [];
   }
+}
+
+async function getSettingValue(key: string): Promise<string | null> {
+  const row = await db
+    .select()
+    .from(settingsTable)
+    .where(eq(settingsTable.key, key))
+    .limit(1);
+  return row[0]?.value ?? null;
+}
+
+export async function getRoutingSettings(): Promise<RoutingSettings> {
+  const comfyUrl = (await getSettingValue("comfyUrl")) ?? "http://localhost:8188";
+  const routingMode = (await getSettingValue("routingMode")) === "manual" ? "manual" : "auto";
+  const rawSelectedGpuId = await getSettingValue("selectedGpuId");
+  const selectedGpuId = rawSelectedGpuId && Number.isFinite(Number(rawSelectedGpuId))
+    ? Number(rawSelectedGpuId)
+    : null;
+  return { comfyUrl, routingMode, selectedGpuId };
+}
+
+export async function getConfiguredWorkers(): Promise<ComfyWorker[]> {
+  const { comfyUrl } = await getRoutingSettings();
+  const savedGpus = await getSavedGpus();
+  if (!savedGpus.some((gpu) => gpu.url === comfyUrl)) {
+    return [{ id: 0, label: "Current ComfyUI", url: comfyUrl }, ...savedGpus];
+  }
+  return savedGpus;
 }
 
 async function setSavedGpus(gpus: SavedGpu[]): Promise<void> {
@@ -59,11 +95,14 @@ router.get("/settings", async (req, res): Promise<void> => {
   const comfyUrl = row[0]?.value ?? "http://localhost:8188";
   const updatedAt = row[0]?.updatedAt ?? new Date();
 
+  const routing = await getRoutingSettings();
   res.json(
     GetSettingsResponse.parse({
       comfyUrl,
       updatedAt,
       savedGpus: await getSavedGpus(),
+      routingMode: routing.routingMode,
+      selectedGpuId: routing.selectedGpuId,
     })
   );
 });
@@ -114,6 +153,12 @@ router.put("/settings", async (req, res): Promise<void> => {
     return;
   }
 
+  const currentRouting = await getRoutingSettings();
+  const routingMode = parsed.data.routingMode ?? currentRouting.routingMode;
+  const selectedGpuId = parsed.data.selectedGpuId === undefined
+    ? currentRouting.selectedGpuId
+    : parsed.data.selectedGpuId;
+
   await db
     .insert(settingsTable)
     .values({ key: "comfyUrl", value: parsed.data.comfyUrl })
@@ -121,12 +166,28 @@ router.put("/settings", async (req, res): Promise<void> => {
       target: settingsTable.key,
       set: { value: parsed.data.comfyUrl, updatedAt: new Date() },
     });
+  await db
+    .insert(settingsTable)
+    .values({ key: "routingMode", value: routingMode })
+    .onConflictDoUpdate({
+      target: settingsTable.key,
+      set: { value: routingMode, updatedAt: new Date() },
+    });
+  await db
+    .insert(settingsTable)
+    .values({ key: "selectedGpuId", value: selectedGpuId == null ? "" : String(selectedGpuId) })
+    .onConflictDoUpdate({
+      target: settingsTable.key,
+      set: { value: selectedGpuId == null ? "" : String(selectedGpuId), updatedAt: new Date() },
+    });
 
   res.json(
     UpdateSettingsResponse.parse({
       comfyUrl: parsed.data.comfyUrl,
       updatedAt: new Date(),
       savedGpus: await getSavedGpus(),
+      routingMode,
+      selectedGpuId,
     })
   );
 });

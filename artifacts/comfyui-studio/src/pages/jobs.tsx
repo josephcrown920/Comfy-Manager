@@ -182,7 +182,7 @@ export default function Jobs() {
           <div className="flex items-center gap-2">
             <GitBranch className="h-4 w-4 text-[#e8f724]" />
             <h2 className="text-sm font-bold text-[#f0eeff]">Creative batches</h2>
-            <span className="text-xs text-[#7b72a8]">One child runs at a time on your GPU</span>
+            <span className="text-xs text-[#7b72a8]">Children are scheduled across healthy connected GPUs</span>
           </div>
           <div className="space-y-3">
             {batches.map((batch) => {
@@ -203,6 +203,7 @@ export default function Jobs() {
                       {batch.children.map((child) => (
                         <div key={child.id} className="rounded-xl border border-[#39305f] bg-[#151127] p-3">
                           <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-[#e8f724]">V{child.batchIndex}</span><span className="text-xs capitalize text-[#a79dc7]">{child.status}</span></div>
+                          <p className="mt-1 truncate text-[11px] text-[#7b72a8]">{child.workerLabel || "Waiting for a compatible GPU"}</p>
                           <p className="mt-1 line-clamp-1 text-xs text-[#d4ceed]">{String((child.params as Record<string, any>).variation?.camera ?? (child.params as Record<string, any>).variation?.aspect ?? child.workflowName)}</p>
                           {child.errorMessage && <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#e87979]">{child.errorMessage}</p>}
                           <div className="mt-2 flex items-center gap-2">
@@ -259,8 +260,8 @@ export default function Jobs() {
         <Table>
           <TableHeader className="bg-[#16122a] border-b border-[#2d2650]">
             <TableRow className="border-none hover:bg-[#16122a]">
-              {["ID", "Workflow", "Status", "Progress", "Created", "Actions"].map((h, i) => (
-                <TableHead key={h} className={`text-[#4a4269] text-xs font-semibold h-10 ${i === 5 ? "text-right" : ""} ${i === 0 ? "w-[80px]" : ""} ${i === 3 ? "w-[180px]" : ""}`}>
+              {["ID", "Workflow", "GPU", "Status", "Progress", "Created", "Actions"].map((h, i) => (
+                <TableHead key={h} className={`text-[#4a4269] text-xs font-semibold h-10 ${i === 6 ? "text-right" : ""} ${i === 0 ? "w-[80px]" : ""} ${i === 4 ? "w-[180px]" : ""}`}>
                   {h}
                 </TableHead>
               ))}
@@ -269,7 +270,7 @@ export default function Jobs() {
           <TableBody>
             {isLoading ? (
               <TableRow className="border-b border-[#2d2650]">
-                <TableCell colSpan={6} className="h-32 text-center text-[#4a4269]">
+              <TableCell colSpan={7} className="h-32 text-center text-[#4a4269]">
                   <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#e8f724]" />
                   <span className="text-sm">Loading jobs…</span>
                 </TableCell>
@@ -281,6 +282,11 @@ export default function Jobs() {
                   <TableRow key={job.id} className="border-b border-[#2d2650] hover:bg-[#231f42] transition-colors">
                     <TableCell className="font-mono text-xs text-[#4a4269]">#{job.id}</TableCell>
                     <TableCell className="font-medium text-sm text-[#f0eeff]">{job.workflowId}</TableCell>
+                    <TableCell className="max-w-[150px]">
+                      <span className="inline-flex max-w-full items-center rounded-full border border-[#39305f] bg-[#151127] px-2.5 py-1 text-xs text-[#b9b1d7]">
+                        <span className="truncate">{job.workerLabel || "External provider"}</span>
+                      </span>
+                    </TableCell>
                     <TableCell>{getStatusBadge(job.status)}</TableCell>
                     <TableCell>
                       {progress !== null ? (
@@ -311,7 +317,7 @@ export default function Jobs() {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center text-[#4a4269] text-sm">
+              <TableCell colSpan={7} className="h-32 text-center text-[#4a4269] text-sm">
                 No jobs match the current filters.
                 </TableCell>
               </TableRow>

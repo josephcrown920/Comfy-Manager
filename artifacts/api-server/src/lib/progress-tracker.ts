@@ -3,7 +3,7 @@ import { db, jobsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "./logger";
 import { getComfyUrl } from "../routes/settings";
-import { reconcileJobByPromptId } from "./job-reconciliation";
+import { reconcileJob, reconcileJobByPromptId } from "./job-reconciliation";
 
 /**
  * Server-side progress tracker.
@@ -24,6 +24,7 @@ const lastWrittenPct = new Map<string, number>();
 let stopped = false;
 let currentWs: WebSocket | null = null;
 let reconnectTimer: NodeJS.Timeout | null = null;
+let reconciliationTimer: NodeJS.Timeout | null = null;
 
 async function writeProgress(promptId: string, pct: number): Promise<void> {
   try {
@@ -115,6 +116,16 @@ async function connect(): Promise<void> {
 export function startProgressTracker(): void {
   stopped = false;
   void connect();
+  reconciliationTimer = setInterval(async () => {
+    const runningJobs = await db
+      .select({ id: jobsTable.id })
+      .from(jobsTable)
+      .where(eq(jobsTable.status, "running"));
+    await Promise.all(runningJobs.map(({ id }) => reconcileJob(id).catch((err) => {
+      logger.warn({ err, jobId: id }, "Failed to reconcile routed job");
+    })));
+  }, 5_000);
+  reconciliationTimer.unref();
 }
 
 export function stopProgressTracker(): void {
@@ -125,4 +136,8 @@ export function stopProgressTracker(): void {
   }
   currentWs?.close();
   currentWs = null;
+  if (reconciliationTimer) {
+    clearInterval(reconciliationTimer);
+    reconciliationTimer = null;
+  }
 }

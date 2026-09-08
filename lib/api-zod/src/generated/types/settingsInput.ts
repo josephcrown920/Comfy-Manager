@@ -5,7 +5,11 @@
  * ComfyUI Studio API — proxy and orchestration layer for a ComfyUI server
  * OpenAPI spec version: 0.1.0
  */
+import type { SettingsInputRoutingMode } from './settingsInputRoutingMode';
 
 export interface SettingsInput {
   comfyUrl: string;
+  routingMode?: SettingsInputRoutingMode;
+  /** @nullable */
+  selectedGpuId?: number | null;
 }

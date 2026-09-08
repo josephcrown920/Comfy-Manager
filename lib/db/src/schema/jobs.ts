@@ -16,6 +16,9 @@ export const jobsTable = pgTable("jobs", {
   status: text("status").notNull().default("pending"), // pending | running | completed | failed | cancelled
   params: jsonb("params").notNull().default({}),
   comfyPromptId: text("comfy_prompt_id"),
+  workerId: integer("worker_id"),
+  workerLabel: text("worker_label"),
+  workerUrl: text("worker_url"),
   batchId: integer("batch_id"),
   batchIndex: integer("batch_index"),
   progress: integer("progress").default(0),

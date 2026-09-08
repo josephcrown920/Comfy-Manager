@@ -3,3 +3,4 @@
 - [REFACE merge](reface-merge.md) — Launch GPU launcher is a copy-paste notebook asset, not app code; templates statically verified against upstream node sources (Aug 2026) but never run on a real GPU; Aurora orchestrator bits intentionally excluded.
 - [Codegen quirks](codegen-quirks.md) — every api-spec codegen run re-breaks the uploadFileBody barrel export; re-apply the exclusion comment after each run.
 - [Aurora architecture](aurora-architecture.md) — evolve ComfyUI Studio in place; API server becomes the provider-neutral orchestrator and ComfyUI remains the user-owned execution backend.
+- [Worker routing](worker-routing.md) — probe health, queue, and capabilities immediately before submission; persist the chosen endpoint for reconciliation and outputs.

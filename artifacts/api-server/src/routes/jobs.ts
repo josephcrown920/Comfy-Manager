@@ -17,6 +17,7 @@ import { eq, desc, sql, and, gte } from "drizzle-orm";
 import { WORKFLOWS } from "./workflows";
 import { getComfyUrl } from "./settings";
 import { fetchComfy } from "./comfy";
+import { selectWorker, WorkerRoutingError } from "../lib/worker-routing";
 import { getModelAssignments } from "./model-assignments";
 import { withGpuSubmissionLease } from "./gpu-lease";
 import { reconcileJob } from "../lib/job-reconciliation";
@@ -36,6 +37,8 @@ function buildJobOutput(job: typeof jobsTable.$inferSelect, outputs: typeof outp
     errorMessage: job.errorMessage ?? null,
     batchId: job.batchId ?? null,
     batchIndex: job.batchIndex ?? null,
+    workerId: job.workerId ?? null,
+    workerLabel: job.workerLabel ?? null,
     outputs: outputs.map((o) => ({
       id: o.id,
       jobId: o.jobId,
@@ -43,7 +46,7 @@ function buildJobOutput(job: typeof jobsTable.$inferSelect, outputs: typeof outp
       outputType: o.outputType,
        comfyUrl: o.subfolder === MODELARK_OUTPUT_SUBFOLDER
          ? modelArkOutputUrl(o.filename)
-         : `/api/comfy/view?filename=${encodeURIComponent(o.filename)}&subfolder=${encodeURIComponent(o.subfolder)}&type=output`,
+         : `/api/comfy/view?filename=${encodeURIComponent(o.filename)}&subfolder=${encodeURIComponent(o.subfolder)}&type=output&jobId=${o.jobId}`,
       thumbnailUrl: null,
       createdAt: o.createdAt,
     })),
@@ -133,7 +136,7 @@ router.post("/jobs", async (req, res): Promise<void> => {
     return;
   }
 
-  const { workflowId, params } = parsed.data;
+  const { workflowId, params, workerId } = parsed.data;
 
   if (workflowId === MODELARK_WORKFLOW_ID) {
     try {
@@ -146,6 +149,8 @@ router.post("/jobs", async (req, res): Promise<void> => {
           status: "running",
           params: params as Record<string, unknown>,
           comfyPromptId: `modelark:${task.id}`,
+          workerId: null,
+          workerLabel: null,
           progress: 5,
         })
         .returning();
@@ -156,16 +161,6 @@ router.post("/jobs", async (req, res): Promise<void> => {
     return;
   }
   await withGpuSubmissionLease(async () => {
-  // Batch Studio owns a user-connected GPU exclusively. Ordinary single-job
-  // submission remains unchanged when the GPU is free, but cannot bypass an
-  // active batch child and contend for the same ComfyUI queue.
-  const [activeBatchChild] = await db.select({ id: jobsTable.id }).from(jobsTable)
-    .where(and(sql`${jobsTable.batchId} IS NOT NULL`, eq(jobsTable.status, "running"))).limit(1);
-  if (activeBatchChild) {
-    res.status(409).json({ error: "A Batch Studio variation is using this GPU. Wait for it to finish or stop its batch queue before starting a single generation." });
-    return;
-  }
-
   // Custom workflow: pass raw JSON directly to ComfyUI unchanged
   if (workflowId === "custom-workflow") {
     const rawJson = (params as Record<string, unknown>).workflow_json;
@@ -187,7 +182,17 @@ router.post("/jobs", async (req, res): Promise<void> => {
       return;
     }
 
-    const comfyUrl = await getComfyUrl();
+    let selectedWorker;
+    try {
+      selectedWorker = await selectWorker(comfyPrompt, workerId);
+    } catch (error) {
+      if (error instanceof WorkerRoutingError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      throw error;
+    }
+    const comfyUrl = selectedWorker.worker.url;
     let comfyPromptId: string | null = null;
     let initialStatus = "pending";
 
@@ -222,6 +227,9 @@ router.post("/jobs", async (req, res): Promise<void> => {
         status: initialStatus as "pending" | "running",
         params: params as Record<string, unknown>,
         comfyPromptId,
+        workerId: selectedWorker.worker.id,
+        workerLabel: selectedWorker.worker.label,
+        workerUrl: selectedWorker.worker.url,
         progress: 0,
       })
       .returning();
@@ -236,7 +244,7 @@ router.post("/jobs", async (req, res): Promise<void> => {
     return;
   }
 
-  const comfyUrl = await getComfyUrl();
+  const configuredWorkerId = workerId;
   const assignments = await getModelAssignments();
 
   // Resolve checkpoint assignment. Per-workflow assignments always apply.
@@ -269,7 +277,7 @@ router.post("/jobs", async (req, res): Promise<void> => {
   let resolvedCheckpoint = primaryCheckpoint;
   if (fallbackCheckpoint && primaryCheckpoint) {
     try {
-      const modelsRes = await fetchComfy(comfyUrl, "/api/models/checkpoints");
+      const modelsRes = await fetchComfy(await getComfyUrl(), "/api/models/checkpoints");
       if (modelsRes.ok) {
         const available = (await modelsRes.json()) as unknown;
         if (Array.isArray(available) && !available.includes(primaryCheckpoint)) {
@@ -288,6 +296,20 @@ router.post("/jobs", async (req, res): Promise<void> => {
       ? { ...(params as Record<string, unknown>), checkpoint: resolvedCheckpoint }
       : (params as Record<string, unknown>)
   );
+  let selectedWorker;
+  try {
+    selectedWorker = await selectWorker(
+      comfyPrompt,
+      typeof configuredWorkerId === "number" ? configuredWorkerId : undefined,
+    );
+  } catch (error) {
+    if (error instanceof WorkerRoutingError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+  const comfyUrl = selectedWorker.worker.url;
 
   let comfyPromptId: string | null = null;
   let initialStatus = "pending";
@@ -322,6 +344,9 @@ router.post("/jobs", async (req, res): Promise<void> => {
       status: initialStatus as "pending" | "running",
       params: params as Record<string, unknown>,
       comfyPromptId,
+      workerId: selectedWorker.worker.id,
+      workerLabel: selectedWorker.worker.label,
+      workerUrl: selectedWorker.worker.url,
       progress: 0,
     })
     .returning();

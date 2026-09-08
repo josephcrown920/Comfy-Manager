@@ -46,6 +46,14 @@ export interface HealthStatus {
   status: string;
 }
 
+export type SettingsRoutingMode = typeof SettingsRoutingMode[keyof typeof SettingsRoutingMode];
+
+
+export const SettingsRoutingMode = {
+  auto: 'auto',
+  manual: 'manual',
+} as const;
+
 export interface SavedGpu {
   id: number;
   label: string;
@@ -57,6 +65,9 @@ export interface Settings {
   comfyUrl: string;
   updatedAt: string;
   savedGpus: SavedGpu[];
+  routingMode: SettingsRoutingMode;
+  /** @nullable */
+  selectedGpuId: number | null;
 }
 
 export interface SavedGpuInput {
@@ -69,9 +80,32 @@ export interface SavedGpuInput {
   url: string;
 }
 
+export type SettingsInputRoutingMode = typeof SettingsInputRoutingMode[keyof typeof SettingsInputRoutingMode];
+
+
+export const SettingsInputRoutingMode = {
+  auto: 'auto',
+  manual: 'manual',
+} as const;
+
 export interface SettingsInput {
   comfyUrl: string;
+  routingMode?: SettingsInputRoutingMode;
+  /** @nullable */
+  selectedGpuId?: number | null;
 }
+
+export type ComfyStatusWorkersItem = {
+  id: number;
+  label: string;
+  connected: boolean;
+  queueRemaining: number;
+  /** @nullable */
+  gpuName?: string | null;
+  /** @nullable */
+  error?: string | null;
+  selected: boolean;
+};
 
 export interface ComfyStatus {
   connected: boolean;
@@ -89,6 +123,7 @@ export interface ComfyStatus {
   queueRemaining?: number | null;
   /** @nullable */
   error?: string | null;
+  workers?: ComfyStatusWorkersItem[];
 }
 
 export interface ComfyModels {
@@ -206,6 +241,10 @@ export interface Job {
   workflowName: string;
   status: JobStatus;
   params: JobParams;
+  /** @nullable */
+  workerId: number | null;
+  /** @nullable */
+  workerLabel: string | null;
   /** @nullable */
   comfyPromptId?: string | null;
   /**
@@ -328,6 +367,11 @@ export type JobInputParams = { [key: string]: unknown };
 export interface JobInput {
   workflowId: string;
   params: JobInputParams;
+  /**
+     * Optional saved GPU id override. Omit to use Settings routing.
+     * @nullable
+     */
+  workerId?: number | null;
 }
 
 export type ImportOutputInputType = typeof ImportOutputInputType[keyof typeof ImportOutputInputType];

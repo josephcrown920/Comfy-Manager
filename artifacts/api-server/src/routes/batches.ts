@@ -14,10 +14,11 @@ import {
   RetryBatchChildParams,
   RetryBatchChildResponse,
 } from "@workspace/api-zod";
-import { getComfyUrl } from "./settings";
+import { getComfyUrl, getConfiguredWorkers, getRoutingSettings } from "./settings";
 import { fetchComfy } from "./comfy";
 import { buildComfyPrompt } from "./jobs";
 import { withGpuSubmissionLease } from "./gpu-lease";
+import { selectWorker, WorkerRoutingError } from "../lib/worker-routing";
 import { MODELARK_OUTPUT_SUBFOLDER, modelArkOutputUrl } from "../lib/modelark";
 
 const router: IRouter = Router();
@@ -41,7 +42,7 @@ function formatChild(job: typeof jobsTable.$inferSelect, outputs: typeof outputs
       outputType: output.outputType,
     comfyUrl: output.subfolder === MODELARK_OUTPUT_SUBFOLDER
       ? modelArkOutputUrl(output.filename)
-      : `/api/comfy/view?filename=${encodeURIComponent(output.filename)}&subfolder=${encodeURIComponent(output.subfolder)}&type=output`,
+      : `/api/comfy/view?filename=${encodeURIComponent(output.filename)}&subfolder=${encodeURIComponent(output.subfolder)}&type=output&jobId=${output.jobId}`,
       thumbnailUrl: null,
       createdAt: output.createdAt,
     })),
@@ -49,6 +50,8 @@ function formatChild(job: typeof jobsTable.$inferSelect, outputs: typeof outputs
     completedAt: job.completedAt ?? null,
     batchId: job.batchId ?? null,
     batchIndex: job.batchIndex ?? null,
+    workerId: job.workerId ?? null,
+    workerLabel: job.workerLabel ?? null,
   };
 }
 
@@ -178,12 +181,12 @@ async function updateBatchRollup(batchId: number) {
   }).where(eq(batchesTable.id, batchId));
 }
 
-async function submitNextChild() {
-  await withGpuSubmissionLease(async () => {
-  // Atomically claim the oldest queued batch child only when NO batch child is
-  // running anywhere. This is a global one-GPU queue, not one queue per batch.
-  // Claiming it before contacting ComfyUI prevents duplicate submission when
-  // refreshes race in different browser tabs.
+type SubmissionResult = { claimed: boolean; workerId: number | null };
+
+async function submitNextChild(excludedWorkerIds: ReadonlySet<number> = new Set()): Promise<SubmissionResult> {
+  return withGpuSubmissionLease(async () => {
+  // Atomically claim the oldest queued batch child before contacting ComfyUI.
+  // The lease prevents duplicate claims when refreshes race in different tabs.
   const claimed = await db.execute<{ id: number }>(sql`
     UPDATE jobs
     SET status = 'running', progress = 0, error_message = NULL, started_at = NOW()
@@ -197,20 +200,19 @@ async function submitNextChild() {
       LIMIT 1
     )
     AND status = 'pending'
-    AND NOT EXISTS (
-      SELECT 1 FROM jobs active
-      WHERE active.status = 'running'
-    )
     RETURNING id
   `);
   const childId = claimed.rows[0]?.id;
-  if (!childId) return;
+  if (!childId) return { claimed: false, workerId: null };
   const [child] = await db.select().from(jobsTable).where(eq(jobsTable.id, childId)).limit(1);
-  if (!child) return;
+  if (!child) return { claimed: false, workerId: null };
 
+  let assignedWorkerId: number | null = null;
   try {
-    const comfyUrl = await getComfyUrl();
     const prompt = buildComfyPrompt(child.workflowId, child.params as Record<string, unknown>);
+    const selectedWorker = await selectWorker(prompt, undefined, excludedWorkerIds);
+    assignedWorkerId = selectedWorker.worker.id;
+    const comfyUrl = selectedWorker.worker.url;
     const response = await fetchComfy(comfyUrl, "/prompt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -223,28 +225,53 @@ async function submitNextChild() {
         status: "failed",
         errorMessage: `GPU setup rejected this variation (HTTP ${response.status}): ${detail.slice(0, 400)}`,
       }).where(eq(jobsTable.id, child.id));
-      return;
+      return { claimed: true, workerId: assignedWorkerId };
     }
     const payload = await response.json() as { prompt_id?: string };
     await db.update(jobsTable).set({
       status: "running",
       comfyPromptId: payload.prompt_id ?? null,
+      workerId: selectedWorker.worker.id,
+      workerLabel: selectedWorker.worker.label,
+      workerUrl: selectedWorker.worker.url,
       progress: 0,
       errorMessage: null,
     }).where(eq(jobsTable.id, child.id));
   } catch (error) {
+    if (error instanceof WorkerRoutingError && excludedWorkerIds.size > 0) {
+      await db.update(jobsTable).set({
+        status: "pending",
+        startedAt: null,
+        errorMessage: null,
+      }).where(and(eq(jobsTable.id, child.id), eq(jobsTable.status, "running")));
+      return { claimed: false, workerId: null };
+    }
     await db.update(jobsTable).set({
       status: "failed",
-      errorMessage: `Could not reach the connected GPU. Start ComfyUI and check Settings before retrying. ${error instanceof Error ? error.message : ""}`.trim(),
+      errorMessage: error instanceof WorkerRoutingError
+        ? error.message
+        : `Could not reach the connected GPU. Start ComfyUI and check Settings before retrying. ${error instanceof Error ? error.message : ""}`.trim(),
     }).where(eq(jobsTable.id, child.id));
   }
+  return { claimed: true, workerId: assignedWorkerId };
   });
+}
+
+async function submitAvailableChildren(): Promise<void> {
+  const [routing, workers] = await Promise.all([getRoutingSettings(), getConfiguredWorkers()]);
+  const maxSubmissions = routing.routingMode === "manual" ? 1 : workers.length;
+  const selectedWorkerIds = new Set<number>();
+
+  for (let index = 0; index < maxSubmissions; index += 1) {
+    const result = await submitNextChild(selectedWorkerIds);
+    if (!result.claimed) break;
+    if (result.workerId != null) selectedWorkerIds.add(result.workerId);
+  }
 }
 
 async function refreshRunningChildren(batchId: number) {
   const running = await db.select().from(jobsTable).where(and(eq(jobsTable.batchId, batchId), eq(jobsTable.status, "running")));
   if (!running.length) return;
-  const comfyUrl = await getComfyUrl();
   for (const child of running) {
     if (!child.comfyPromptId) {
       // A worker that dies after atomically claiming a child would otherwise
@@ -258,7 +285,7 @@ async function refreshRunningChildren(batchId: number) {
       continue;
     }
     try {
-      const response = await fetchComfy(comfyUrl, `/history/${child.comfyPromptId}`, { signal: AbortSignal.timeout(15_000) });
+      const response = await fetchComfy(child.workerUrl || await getComfyUrl(), `/history/${child.comfyPromptId}`, { signal: AbortSignal.timeout(15_000) });
       if (!response.ok) continue;
       const history = await response.json() as Record<string, { status?: { completed?: boolean; status_str?: string }; outputs?: Record<string, { images?: Array<{ filename: string; subfolder: string }>; gifs?: Array<{ filename: string; subfolder: string }>; videos?: Array<{ filename: string; subfolder: string }> }> }>;
       const entry = history[child.comfyPromptId];
@@ -299,7 +326,7 @@ async function processBatchQueue() {
       await refreshRunningChildren(batch.id);
       await updateBatchRollup(batch.id);
     }
-    await submitNextChild();
+    await submitAvailableChildren();
     for (const batch of activeBatches) await updateBatchRollup(batch.id);
   } catch (error) {
     console.error("Batch queue worker could not reconcile active variations", error);
@@ -309,8 +336,8 @@ async function processBatchQueue() {
 }
 
 // Keep batch progression owned by the API process, not by a tab's polling
-// lifecycle. The interval is deliberately small because exactly one child can
-// own the GPU lease at a time.
+// lifecycle. The interval is deliberately small so newly freed workers are
+// reused quickly.
 const batchWorkerTimer = setInterval(() => void processBatchQueue(), 5_000);
 batchWorkerTimer.unref();
 void processBatchQueue();
@@ -381,7 +408,7 @@ router.post("/batches", async (req, res): Promise<void> => {
     batchIndex: index + 1,
     progress: 0,
   })));
-  await submitNextChild();
+  await submitAvailableChildren();
   await updateBatchRollup(batch!.id);
   res.status(201).json(CreateBatchResponse.parse(await getBatchDetail(batch!.id)));
 });
@@ -400,7 +427,7 @@ router.post("/batches/:id/refresh", async (req, res): Promise<void> => {
   if (!await getBatchDetail(parsed.data.id)) { res.status(404).json({ error: "Batch not found" }); return; }
   await refreshRunningChildren(parsed.data.id);
   await updateBatchRollup(parsed.data.id);
-  await submitNextChild();
+  await submitAvailableChildren();
   await updateBatchRollup(parsed.data.id);
   res.json(RefreshBatchResponse.parse(await getBatchDetail(parsed.data.id)));
 });
@@ -416,7 +443,7 @@ router.post("/batches/:id/children/:jobId/retry", async (req, res): Promise<void
   await db.delete(outputsTable).where(eq(outputsTable.jobId, child.id));
   await db.update(jobsTable).set({ status: "pending", comfyPromptId: null, progress: 0, errorMessage: null, startedAt: null, completedAt: null }).where(eq(jobsTable.id, child.id));
   await db.update(batchesTable).set({ status: "running", completedAt: null }).where(eq(batchesTable.id, parsed.data.id));
-  await submitNextChild();
+  await submitAvailableChildren();
   await updateBatchRollup(parsed.data.id);
   res.json(RetryBatchChildResponse.parse(await getBatchDetail(parsed.data.id)));
 });

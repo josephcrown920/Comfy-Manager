@@ -85,7 +85,7 @@ export async function reconcileJob(jobId: number): Promise<void> {
     return;
   }
 
-  const comfyUrl = await getComfyUrl();
+  const comfyUrl = job.workerUrl || await getComfyUrl();
   const historyResponse = await fetchComfy(
     comfyUrl,
     `/history/${job.comfyPromptId}`,

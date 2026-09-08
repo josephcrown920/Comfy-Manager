@@ -6,9 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-// AssistantChatBody, AssistantChatResponse, and UploadFileBody are exported
-// as Zod schemas from generated/api.ts; excluding the duplicate TS types keeps
-// the package barrel unambiguous after Orval regeneration.
 export * from './assistantChatMessage';
 export * from './assistantChatMessageRole';
 export * from './batch';
@@ -22,6 +19,7 @@ export * from './comfyModels';
 export * from './comfyQueue';
 export * from './comfyQueueRunningItemsItem';
 export * from './comfyStatus';
+export * from './comfyStatusWorkersItem';
 export * from './deleteSavedGpu200';
 export * from './deleteSavedWorkflow200';
 export * from './healthStatus';
@@ -50,7 +48,11 @@ export * from './savedWorkflow';
 export * from './savedWorkflowInput';
 export * from './settings';
 export * from './settingsInput';
+export * from './settingsInputRoutingMode';
+export * from './settingsRoutingMode';
 export * from './uploadedFile';
+// These generated types intentionally stay out of the barrel because the Zod
+// runtime schemas with the same names are exported from generated/api.ts.
 export * from './uploadFileParams';
 export * from './validateNodesInput';
 export * from './videoPlanBody';

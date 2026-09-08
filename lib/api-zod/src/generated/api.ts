@@ -26,7 +26,9 @@ export const GetSettingsResponse = zod.object({
   "id": zod.number(),
   "label": zod.string(),
   "url": zod.string()
-}))
+})),
+  "routingMode": zod.enum(['auto', 'manual']),
+  "selectedGpuId": zod.number().nullable()
 })
 
 
@@ -34,7 +36,9 @@ export const GetSettingsResponse = zod.object({
  * @summary Update server settings
  */
 export const UpdateSettingsBody = zod.object({
-  "comfyUrl": zod.string()
+  "comfyUrl": zod.string(),
+  "routingMode": zod.enum(['auto', 'manual']).optional(),
+  "selectedGpuId": zod.number().nullish()
 })
 
 export const UpdateSettingsResponse = zod.object({
@@ -44,7 +48,9 @@ export const UpdateSettingsResponse = zod.object({
   "id": zod.number(),
   "label": zod.string(),
   "url": zod.string()
-}))
+})),
+  "routingMode": zod.enum(['auto', 'manual']),
+  "selectedGpuId": zod.number().nullable()
 })
 
 
@@ -59,7 +65,16 @@ export const GetComfyStatusResponse = zod.object({
   "ramUsed": zod.string().nullish(),
   "ramTotal": zod.string().nullish(),
   "queueRemaining": zod.number().nullish(),
-  "error": zod.string().nullish()
+  "error": zod.string().nullish(),
+  "workers": zod.array(zod.object({
+  "id": zod.number(),
+  "label": zod.string(),
+  "connected": zod.boolean(),
+  "queueRemaining": zod.number(),
+  "gpuName": zod.string().nullish(),
+  "error": zod.string().nullish(),
+  "selected": zod.boolean()
+})).optional()
 })
 
 
@@ -156,6 +171,8 @@ export const ListJobsResponseItem = zod.object({
   "workflowName": zod.string(),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullable(),
+  "workerLabel": zod.string().nullable(),
   "comfyPromptId": zod.string().nullish(),
   "progress": zod.number().nullish().describe('0-100'),
   "errorMessage": zod.string().nullish(),
@@ -181,7 +198,8 @@ export const ListJobsResponse = zod.array(ListJobsResponseItem)
  */
 export const CreateJobBody = zod.object({
   "workflowId": zod.string(),
-  "params": zod.record(zod.string(), zod.unknown())
+  "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullish().describe('Optional saved GPU id override. Omit to use Settings routing.')
 })
 
 export const CreateJobResponse = zod.object({
@@ -190,6 +208,8 @@ export const CreateJobResponse = zod.object({
   "workflowName": zod.string(),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullable(),
+  "workerLabel": zod.string().nullable(),
   "comfyPromptId": zod.string().nullish(),
   "progress": zod.number().nullish().describe('0-100'),
   "errorMessage": zod.string().nullish(),
@@ -241,6 +261,8 @@ export const ListBatchesResponseItem = zod.object({
   "workflowName": zod.string(),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullable(),
+  "workerLabel": zod.string().nullable(),
   "comfyPromptId": zod.string().nullish(),
   "progress": zod.number().nullish().describe('0-100'),
   "errorMessage": zod.string().nullish(),
@@ -318,6 +340,8 @@ export const CreateBatchResponse = zod.object({
   "workflowName": zod.string(),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullable(),
+  "workerLabel": zod.string().nullable(),
   "comfyPromptId": zod.string().nullish(),
   "progress": zod.number().nullish().describe('0-100'),
   "errorMessage": zod.string().nullish(),
@@ -363,6 +387,8 @@ export const GetBatchResponse = zod.object({
   "workflowName": zod.string(),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullable(),
+  "workerLabel": zod.string().nullable(),
   "comfyPromptId": zod.string().nullish(),
   "progress": zod.number().nullish().describe('0-100'),
   "errorMessage": zod.string().nullish(),
@@ -408,6 +434,8 @@ export const CancelBatchResponse = zod.object({
   "workflowName": zod.string(),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullable(),
+  "workerLabel": zod.string().nullable(),
   "comfyPromptId": zod.string().nullish(),
   "progress": zod.number().nullish().describe('0-100'),
   "errorMessage": zod.string().nullish(),
@@ -453,6 +481,8 @@ export const RefreshBatchResponse = zod.object({
   "workflowName": zod.string(),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullable(),
+  "workerLabel": zod.string().nullable(),
   "comfyPromptId": zod.string().nullish(),
   "progress": zod.number().nullish().describe('0-100'),
   "errorMessage": zod.string().nullish(),
@@ -499,6 +529,8 @@ export const RetryBatchChildResponse = zod.object({
   "workflowName": zod.string(),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullable(),
+  "workerLabel": zod.string().nullable(),
   "comfyPromptId": zod.string().nullish(),
   "progress": zod.number().nullish().describe('0-100'),
   "errorMessage": zod.string().nullish(),
@@ -534,6 +566,8 @@ export const GetJobResponse = zod.object({
   "workflowName": zod.string(),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullable(),
+  "workerLabel": zod.string().nullable(),
   "comfyPromptId": zod.string().nullish(),
   "progress": zod.number().nullish().describe('0-100'),
   "errorMessage": zod.string().nullish(),
@@ -576,6 +610,8 @@ export const RefreshJobResponse = zod.object({
   "workflowName": zod.string(),
   "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
   "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullable(),
+  "workerLabel": zod.string().nullable(),
   "comfyPromptId": zod.string().nullish(),
   "progress": zod.number().nullish().describe('0-100'),
   "errorMessage": zod.string().nullish(),

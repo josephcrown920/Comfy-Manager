@@ -13,6 +13,8 @@ import batchesRouter from "./batches";
 import modelarkRouter from "./modelark";
 import runpodRouter from "./runpod";
 import { getComfyUrl } from "./settings";
+import { db, jobsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { fetchComfy } from "./comfy";
 import { requireAuth } from "../middlewares/requireAuth";
 
@@ -34,8 +36,16 @@ router.use(requireAuth, runpodRouter);
 
 // Proxy ComfyUI view requests (for serving generated images/videos)
 router.get("/comfy/view", async (req, res): Promise<void> => {
-  const comfyUrl = await getComfyUrl();
-  const { filename, subfolder, type } = req.query as Record<string, string>;
+  const { filename, subfolder, type, jobId } = req.query as Record<string, string>;
+  let comfyUrl = await getComfyUrl();
+  if (jobId && Number.isFinite(Number(jobId))) {
+    const [job] = await db
+      .select({ workerUrl: jobsTable.workerUrl })
+      .from(jobsTable)
+      .where(eq(jobsTable.id, Number(jobId)))
+      .limit(1);
+    if (job?.workerUrl) comfyUrl = job.workerUrl;
+  }
   const path = `/view?filename=${encodeURIComponent(filename ?? "")}&subfolder=${encodeURIComponent(subfolder ?? "")}&type=${encodeURIComponent(type ?? "output")}`;
   try {
     const r = await fetchComfy(comfyUrl, path, { signal: AbortSignal.timeout(30000) });

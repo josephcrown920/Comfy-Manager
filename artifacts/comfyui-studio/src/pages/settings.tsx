@@ -24,16 +24,24 @@ export default function Settings() {
   const { toast } = useToast();
 
   const [comfyUrl, setComfyUrl] = useState("");
+  const [routingMode, setRoutingMode] = useState<"auto" | "manual">("auto");
+  const [selectedGpuId, setSelectedGpuId] = useState<number | null>(null);
 
   useEffect(() => {
     if (settings) {
       setComfyUrl(settings.comfyUrl);
+      setRoutingMode(settings.routingMode);
+      setSelectedGpuId(settings.selectedGpuId);
     }
   }, [settings]);
 
   const handleSave = () => {
     updateSettings.mutate({
-      data: { comfyUrl }
+      data: {
+        comfyUrl,
+        routingMode,
+        selectedGpuId: routingMode === "manual" ? selectedGpuId : null,
+      }
     }, {
       onSuccess: () => {
         toast({ title: "Settings saved successfully" });
@@ -70,10 +78,12 @@ export default function Settings() {
     });
   };
 
-  const handleSwitchGpu = (label: string, url: string) => {
-    updateSettings.mutate({ data: { comfyUrl: url } }, {
+  const handleSwitchGpu = (id: number, label: string, url: string) => {
+    updateSettings.mutate({ data: { comfyUrl: url, routingMode: "manual", selectedGpuId: id } }, {
       onSuccess: () => {
         setComfyUrl(url);
+        setRoutingMode("manual");
+        setSelectedGpuId(id);
         toast({ title: `Switched to ${label}`, description: "Testing connection…" });
         refreshAll();
       },
@@ -135,6 +145,64 @@ export default function Settings() {
       <div className="bg-[#1e1a38] border border-[#2d2650] rounded-xl">
         <div className="p-6 border-b border-[#2d2650]">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <ArrowRightLeft className="h-5 w-5 text-[#e8f724]" />
+            Job routing
+          </h2>
+          <p className="text-[#7b72a8] text-sm mt-1">
+            Automatically use the healthiest, least-busy compatible GPU, or pin new jobs to one saved worker.
+          </p>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setRoutingMode("auto")}
+              className={`rounded-xl border p-4 text-left transition-colors ${routingMode === "auto" ? "border-[#e8f724] bg-[#2a2448]" : "border-[#2d2650] hover:bg-[#231f42]"}`}
+            >
+              <p className="font-semibold text-[#f0eeff]">Automatic pool</p>
+              <p className="mt-1 text-xs leading-relaxed text-[#7b72a8]">Route each job to a reachable worker with the smallest queue and all required nodes.</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRoutingMode("manual")}
+              className={`rounded-xl border p-4 text-left transition-colors ${routingMode === "manual" ? "border-[#e8f724] bg-[#2a2448]" : "border-[#2d2650] hover:bg-[#231f42]"}`}
+            >
+              <p className="font-semibold text-[#f0eeff]">Specific GPU</p>
+              <p className="mt-1 text-xs leading-relaxed text-[#7b72a8]">Keep new jobs on one saved endpoint and fail clearly if it is unavailable.</p>
+            </button>
+          </div>
+          {routingMode === "manual" && (
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#7b72a8]">Pinned worker</span>
+              <select
+                value={selectedGpuId ?? ""}
+                onChange={(event) => setSelectedGpuId(event.target.value ? Number(event.target.value) : null)}
+                className="w-full rounded-xl border border-[#2d2650] bg-[#151127] px-3 py-2 text-sm text-[#f0eeff] outline-none focus:border-[#e8f724]"
+              >
+                <option value="">Choose a saved GPU</option>
+                {(settings?.savedGpus ?? []).map((gpu) => (
+                  <option key={gpu.id} value={gpu.id}>{gpu.label}</option>
+                ))}
+              </select>
+              {!selectedGpuId && <p className="text-xs text-[#e05555]">Choose a saved GPU before saving manual routing.</p>}
+            </label>
+          )}
+          <div className="flex items-center justify-between border-t border-[#2d2650] pt-4">
+            <p className="text-xs text-[#7b72a8]">Routing changes apply to new jobs. Running jobs stay on their assigned worker.</p>
+            <Button
+              onClick={handleSave}
+              disabled={updateSettings.isPending || isSettingsLoading || (routingMode === "manual" && selectedGpuId == null)}
+              className="bg-[#e8f724] text-black hover:bg-[#d4e010]"
+            >
+              {updateSettings.isPending ? "Saving…" : "Save routing"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-[#1e1a38] border border-[#2d2650] rounded-xl">
+        <div className="p-6 border-b border-[#2d2650]">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
             <Bookmark className="h-5 w-5 text-[#e8f724]" />
             Saved GPUs
           </h2>
@@ -149,19 +217,24 @@ export default function Settings() {
             </p>
           )}
           {(settings?.savedGpus ?? []).map((gpu) => {
-            const isActive = gpu.url === settings?.comfyUrl;
+            const isActive = routingMode === "manual" && gpu.id === selectedGpuId;
+            const workerStatus = status?.workers?.find((worker) => worker.id === gpu.id);
             return (
               <div key={gpu.id} className={`flex items-center gap-3 rounded-xl border border-[#2d2650] p-3 ${isActive ? "bg-[#2a2448] border-[#e8f724]" : "bg-[#1e1a38]"}`}>
+                <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${workerStatus?.connected ? "bg-[#4a4]" : "bg-[#dd4444]"}`} title={workerStatus?.connected ? "Reachable" : "Unreachable"} />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm flex items-center gap-2 text-[#f0eeff]">
                     {gpu.label}
                     {isActive && <span className="text-xs text-[#e8f724] font-normal uppercase tracking-wider">active</span>}
                   </p>
                   <p className="text-xs text-[#7b72a8] font-mono truncate mt-0.5">{gpu.url}</p>
+                  <p className="mt-1 text-[11px] text-[#7b72a8]">
+                    {workerStatus?.connected ? `${workerStatus.gpuName || "GPU"} · ${workerStatus.queueRemaining} queued` : workerStatus?.error || "Not checked"}
+                  </p>
                 </div>
                 {!isActive && (
                   <Button size="sm" variant="outline" className="gap-1.5 shrink-0 bg-transparent border-[#2d2650] hover:bg-[#2a2448]"
-                    onClick={() => handleSwitchGpu(gpu.label, gpu.url)}
+                    onClick={() => handleSwitchGpu(gpu.id, gpu.label, gpu.url)}
                     disabled={updateSettings.isPending}>
                     <ArrowRightLeft className="h-3.5 w-3.5" />
                     Switch

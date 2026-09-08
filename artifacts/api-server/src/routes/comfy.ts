@@ -6,7 +6,7 @@ import {
   ValidateComfyNodesBody,
   ValidateComfyNodesResponse,
 } from "@workspace/api-zod";
-import { getComfyUrl } from "./settings";
+import { getComfyUrl, getConfiguredWorkers, getRoutingSettings } from "./settings";
 
 const router: IRouter = Router();
 
@@ -48,6 +48,42 @@ async function fetchComfy(
 
 router.get("/comfy/status", async (req, res): Promise<void> => {
   const comfyUrl = await getComfyUrl();
+  const routing = await getRoutingSettings();
+  const workers = await Promise.all((await getConfiguredWorkers()).map(async (worker) => {
+    try {
+      const [systemResponse, queueResponse] = await Promise.all([
+        fetchComfy(worker.url, "/system_stats", { signal: AbortSignal.timeout(8_000) }),
+        fetchComfy(worker.url, "/queue", { signal: AbortSignal.timeout(8_000) }),
+      ]);
+      if (!systemResponse.ok) throw new Error(`HTTP ${systemResponse.status}`);
+      if (!queueResponse.ok) throw new Error(`HTTP ${queueResponse.status}`);
+      const system = await systemResponse.json() as { devices?: Array<{ name?: string }> };
+      const queue = await queueResponse.json() as { queue_running?: unknown[]; queue_pending?: unknown[] };
+      return {
+        id: worker.id,
+        label: worker.label,
+        connected: true,
+        queueRemaining: (queue.queue_running?.length ?? 0) + (queue.queue_pending?.length ?? 0),
+        gpuName: system.devices?.[0]?.name ?? null,
+        error: null,
+        selected: routing.routingMode === "manual"
+          ? routing.selectedGpuId === worker.id
+          : routing.routingMode === "auto",
+      };
+    } catch (error) {
+      return {
+        id: worker.id,
+        label: worker.label,
+        connected: false,
+        queueRemaining: 0,
+        gpuName: null,
+        error: error instanceof Error ? error.message : String(error),
+        selected: routing.routingMode === "manual"
+          ? routing.selectedGpuId === worker.id
+          : routing.routingMode === "auto",
+      };
+    }
+  }));
   try {
     const r = await fetchComfy(comfyUrl, "/system_stats");
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -75,6 +111,7 @@ router.get("/comfy/status", async (req, res): Promise<void> => {
             : null,
         queueRemaining: null,
         error: null,
+        workers,
       })
     );
   } catch (err) {
@@ -89,6 +126,7 @@ router.get("/comfy/status", async (req, res): Promise<void> => {
         ramTotal: null,
         queueRemaining: null,
         error: `Cannot reach ComfyUI server: ${msg}`,
+        workers,
       })
     );
   }

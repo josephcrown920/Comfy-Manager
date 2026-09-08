@@ -5,6 +5,7 @@
  * ComfyUI Studio API — proxy and orchestration layer for a ComfyUI server
  * OpenAPI spec version: 0.1.0
  */
+import type { ComfyStatusWorkersItem } from './comfyStatusWorkersItem';
 
 export interface ComfyStatus {
   connected: boolean;
@@ -22,4 +23,5 @@ export interface ComfyStatus {
   queueRemaining?: number | null;
   /** @nullable */
   error?: string | null;
+  workers?: ComfyStatusWorkersItem[];
 }
