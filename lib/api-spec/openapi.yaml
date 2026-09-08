@@ -16,6 +16,8 @@ tags:
     description: Server configuration
   - name: comfy
     description: ComfyUI server proxy
+  - name: modelark
+    description: ModelArk provider readiness
   - name: workflows
     description: Workflow templates
   - name: jobs
@@ -84,6 +86,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ComfyStatus"
+
+  /comfy/readiness:
+    get:
+      operationId: getComfyReadiness
+      tags: [comfy]
+      summary: Check ComfyUI readiness for the MimicMotion workflow
+      responses:
+        "200":
+          description: MimicMotion provider readiness
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComfyReadiness"
+
+  /modelark/status:
+    get:
+      operationId: getModelArkStatus
+      tags: [modelark]
+      summary: Check whether ModelArk is configured
+      responses:
+        "200":
+          description: ModelArk configuration status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelArkStatus"
 
   /comfy/models:
     get:
@@ -852,6 +880,48 @@ components:
                 type: ["string", "null"]
               selected:
                 type: boolean
+
+    ComfyReadiness:
+      type: object
+      required: [ready, workers]
+      properties:
+        ready:
+          type: boolean
+        workers:
+          type: array
+          items:
+            type: object
+            required: [id, label, connected, compatible, queueRemaining, selected]
+            properties:
+              id:
+                type: number
+              label:
+                type: string
+              connected:
+                type: boolean
+              compatible:
+                type: boolean
+              queueRemaining:
+                type: number
+              gpuName:
+                type: ["string", "null"]
+              missingNodes:
+                type: array
+                items:
+                  type: string
+              error:
+                type: ["string", "null"]
+              selected:
+                type: boolean
+
+    ModelArkStatus:
+      type: object
+      required: [configured, model]
+      properties:
+        configured:
+          type: boolean
+        model:
+          type: ["string", "null"]
 
     ComfyModels:
       type: object

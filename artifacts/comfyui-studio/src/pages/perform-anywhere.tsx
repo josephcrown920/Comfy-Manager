@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@clerk/react";
 import {
   ArrowRight,
   Camera,
@@ -21,8 +22,12 @@ import {
 } from "lucide-react";
 import {
   getListBatchesQueryKey,
+  getGetComfyReadinessQueryKey,
+  getGetModelArkStatusQueryKey,
   useCreateBatch,
   useCreateJob,
+  useGetComfyReadiness,
+  useGetModelArkStatus,
   useImportOutput,
   useListBatches,
 } from "@workspace/api-client-react";
@@ -137,9 +142,24 @@ export default function PerformAnywhere() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
   const createBatch = useCreateBatch();
   const importOutput = useImportOutput();
   const createJob = useCreateJob();
+  const modelArkStatusQuery = useGetModelArkStatus({
+    query: {
+      queryKey: getGetModelArkStatusQueryKey(),
+      enabled: isAuthLoaded && Boolean(isSignedIn),
+      refetchInterval: 30000,
+    },
+  });
+  const comfyReadinessQuery = useGetComfyReadiness({
+    query: {
+      queryKey: getGetComfyReadinessQueryKey(),
+      enabled: isAuthLoaded && Boolean(isSignedIn),
+      refetchInterval: 15000,
+    },
+  });
   const batchesQuery = useListBatches({
     query: {
       queryKey: getListBatchesQueryKey(),
@@ -182,7 +202,47 @@ export default function PerformAnywhere() {
   const completedCount = activeBatch?.completedJobs ?? 0;
   const allReferencesReady = activePreset.keys.every((key) => Boolean(references[key]));
   const canStart = allReferencesReady && sceneDescription.trim().length >= 2 && visualDirection.trim().length >= 2;
-  const canHandoff = Boolean(selectedOutput && performanceVideo);
+  const selectedProviderReady = motionProvider === "seedance"
+    ? modelArkStatusQuery.data?.configured === true
+    : comfyReadinessQuery.data?.ready === true;
+  const readinessLoading = !isAuthLoaded || !isSignedIn || (
+    modelArkStatusQuery.isLoading || comfyReadinessQuery.isLoading
+  );
+  const readinessError = modelArkStatusQuery.isError || comfyReadinessQuery.isError;
+  const canHandoff = Boolean(selectedOutput && performanceVideo && selectedProviderReady);
+
+  const providerStatus = (provider: MotionProvider) => {
+    if (!isAuthLoaded) return { label: "Checking readiness", tone: "text-white/45", dot: "bg-white/40" };
+    if (!isSignedIn) return { label: "Sign in required", tone: "text-white/45", dot: "bg-white/40" };
+    if (readinessLoading) return { label: "Checking readiness", tone: "text-white/45", dot: "bg-white/40" };
+    if (provider === "seedance") {
+      if (modelArkStatusQuery.isError) return { label: "Could not check", tone: "text-[#ffb88b]", dot: "bg-[#ffb88b]" };
+      return modelArkStatusQuery.data?.configured
+        ? { label: "ModelArk configured", tone: "text-[#c8f135]", dot: "bg-[#c8f135]" }
+        : { label: "ModelArk not configured", tone: "text-[#ff8f86]", dot: "bg-[#ff6e62]" };
+    }
+    if (comfyReadinessQuery.isError) return { label: "Could not check", tone: "text-[#ffb88b]", dot: "bg-[#ffb88b]" };
+    return comfyReadinessQuery.data?.ready
+      ? { label: "Compatible GPU connected", tone: "text-[#c8f135]", dot: "bg-[#c8f135]" }
+      : { label: "No compatible GPU", tone: "text-[#ff8f86]", dot: "bg-[#ff6e62]" };
+  };
+
+  const selectedProviderMessage = () => {
+    if (!isAuthLoaded) return "Checking your sign-in state before checking provider readiness.";
+    if (!isSignedIn) return "Sign in to check provider readiness before uploading or sending a performance.";
+    if (readinessLoading) return "Checking provider readiness before enabling the motion handoff.";
+    if (readinessError) return "Readiness could not be confirmed. Refresh the checks before sending a motion job.";
+    if (motionProvider === "seedance" && !modelArkStatusQuery.data?.configured) {
+      return "Seedance is unavailable until ModelArk is configured. Add the provider configuration in Replit Secrets, then refresh.";
+    }
+    if (motionProvider === "mimicmotion" && !comfyReadinessQuery.data?.ready) {
+      const missing = comfyReadinessQuery.data?.workers.find((worker) => worker.connected && worker.missingNodes?.length)?.missingNodes;
+      return missing?.length
+        ? `Your connected ComfyUI worker is missing ${missing.join(", ")}. Install the MimicMotion nodes, then check again.`
+        : "Connect a ComfyUI GPU with the MimicMotion nodes in Settings before sending this handoff.";
+    }
+    return "This provider is ready. Select a completed still and upload your performance video to continue.";
+  };
 
   useEffect(() => {
     if (selectedChildId && !completedChildren.some((child) => child.id === selectedChildId)) {
@@ -254,6 +314,14 @@ export default function PerformAnywhere() {
   const submitMotion = () => {
     if (!selectedOutput || !performanceVideo) {
       toast({ title: "Choose a still and upload your performance", description: "Both pieces are needed for the motion handoff.", variant: "destructive" });
+      return;
+    }
+    if (!selectedProviderReady) {
+      toast({
+        title: `${motionProvider === "seedance" ? "Seedance" : "MimicMotion"} is not ready`,
+        description: selectedProviderMessage(),
+        variant: "destructive",
+      });
       return;
     }
     importOutput.mutate(
@@ -481,7 +549,13 @@ export default function PerformAnywhere() {
                    onClick={() => setMotionProvider("seedance")}
                    className={`rounded-xl border px-3 py-3 text-left transition-colors ${motionProvider === "seedance" ? "border-[#ffb88b] bg-[#ffb88b]/10" : "border-white/10 bg-black/15 hover:border-white/20"}`}
                  >
-                   <p className={`text-xs font-bold ${motionProvider === "seedance" ? "text-[#ffb88b]" : "text-white/75"}`}>Seedance API</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className={`text-xs font-bold ${motionProvider === "seedance" ? "text-[#ffb88b]" : "text-white/75"}`}>Seedance API</p>
+                      <span className={`flex items-center gap-1 text-[9px] font-semibold ${providerStatus("seedance").tone}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${providerStatus("seedance").dot}`} />
+                        {providerStatus("seedance").label}
+                      </span>
+                    </div>
                    <p className="mt-1 text-[10px] leading-relaxed text-white/35">ModelArk hosted video. No local GPU for this stage.</p>
                  </button>
                  <button
@@ -490,10 +564,58 @@ export default function PerformAnywhere() {
                    onClick={() => setMotionProvider("mimicmotion")}
                    className={`rounded-xl border px-3 py-3 text-left transition-colors ${motionProvider === "mimicmotion" ? "border-[#ffb88b] bg-[#ffb88b]/10" : "border-white/10 bg-black/15 hover:border-white/20"}`}
                  >
-                   <p className={`text-xs font-bold ${motionProvider === "mimicmotion" ? "text-[#ffb88b]" : "text-white/75"}`}>MimicMotion</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className={`text-xs font-bold ${motionProvider === "mimicmotion" ? "text-[#ffb88b]" : "text-white/75"}`}>MimicMotion</p>
+                      <span className={`flex items-center gap-1 text-[9px] font-semibold ${providerStatus("mimicmotion").tone}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${providerStatus("mimicmotion").dot}`} />
+                        {providerStatus("mimicmotion").label}
+                      </span>
+                    </div>
                    <p className="mt-1 text-[10px] leading-relaxed text-white/35">Local ComfyUI workflow. Uses your connected GPU.</p>
                  </button>
                </div>
+                <div className={`mt-3 rounded-xl border p-3 ${selectedProviderReady ? "border-[#c8f135]/25 bg-[#c8f135]/[0.06]" : "border-[#ffb88b]/25 bg-[#ffb88b]/[0.06]"}`}>
+                  <div className="flex items-start gap-2.5">
+                    {selectedProviderReady
+                      ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#c8f135]" />
+                      : <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[#ffb88b]" />}
+                    <p data-testid="text-provider-readiness" className={`text-[11px] leading-relaxed ${selectedProviderReady ? "text-[#d9f58a]" : "text-[#ffd1bb]"}`}>
+                      {selectedProviderMessage()}
+                    </p>
+                    {(readinessError || (!readinessLoading && !selectedProviderReady)) && (
+                      <>
+                      {motionProvider === "mimicmotion" && !readinessError && (
+                        <button
+                          type="button"
+                          onClick={() => setLocation("/settings")}
+                          className="ml-auto shrink-0 rounded-lg px-2 py-1 text-[10px] font-semibold text-[#ffb88b] transition-colors hover:bg-white/10 hover:text-white"
+                        >
+                          Settings
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        aria-label="Refresh provider readiness"
+                        onClick={() => {
+                          void modelArkStatusQuery.refetch();
+                          void comfyReadinessQuery.refetch();
+                        }}
+                        className="shrink-0 rounded-lg p-1 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </button>
+                      </>
+                    )}
+                  </div>
+                  {motionProvider === "mimicmotion" && comfyReadinessQuery.data?.ready && (
+                    <p className="mt-2 pl-6 text-[10px] text-white/40">
+                      {comfyReadinessQuery.data.workers
+                        .filter((worker) => worker.selected && worker.connected && worker.compatible)
+                        .map((worker) => `${worker.label} · ${worker.gpuName || "GPU"} · ${worker.queueRemaining} queued`)
+                        .join(" · ")}
+                    </p>
+                  )}
+                </div>
              </div>
             <div data-testid="upload-performance-video" className="mt-5">
               <FileUpload accept="video/*" label="Performance video" description="A clean 3–30 second phone performance works best." onFileSelect={setPerformanceVideo} previouslyUploadedName={performanceVideo || undefined} />
@@ -512,10 +634,13 @@ export default function PerformAnywhere() {
                 </div>
               ) : <p className="mt-2 text-xs leading-relaxed text-white/35">Select a completed camera treatment above.</p>}
             </div>
-            <Button data-testid="button-submit-motion" onClick={submitMotion} disabled={!canHandoff || busy} className="mt-5 w-full rounded-full bg-[#ffb88b] py-6 font-bold text-[#24131b] hover:bg-[#ffc9a9]">
+             <Button data-testid="button-submit-motion" onClick={submitMotion} disabled={!canHandoff || busy || readinessLoading} className="mt-5 w-full rounded-full bg-[#ffb88b] py-6 font-bold text-[#24131b] hover:bg-[#ffc9a9]">
                {importOutput.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Preparing still</> : createJob.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Queueing {motionProvider === "seedance" ? "Seedance" : "motion"}</> : <><Upload className="mr-2 h-4 w-4" />Send to {motionProvider === "seedance" ? "Seedance" : "motion"}</>}
             </Button>
             {!selectedOutput && <p className="mt-3 text-center text-[11px] text-white/30">The handoff unlocks when a finished angle is selected.</p>}
+             {selectedOutput && performanceVideo && !selectedProviderReady && !readinessLoading && (
+               <p className="mt-3 text-center text-[11px] text-[#ffb88b]">The handoff is paused until the selected provider is ready.</p>
+             )}
           </section>
 
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4">

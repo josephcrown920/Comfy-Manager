@@ -135,6 +135,31 @@ export interface ComfyStatus {
   workers?: ComfyStatusWorkersItem[];
 }
 
+export type ComfyReadinessWorkersItem = {
+  id: number;
+  label: string;
+  connected: boolean;
+  compatible: boolean;
+  queueRemaining: number;
+  /** @nullable */
+  gpuName?: string | null;
+  missingNodes?: string[];
+  /** @nullable */
+  error?: string | null;
+  selected: boolean;
+};
+
+export interface ComfyReadiness {
+  ready: boolean;
+  workers: ComfyReadinessWorkersItem[];
+}
+
+export interface ModelArkStatus {
+  configured: boolean;
+  /** @nullable */
+  model: string | null;
+}
+
 export interface ComfyModels {
   checkpoints: string[];
   loras: string[];

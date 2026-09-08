@@ -1,7 +1,12 @@
 import { Router, type IRouter } from "express";
-import { streamSeedanceVideo } from "../lib/modelark";
+import { getModelArkReadiness, streamSeedanceVideo } from "../lib/modelark";
+import { GetModelArkStatusResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+router.get("/modelark/status", async (_req, res): Promise<void> => {
+  res.json(GetModelArkStatusResponse.parse(getModelArkReadiness()));
+});
 
 router.get("/modelark/video", async (req, res): Promise<void> => {
   const taskId = typeof req.query.taskId === "string" ? req.query.taskId.trim() : "";

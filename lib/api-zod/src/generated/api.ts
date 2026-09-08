@@ -79,6 +79,34 @@ export const GetComfyStatusResponse = zod.object({
 
 
 /**
+ * @summary Check ComfyUI readiness for the MimicMotion workflow
+ */
+export const GetComfyReadinessResponse = zod.object({
+  "ready": zod.boolean(),
+  "workers": zod.array(zod.object({
+  "id": zod.number(),
+  "label": zod.string(),
+  "connected": zod.boolean(),
+  "compatible": zod.boolean(),
+  "queueRemaining": zod.number(),
+  "gpuName": zod.string().nullish(),
+  "missingNodes": zod.array(zod.string()).optional(),
+  "error": zod.string().nullish(),
+  "selected": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Check whether ModelArk is configured
+ */
+export const GetModelArkStatusResponse = zod.object({
+  "configured": zod.boolean(),
+  "model": zod.string().nullable()
+})
+
+
+/**
  * @summary List available models from ComfyUI server
  */
 export const GetComfyModelsResponse = zod.object({

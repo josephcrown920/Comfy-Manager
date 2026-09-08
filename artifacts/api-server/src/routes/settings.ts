@@ -90,9 +90,14 @@ export async function getRoutingSettings(): Promise<RoutingSettings> {
 }
 
 export async function getConfiguredWorkers(): Promise<ComfyWorker[]> {
-  const comfyUrl = await getComfyUrl();
   const savedGpus = await getConfiguredSavedGpus();
-  if (!savedGpus.some((gpu) => gpu.url === comfyUrl)) {
+  let comfyUrl: string | null = null;
+  try {
+    comfyUrl = await getComfyUrl();
+  } catch {
+    // Keep saved workers available for readiness checks when the current URL is offline.
+  }
+  if (comfyUrl && !savedGpus.some((gpu) => gpu.url === comfyUrl)) {
     return [{ id: 0, label: "Current ComfyUI", url: comfyUrl }, ...savedGpus];
   }
   return savedGpus;

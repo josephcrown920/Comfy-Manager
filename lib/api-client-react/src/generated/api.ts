@@ -26,6 +26,7 @@ import type {
   BatchInput,
   ComfyModels,
   ComfyQueue,
+  ComfyReadiness,
   ComfyStatus,
   DeleteSavedGpu200,
   DeleteSavedWorkflow200,
@@ -36,6 +37,7 @@ import type {
   JobStats,
   ListJobsParams,
   ListOutputsParams,
+  ModelArkStatus,
   ModelAssignments,
   ModelAssignmentsInput,
   NodeValidation,
@@ -372,6 +374,160 @@ export function useGetComfyStatus<TData = Awaited<ReturnType<typeof getComfyStat
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetComfyStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetComfyReadinessUrl = () => {
+
+
+
+
+  return `/api/comfy/readiness`
+}
+
+/**
+ * @summary Check ComfyUI readiness for the MimicMotion workflow
+ */
+export const getComfyReadiness = async ( options?: Parameters<typeof customFetch>[1]): Promise<ComfyReadiness> => {
+
+  return customFetch<ComfyReadiness>(getGetComfyReadinessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetComfyReadinessQueryKey = () => {
+    return [
+    `/api/comfy/readiness`
+    ] as const;
+    }
+
+
+export const getGetComfyReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getComfyReadiness>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getComfyReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetComfyReadinessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getComfyReadiness>>> = ({ signal }) => getComfyReadiness({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getComfyReadiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetComfyReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getComfyReadiness>>>
+export type GetComfyReadinessQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Check ComfyUI readiness for the MimicMotion workflow
+ */
+
+export function useGetComfyReadiness<TData = Awaited<ReturnType<typeof getComfyReadiness>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getComfyReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetComfyReadinessQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetModelArkStatusUrl = () => {
+
+
+
+
+  return `/api/modelark/status`
+}
+
+/**
+ * @summary Check whether ModelArk is configured
+ */
+export const getModelArkStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<ModelArkStatus> => {
+
+  return customFetch<ModelArkStatus>(getGetModelArkStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetModelArkStatusQueryKey = () => {
+    return [
+    `/api/modelark/status`
+    ] as const;
+    }
+
+
+export const getGetModelArkStatusQueryOptions = <TData = Awaited<ReturnType<typeof getModelArkStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getModelArkStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetModelArkStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getModelArkStatus>>> = ({ signal }) => getModelArkStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getModelArkStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetModelArkStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getModelArkStatus>>>
+export type GetModelArkStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Check whether ModelArk is configured
+ */
+
+export function useGetModelArkStatus<TData = Awaited<ReturnType<typeof getModelArkStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getModelArkStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetModelArkStatusQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

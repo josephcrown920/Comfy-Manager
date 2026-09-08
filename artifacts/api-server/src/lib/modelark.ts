@@ -5,6 +5,7 @@ import { getComfyUrl } from "../routes/settings";
 const MODELARK_BASE_URL = "https://ark.ap-southeast.bytepluses.com/api/v3";
 export const MODELARK_WORKFLOW_ID = "perform-anywhere-seedance";
 export const MODELARK_OUTPUT_SUBFOLDER = "modelark";
+export const MODELARK_DEFAULT_MODEL = "seedance-2-0-260128";
 
 type ModelArkFile = {
   id?: string;
@@ -26,6 +27,13 @@ function getModelArkKey(): string {
     throw new Error("ModelArk is not configured. Add MODELARK_API_KEY in Replit Secrets.");
   }
   return key;
+}
+
+export function getModelArkReadiness() {
+  return {
+    configured: Boolean(process.env.MODELARK_API_KEY?.trim()),
+    model: process.env.MODELARK_SEEDANCE_MODEL?.trim() || MODELARK_DEFAULT_MODEL,
+  };
 }
 
 function modelArkHeaders(): Record<string, string> {
@@ -89,7 +97,7 @@ async function uploadModelArkFile(
 }
 
 export async function createSeedanceTask(params: Record<string, unknown>): Promise<ModelArkTask> {
-  const model = String(params.model || process.env.MODELARK_SEEDANCE_MODEL || "seedance-2-0-260128");
+  const model = String(params.model || process.env.MODELARK_SEEDANCE_MODEL || MODELARK_DEFAULT_MODEL);
   const sourceImage = String(params.source_image ?? "");
   const sourceVideo = String(params.source_video ?? "");
   if (!sourceImage || !sourceVideo) {

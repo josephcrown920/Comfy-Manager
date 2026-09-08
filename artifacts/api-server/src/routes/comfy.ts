@@ -8,8 +8,19 @@ import {
 } from "@workspace/api-zod";
 import { getComfyUrl, getConfiguredWorkers, getRoutingSettings } from "./settings";
 import { redactComfyUrl, validateComfyTarget } from "../lib/comfy-target";
+import { GetComfyReadinessResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+const MIMICMOTION_REQUIRED_NODES = [
+  "LoadImage",
+  "ImageScale",
+  "VHS_LoadVideo",
+  "DownloadAndLoadMimicMotionModel",
+  "MimicMotionGetPoses",
+  "MimicMotionSampler",
+  "MimicMotionDecode",
+  "VHS_VideoCombine",
+] as const;
 
 /**
  * Split a ComfyUI URL that may embed basic-auth credentials
@@ -135,6 +146,63 @@ router.get("/comfy/status", async (req, res): Promise<void> => {
       })
     );
   }
+});
+
+router.get("/comfy/readiness", async (_req, res): Promise<void> => {
+  const routing = await getRoutingSettings();
+  const workers = await getConfiguredWorkers();
+  const statuses = await Promise.all(workers.map(async (worker) => {
+    try {
+      const [systemResponse, queueResponse, objectInfoResponse] = await Promise.all([
+        fetchComfy(worker.url, "/system_stats", { signal: AbortSignal.timeout(8_000) }),
+        fetchComfy(worker.url, "/queue", { signal: AbortSignal.timeout(8_000) }),
+        fetchComfy(worker.url, "/object_info", { signal: AbortSignal.timeout(12_000) }),
+      ]);
+      if (!systemResponse.ok) throw new Error(`system stats returned HTTP ${systemResponse.status}`);
+      if (!queueResponse.ok) throw new Error(`queue returned HTTP ${queueResponse.status}`);
+      if (!objectInfoResponse.ok) throw new Error(`capability metadata returned HTTP ${objectInfoResponse.status}`);
+
+      const system = await systemResponse.json() as { devices?: Array<{ name?: string }> };
+      const queue = await queueResponse.json() as { queue_running?: unknown[]; queue_pending?: unknown[] };
+      const objectInfo = await objectInfoResponse.json() as Record<string, unknown>;
+      const missingNodes = MIMICMOTION_REQUIRED_NODES.filter((node) => !Object.prototype.hasOwnProperty.call(objectInfo, node));
+      const gpuName = system.devices?.[0]?.name ?? null;
+      const connected = Boolean(gpuName);
+      const compatible = connected && missingNodes.length === 0;
+      return {
+        id: worker.id,
+        label: worker.label,
+        connected,
+        compatible,
+        queueRemaining: (queue.queue_running?.length ?? 0) + (queue.queue_pending?.length ?? 0),
+        gpuName,
+        missingNodes,
+        error: connected ? null : "ComfyUI responded without a GPU device.",
+        selected: routing.routingMode === "manual"
+          ? routing.selectedGpuId === worker.id
+          : routing.routingMode === "auto",
+      };
+    } catch (error) {
+      return {
+        id: worker.id,
+        label: worker.label,
+        connected: false,
+        compatible: false,
+        queueRemaining: 0,
+        gpuName: null,
+        missingNodes: [],
+        error: error instanceof Error ? error.message : String(error),
+        selected: routing.routingMode === "manual"
+          ? routing.selectedGpuId === worker.id
+          : routing.routingMode === "auto",
+      };
+    }
+  }));
+
+  res.json(GetComfyReadinessResponse.parse({
+    ready: statuses.some((worker) => worker.selected && worker.connected && worker.compatible),
+    workers: statuses,
+  }));
 });
 
 router.get("/comfy/models", async (req, res): Promise<void> => {
