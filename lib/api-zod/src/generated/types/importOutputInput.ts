@@ -10,6 +10,11 @@ import type { ImportOutputInputType } from './importOutputInputType';
 export interface ImportOutputInput {
   /** @minLength 1 */
   filename: string;
+  /**
+     * Owned completed job containing the output.
+     * @minimum 1
+     */
+  jobId: number;
   subfolder?: string;
   type?: ImportOutputInputType;
 }

@@ -22,6 +22,7 @@ import { getModelAssignments } from "./model-assignments";
 import { withGpuSubmissionLease } from "./gpu-lease";
 import { reconcileJob } from "../lib/job-reconciliation";
 import { createSeedanceTask, MODELARK_OUTPUT_SUBFOLDER, MODELARK_WORKFLOW_ID, modelArkOutputUrl } from "../lib/modelark";
+import { getAuthenticatedUserId } from "../lib/access-control";
 
 const router: IRouter = Router();
 
@@ -43,6 +44,7 @@ function buildJobOutput(job: typeof jobsTable.$inferSelect, outputs: typeof outp
       id: o.id,
       jobId: o.jobId,
       filename: o.filename,
+      subfolder: o.subfolder,
       outputType: o.outputType,
        comfyUrl: o.subfolder === MODELARK_OUTPUT_SUBFOLDER
          ? modelArkOutputUrl(o.filename)
@@ -56,6 +58,7 @@ function buildJobOutput(job: typeof jobsTable.$inferSelect, outputs: typeof outp
 }
 
 router.get("/jobs", async (req, res): Promise<void> => {
+  const userId = getAuthenticatedUserId(res);
   const params = ListJobsQueryParams.safeParse(req.query);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -63,7 +66,7 @@ router.get("/jobs", async (req, res): Promise<void> => {
   }
 
   const { status, workflowId, limit } = params.data;
-  const conditions = [];
+  const conditions = [eq(jobsTable.ownerId, userId)];
   if (status) conditions.push(eq(jobsTable.status, status));
   if (workflowId) conditions.push(eq(jobsTable.workflowId, workflowId));
 
@@ -78,9 +81,10 @@ router.get("/jobs", async (req, res): Promise<void> => {
     ? await db
         .select()
         .from(outputsTable)
-        .where(
-          sql`${outputsTable.jobId} = ANY(ARRAY[${sql.join(jobs.map((j) => sql`${j.id}`), sql`, `)}]::int[])`
-        )
+        .where(and(
+          eq(outputsTable.ownerId, userId),
+          sql`${outputsTable.jobId} = ANY(ARRAY[${sql.join(jobs.map((j) => sql`${j.id}`), sql`, `)}]::int[])`,
+        ))
     : [];
 
   const outputsByJob = new Map<number, typeof allOutputs>();
@@ -97,6 +101,7 @@ router.get("/jobs", async (req, res): Promise<void> => {
 });
 
 router.get("/jobs/stats", async (_req, res): Promise<void> => {
+  const userId = getAuthenticatedUserId(res);
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -107,11 +112,12 @@ router.get("/jobs/stats", async (_req, res): Promise<void> => {
         count: sql<number>`count(*)::int`,
       })
       .from(jobsTable)
-      .groupBy(jobsTable.status),
+       .where(eq(jobsTable.ownerId, userId))
+       .groupBy(jobsTable.status),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(jobsTable)
-      .where(gte(jobsTable.createdAt, todayStart)),
+       .where(and(eq(jobsTable.ownerId, userId), gte(jobsTable.createdAt, todayStart))),
   ]);
 
   const byStatus = Object.fromEntries(counts.map((r) => [r.status, r.count]));
@@ -130,6 +136,7 @@ router.get("/jobs/stats", async (_req, res): Promise<void> => {
 });
 
 router.post("/jobs", async (req, res): Promise<void> => {
+  const userId = getAuthenticatedUserId(res);
   const parsed = CreateJobBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -144,6 +151,7 @@ router.post("/jobs", async (req, res): Promise<void> => {
       const [job] = await db
         .insert(jobsTable)
         .values({
+          ownerId: userId,
           workflowId: MODELARK_WORKFLOW_ID,
           workflowName: "Perform Anywhere — Seedance",
           status: "running",
@@ -222,6 +230,7 @@ router.post("/jobs", async (req, res): Promise<void> => {
     const [newJobRow] = await db
       .insert(jobsTable)
       .values({
+        ownerId: userId,
         workflowId,
         workflowName: "Custom Workflow",
         status: initialStatus as "pending" | "running",
@@ -339,6 +348,7 @@ router.post("/jobs", async (req, res): Promise<void> => {
   const [newJobRow] = await db
     .insert(jobsTable)
     .values({
+      ownerId: userId,
       workflowId,
       workflowName: workflow.name,
       status: initialStatus as "pending" | "running",
@@ -356,6 +366,7 @@ router.post("/jobs", async (req, res): Promise<void> => {
 });
 
 router.get("/jobs/:id", async (req, res): Promise<void> => {
+  const userId = getAuthenticatedUserId(res);
   const params = GetJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -365,7 +376,7 @@ router.get("/jobs/:id", async (req, res): Promise<void> => {
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id))
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.ownerId, userId)))
     .limit(1);
 
   if (!job) {
@@ -382,6 +393,7 @@ router.get("/jobs/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/jobs/:id", async (req, res): Promise<void> => {
+  const userId = getAuthenticatedUserId(res);
   const params = RefreshJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -391,7 +403,7 @@ router.delete("/jobs/:id", async (req, res): Promise<void> => {
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id))
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.ownerId, userId)))
     .limit(1);
 
   if (!job) {
@@ -407,6 +419,7 @@ router.delete("/jobs/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/jobs/:id/refresh", async (req, res): Promise<void> => {
+  const userId = getAuthenticatedUserId(res);
   const params = RefreshJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -416,7 +429,7 @@ router.post("/jobs/:id/refresh", async (req, res): Promise<void> => {
   const [job] = await db
     .select()
     .from(jobsTable)
-    .where(eq(jobsTable.id, params.data.id))
+    .where(and(eq(jobsTable.id, params.data.id), eq(jobsTable.ownerId, userId)))
     .limit(1);
 
   if (!job) {

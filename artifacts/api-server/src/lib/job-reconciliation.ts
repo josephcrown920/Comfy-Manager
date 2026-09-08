@@ -64,6 +64,7 @@ export async function reconcileJob(jobId: number): Promise<void> {
             .returning({ id: jobsTable.id });
           if (!claimed.length) return;
           await tx.insert(outputsTable).values({
+            ownerId: job.ownerId,
             jobId: job.id,
             filename: taskId,
             subfolder: MODELARK_OUTPUT_SUBFOLDER,
@@ -120,6 +121,7 @@ export async function reconcileJob(jobId: number): Promise<void> {
       if (outputFiles.length) {
         await tx.insert(outputsTable).values(
           outputFiles.map((file) => ({
+            ownerId: job.ownerId,
             jobId: job.id,
             filename: file.filename,
             subfolder: file.subfolder,

@@ -11,6 +11,7 @@ import { z } from "zod/v4";
 
 export const jobsTable = pgTable("jobs", {
   id: serial("id").primaryKey(),
+  ownerId: text("owner_id"),
   workflowId: text("workflow_id").notNull(),
   workflowName: text("workflow_name").notNull(),
   status: text("status").notNull().default("pending"), // pending | running | completed | failed | cancelled

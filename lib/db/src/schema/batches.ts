@@ -6,6 +6,7 @@ import { pgTable, serial, text, timestamp, integer, jsonb } from "drizzle-orm/pg
  */
 export const batchesTable = pgTable("batches", {
   id: serial("id").primaryKey(),
+  ownerId: text("owner_id"),
   name: text("name").notNull(),
   batchType: text("batch_type").notNull(), // scene-variation | finished-video-variation
   status: text("status").notNull().default("pending"), // pending | running | completed | failed | cancelled

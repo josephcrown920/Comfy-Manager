@@ -7,6 +7,7 @@ import {
   ValidateComfyNodesResponse,
 } from "@workspace/api-zod";
 import { getComfyUrl, getConfiguredWorkers, getRoutingSettings } from "./settings";
+import { redactComfyUrl, validateComfyTarget } from "../lib/comfy-target";
 
 const router: IRouter = Router();
 
@@ -38,6 +39,10 @@ async function fetchComfy(
   path: string,
   options?: RequestInit
 ): Promise<Response> {
+  const validation = await validateComfyTarget(comfyUrl);
+  if (!validation.ok) {
+    throw new Error(validation.error);
+  }
   const { baseUrl, headers } = parseComfyTarget(comfyUrl);
   return fetch(`${baseUrl}${path}`, {
     ...options,
@@ -95,7 +100,7 @@ router.get("/comfy/status", async (req, res): Promise<void> => {
     res.json(
       GetComfyStatusResponse.parse({
         connected: true,
-        serverUrl: comfyUrl,
+         serverUrl: redactComfyUrl(comfyUrl),
         gpuName: (gpu?.name as string) ?? null,
         gpuVram:
           gpu?.vram_total != null
@@ -119,7 +124,7 @@ router.get("/comfy/status", async (req, res): Promise<void> => {
     res.json(
       GetComfyStatusResponse.parse({
         connected: false,
-        serverUrl: comfyUrl,
+         serverUrl: redactComfyUrl(comfyUrl),
         gpuName: null,
         gpuVram: null,
         ramUsed: null,

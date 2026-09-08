@@ -257,7 +257,7 @@ export default function PerformAnywhere() {
       return;
     }
     importOutput.mutate(
-      { data: { filename: selectedOutput.filename, type: "output" } },
+      { data: { filename: selectedOutput.filename, jobId: selectedChild.id, subfolder: selectedOutput.subfolder, type: "output" } },
       {
         onSuccess: (imported) => {
           createJob.mutate(

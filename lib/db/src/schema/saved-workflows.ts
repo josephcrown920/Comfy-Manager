@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 
 export const savedWorkflowsTable = pgTable("saved_workflows", {
   id: serial("id").primaryKey(),
+  ownerId: text("owner_id"),
   name: text("name").notNull(),
   json: text("json").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })

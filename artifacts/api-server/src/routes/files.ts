@@ -1,8 +1,12 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer, { MulterError } from "multer";
+import { db, outputsTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
 import { getComfyUrl } from "./settings";
 import { fetchComfy } from "./comfy";
 import { ImportOutputBody, ImportOutputResponse } from "@workspace/api-zod";
+import { getAuthenticatedUserId } from "../lib/access-control";
+import { getJobWorkerUrl } from "../lib/worker-routing";
 
 const router: IRouter = Router();
 
@@ -253,8 +257,24 @@ router.post("/files/import-output", async (req: Request, res: Response): Promise
     return;
   }
 
-  const { filename, subfolder = "", type = "output" } = parsed.data;
-  const comfyUrl = await getComfyUrl();
+  const { filename, jobId, subfolder = "", type = "output" } = parsed.data;
+  const userId = getAuthenticatedUserId(res);
+  const [ownedOutput] = await db
+    .select({ id: outputsTable.id })
+    .from(outputsTable)
+    .where(and(
+      eq(outputsTable.ownerId, userId),
+      eq(outputsTable.jobId, jobId),
+      eq(outputsTable.filename, filename),
+      eq(outputsTable.subfolder, subfolder),
+    ))
+    .limit(1);
+  if (!ownedOutput) {
+    res.status(404).json({ error: "Output not found" });
+    return;
+  }
+
+  const comfyUrl = await getJobWorkerUrl(jobId);
 
   try {
     const query = new URLSearchParams({

@@ -7,6 +7,8 @@ info:
 servers:
   - url: /api
     description: Base API path
+security:
+  - clerkSession: []
 tags:
   - name: health
     description: Health operations
@@ -28,6 +30,7 @@ tags:
 paths:
   /healthz:
     get:
+      security: []
       operationId: healthCheck
       tags: [health]
       summary: Health check
@@ -671,6 +674,12 @@ paths:
           description: AI provider error
 
 components:
+  securitySchemes:
+    clerkSession:
+      type: apiKey
+      in: cookie
+      name: __session
+      description: Clerk browser session cookie. Sign in through the web client before calling protected endpoints.
   parameters:
     BatchId:
       name: id
@@ -1072,11 +1081,15 @@ components:
 
     ImportOutputInput:
       type: object
-      required: [filename]
+      required: [filename, jobId]
       properties:
         filename:
           type: string
           minLength: 1
+        jobId:
+          type: number
+          minimum: 1
+          description: Owned completed job containing the output.
         subfolder:
           type: string
         type:
@@ -1102,13 +1115,15 @@ components:
 
     Output:
       type: object
-      required: [id, jobId, filename, outputType, comfyUrl, createdAt]
+      required: [id, jobId, filename, subfolder, outputType, comfyUrl, createdAt]
       properties:
         id:
           type: number
         jobId:
           type: number
         filename:
+          type: string
+        subfolder:
           type: string
         outputType:
           type: string

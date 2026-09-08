@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 
 export const outputsTable = pgTable("outputs", {
   id: serial("id").primaryKey(),
+  ownerId: text("owner_id"),
   jobId: integer("job_id").notNull(),
   filename: text("filename").notNull(),
   outputType: text("output_type").notNull().default("image"), // image | video | audio

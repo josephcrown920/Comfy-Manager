@@ -227,6 +227,7 @@ export interface Output {
   id: number;
   jobId: number;
   filename: string;
+  subfolder: string;
   outputType: OutputOutputType;
   /** Proxied URL to fetch the file from ComfyUI */
   comfyUrl: string;
@@ -384,6 +385,11 @@ export const ImportOutputInputType = {
 export interface ImportOutputInput {
   /** @minLength 1 */
   filename: string;
+  /**
+     * Owned completed job containing the output.
+     * @minimum 1
+     */
+  jobId: number;
   subfolder?: string;
   type?: ImportOutputInputType;
 }

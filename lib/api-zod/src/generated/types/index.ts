@@ -51,8 +51,6 @@ export * from './settingsInput';
 export * from './settingsInputRoutingMode';
 export * from './settingsRoutingMode';
 export * from './uploadedFile';
-// These generated types intentionally stay out of the barrel because the Zod
-// runtime schemas with the same names are exported from generated/api.ts.
 export * from './uploadFileParams';
 export * from './validateNodesInput';
 export * from './videoPlanBody';
@@ -62,3 +60,6 @@ export * from './workflowParam';
 export * from './workflowParamType';
 export * from './workflowTemplate';
 export * from './workflowTemplateCategory';
+
+// These generated types intentionally stay out of the barrel because the Zod
+// runtime schemas with the same names are exported from generated/api.ts.

@@ -20,6 +20,7 @@ import { buildComfyPrompt } from "./jobs";
 import { withGpuSubmissionLease } from "./gpu-lease";
 import { selectWorker, WorkerRoutingError } from "../lib/worker-routing";
 import { MODELARK_OUTPUT_SUBFOLDER, modelArkOutputUrl } from "../lib/modelark";
+import { getAuthenticatedUserId } from "../lib/access-control";
 
 const router: IRouter = Router();
 const TERMINAL = new Set(["completed", "failed", "cancelled"]);
@@ -39,6 +40,7 @@ function formatChild(job: typeof jobsTable.$inferSelect, outputs: typeof outputs
       id: output.id,
       jobId: output.jobId,
       filename: output.filename,
+      subfolder: output.subfolder,
       outputType: output.outputType,
     comfyUrl: output.subfolder === MODELARK_OUTPUT_SUBFOLDER
       ? modelArkOutputUrl(output.filename)
@@ -55,10 +57,20 @@ function formatChild(job: typeof jobsTable.$inferSelect, outputs: typeof outputs
   };
 }
 
-async function getBatchDetail(id: number) {
-  const [batch] = await db.select().from(batchesTable).where(eq(batchesTable.id, id)).limit(1);
+async function getBatchDetail(id: number, ownerId?: string) {
+  const [batch] = await db
+    .select()
+    .from(batchesTable)
+    .where(ownerId ? and(eq(batchesTable.id, id), eq(batchesTable.ownerId, ownerId)) : eq(batchesTable.id, id))
+    .limit(1);
   if (!batch) return null;
-  const children = await db.select().from(jobsTable).where(eq(jobsTable.batchId, id)).orderBy(asc(jobsTable.batchIndex));
+  const children = await db
+    .select()
+    .from(jobsTable)
+    .where(ownerId
+      ? and(eq(jobsTable.batchId, id), eq(jobsTable.ownerId, ownerId))
+      : eq(jobsTable.batchId, id))
+    .orderBy(asc(jobsTable.batchIndex));
   const outputs = children.length
     ? await db.select().from(outputsTable).where(inArray(outputsTable.jobId, children.map((child) => child.id)))
     : [];
@@ -299,6 +311,7 @@ async function refreshRunningChildren(batchId: number) {
         for (const file of files) {
           const extension = file.filename.split(".").pop()?.toLowerCase() ?? "";
           await db.insert(outputsTable).values({
+            ownerId: child.ownerId,
             jobId: child.id,
             filename: file.filename,
             subfolder: file.subfolder,
@@ -343,12 +356,19 @@ batchWorkerTimer.unref();
 void processBatchQueue();
 
 router.get("/batches", async (_req, res) => {
-  const batches = await db.select().from(batchesTable).orderBy(desc(batchesTable.createdAt)).limit(25);
-  const details = await Promise.all(batches.map((batch) => getBatchDetail(batch.id)));
+  const userId = getAuthenticatedUserId(res);
+  const batches = await db
+    .select()
+    .from(batchesTable)
+    .where(eq(batchesTable.ownerId, userId))
+    .orderBy(desc(batchesTable.createdAt))
+    .limit(25);
+  const details = await Promise.all(batches.map((batch) => getBatchDetail(batch.id, userId)));
   res.json(ListBatchesResponse.parse(details.filter(Boolean)));
 });
 
 router.post("/batches", async (req, res): Promise<void> => {
+  const userId = getAuthenticatedUserId(res);
   const parsed = CreateBatchBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -377,6 +397,7 @@ router.post("/batches", async (req, res): Promise<void> => {
     }
   }
   const [batch] = await db.insert(batchesTable).values({
+    ownerId: userId,
     name: input.name.trim(),
     batchType: input.batchType,
     status: "pending",
@@ -396,6 +417,7 @@ router.post("/batches", async (req, res): Promise<void> => {
         ? "Perform Anywhere Angle"
         : "Finished Video Variation";
   await db.insert(jobsTable).values(Array.from({ length: input.batchSize }, (_, index) => ({
+    ownerId: userId,
     workflowId,
     workflowName,
     status: "pending",
@@ -410,34 +432,44 @@ router.post("/batches", async (req, res): Promise<void> => {
   })));
   await submitAvailableChildren();
   await updateBatchRollup(batch!.id);
-  res.status(201).json(CreateBatchResponse.parse(await getBatchDetail(batch!.id)));
+  res.status(201).json(CreateBatchResponse.parse(await getBatchDetail(batch!.id, userId)));
 });
 
 router.get("/batches/:id", async (req, res): Promise<void> => {
+  const userId = getAuthenticatedUserId(res);
   const parsed = GetBatchParams.safeParse(req.params);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const batch = await getBatchDetail(parsed.data.id);
+  const batch = await getBatchDetail(parsed.data.id, userId);
   if (!batch) { res.status(404).json({ error: "Batch not found" }); return; }
   res.json(GetBatchResponse.parse(batch));
 });
 
 router.post("/batches/:id/refresh", async (req, res): Promise<void> => {
+  const userId = getAuthenticatedUserId(res);
   const parsed = RefreshBatchParams.safeParse(req.params);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  if (!await getBatchDetail(parsed.data.id)) { res.status(404).json({ error: "Batch not found" }); return; }
+  if (!await getBatchDetail(parsed.data.id, userId)) { res.status(404).json({ error: "Batch not found" }); return; }
   await refreshRunningChildren(parsed.data.id);
   await updateBatchRollup(parsed.data.id);
   await submitAvailableChildren();
   await updateBatchRollup(parsed.data.id);
-  res.json(RefreshBatchResponse.parse(await getBatchDetail(parsed.data.id)));
+  res.json(RefreshBatchResponse.parse(await getBatchDetail(parsed.data.id, userId)));
 });
 
 router.post("/batches/:id/children/:jobId/retry", async (req, res): Promise<void> => {
+  const userId = getAuthenticatedUserId(res);
   const parsed = RetryBatchChildParams.safeParse(req.params);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [child] = await db.select().from(jobsTable).where(and(eq(jobsTable.id, parsed.data.jobId), eq(jobsTable.batchId, parsed.data.id))).limit(1);
+  const [child] = await db.select().from(jobsTable).where(and(
+    eq(jobsTable.id, parsed.data.jobId),
+    eq(jobsTable.batchId, parsed.data.id),
+    eq(jobsTable.ownerId, userId),
+  )).limit(1);
   if (!child) { res.status(404).json({ error: "Batch child not found" }); return; }
-  const [batch] = await db.select().from(batchesTable).where(eq(batchesTable.id, parsed.data.id)).limit(1);
+  const [batch] = await db.select().from(batchesTable).where(and(
+    eq(batchesTable.id, parsed.data.id),
+    eq(batchesTable.ownerId, userId),
+  )).limit(1);
   if (batch?.status === "cancelled") { res.status(400).json({ error: "This batch is cancelled. Create a new batch to resume its queue." }); return; }
   if (child.status !== "failed") { res.status(400).json({ error: "Only failed variations can be retried." }); return; }
   await db.delete(outputsTable).where(eq(outputsTable.jobId, child.id));
@@ -445,19 +477,23 @@ router.post("/batches/:id/children/:jobId/retry", async (req, res): Promise<void
   await db.update(batchesTable).set({ status: "running", completedAt: null }).where(eq(batchesTable.id, parsed.data.id));
   await submitAvailableChildren();
   await updateBatchRollup(parsed.data.id);
-  res.json(RetryBatchChildResponse.parse(await getBatchDetail(parsed.data.id)));
+  res.json(RetryBatchChildResponse.parse(await getBatchDetail(parsed.data.id, userId)));
 });
 
 router.delete("/batches/:id", async (req, res): Promise<void> => {
+  const userId = getAuthenticatedUserId(res);
   const parsed = CancelBatchParams.safeParse(req.params);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const batch = await getBatchDetail(parsed.data.id);
+  const batch = await getBatchDetail(parsed.data.id, userId);
   if (!batch) { res.status(404).json({ error: "Batch not found" }); return; }
   await db.update(jobsTable).set({ status: "cancelled", completedAt: new Date() })
     .where(and(eq(jobsTable.batchId, parsed.data.id), eq(jobsTable.status, "pending")));
-  await db.update(batchesTable).set({ status: "cancelled", completedAt: new Date() }).where(eq(batchesTable.id, parsed.data.id));
+   await db.update(batchesTable).set({ status: "cancelled", completedAt: new Date() }).where(and(
+     eq(batchesTable.id, parsed.data.id),
+     eq(batchesTable.ownerId, userId),
+   ));
   await updateBatchRollup(parsed.data.id);
-  res.json(CancelBatchResponse.parse(await getBatchDetail(parsed.data.id)));
+  res.json(CancelBatchResponse.parse(await getBatchDetail(parsed.data.id, userId)));
 });
 
 export default router;

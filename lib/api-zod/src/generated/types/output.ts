@@ -11,6 +11,7 @@ export interface Output {
   id: number;
   jobId: number;
   filename: string;
+  subfolder: string;
   outputType: OutputOutputType;
   /** Proxied URL to fetch the file from ComfyUI */
   comfyUrl: string;

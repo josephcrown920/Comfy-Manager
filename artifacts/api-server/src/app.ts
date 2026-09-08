@@ -1,5 +1,4 @@
 import express, { type Express } from "express";
-import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
@@ -34,9 +33,8 @@ app.use(
 );
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-// Browser clients use same-origin Clerk cookies. Keep cross-origin requests
-// non-credentialed so another site cannot spend a signed-in user's AI quota.
-app.use(cors());
+// The browser client is same-origin. Do not emit a wildcard CORS header that
+// would make authenticated API responses readable by arbitrary websites.
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
