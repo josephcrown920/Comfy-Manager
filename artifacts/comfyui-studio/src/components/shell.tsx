@@ -1,7 +1,17 @@
 import * as React from "react"
 import { Link, useLocation } from "wouter"
-import { LayoutDashboard, Settings2, Images, ListVideo, BrainCircuit, Rocket, Bot, Boxes, Menu, X, BookOpen, GitBranch, Zap, Clapperboard } from "lucide-react"
+import { useClerk, useUser } from "@clerk/react"
+import { LayoutDashboard, Settings2, Images, ListVideo, BrainCircuit, Rocket, Bot, Boxes, Menu, X, BookOpen, GitBranch, Zap, Clapperboard, ChevronDown, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -42,8 +52,98 @@ function ComfyWordmark({ collapsed = false }: { collapsed?: boolean }) {
   )
 }
 
+function AccountControl({
+  compact = false,
+  onSettings,
+}: {
+  compact?: boolean
+  onSettings: () => void
+}) {
+  const { isLoaded, isSignedIn, user } = useUser()
+  const { signOut } = useClerk()
+  const [isSigningOut, setIsSigningOut] = React.useState(false)
+
+  if (!isLoaded || !isSignedIn || !user) return null
+
+  const displayName =
+    user.fullName?.trim() ||
+    user.username?.trim() ||
+    user.primaryEmailAddress?.emailAddress ||
+    "Aurora creator"
+  const email = user.primaryEmailAddress?.emailAddress
+  const initials =
+    user.firstName?.[0] ||
+    user.lastName?.[0] ||
+    displayName.slice(0, 1).toUpperCase()
+  const homePath = import.meta.env.BASE_URL || "/"
+
+  async function handleSignOut() {
+    if (isSigningOut) return
+    setIsSigningOut(true)
+    try {
+      await signOut({ redirectUrl: homePath })
+    } catch (error) {
+      console.error("Unable to sign out", error)
+      setIsSigningOut(false)
+    }
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          disabled={isSigningOut}
+          aria-label={`Open account menu for ${displayName}`}
+          className={cn(
+            "group flex min-h-11 items-center gap-2 rounded-xl border border-transparent text-left transition-colors hover:border-border hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 disabled:cursor-wait disabled:opacity-60",
+            compact ? "px-1.5 sm:px-2" : "w-full px-2.5 py-2",
+          )}
+        >
+          <Avatar className="h-8 w-8 border border-primary/30 bg-primary/10">
+            <AvatarImage src={user.imageUrl} alt={`${displayName} avatar`} />
+            <AvatarFallback className="bg-primary/15 text-xs font-bold text-primary">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <span className={cn("min-w-0 flex-1", compact ? "hidden sm:block" : "block")}>
+            <span className="block truncate text-sm font-semibold text-foreground">{displayName}</span>
+            {!compact && email && (
+              <span className="block truncate text-xs text-muted-foreground">{email}</span>
+            )}
+          </span>
+          <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180", compact ? "hidden sm:block" : "block")} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align={compact ? "end" : "start"}
+        sideOffset={8}
+        className="w-64 border-border bg-card/95 backdrop-blur-xl"
+      >
+        <DropdownMenuLabel className="px-3 py-2">
+          <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
+          {email && <p className="truncate text-xs font-normal text-muted-foreground">{email}</p>}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onSettings} className="cursor-pointer px-3 py-2.5">
+          <Settings2 className="h-4 w-4" />
+          Account settings
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => void handleSignOut()}
+          disabled={isSigningOut}
+          className="cursor-pointer px-3 py-2.5 text-destructive focus:text-destructive"
+        >
+          <LogOut className="h-4 w-4" />
+          {isSigningOut ? "Signing out…" : "Sign out"}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export function Shell({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation()
+  const [location, setLocation] = useLocation()
   const [mobileOpen, setMobileOpen] = React.useState(false)
 
   // Close drawer on navigation
@@ -57,19 +157,25 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <Link href="/" className="flex items-center">
           <ComfyWordmark />
         </Link>
-        <button
-          className="p-2 -mr-2 text-muted-foreground hover:text-foreground transition-colors"
-          onClick={() => setMobileOpen(o => !o)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <AccountControl compact onSettings={() => setLocation("/settings")} />
+          <button
+            type="button"
+            className="p-2 -mr-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+            onClick={() => setMobileOpen(o => !o)}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </header>
 
       {/* ── Mobile Nav Overlay ── */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-40 top-16 bg-background/95 backdrop-blur-3xl overflow-y-auto">
           <nav className="flex flex-col p-4 gap-2">
+            <AccountControl onSettings={() => setLocation("/settings")} />
             {navItems.map((item) => {
               const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href))
               return (
@@ -144,6 +250,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="p-3 border-t border-border mt-auto">
+          <AccountControl onSettings={() => setLocation("/settings")} />
           <Link
             href="/settings"
             className={cn(
