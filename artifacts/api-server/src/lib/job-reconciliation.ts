@@ -4,8 +4,8 @@ import { fetchComfy } from "../routes/comfy";
 import { getComfyUrl } from "../routes/settings";
 import {
   getSeedanceTask,
+  isModelArkWorkflow,
   MODELARK_OUTPUT_SUBFOLDER,
-  MODELARK_WORKFLOW_ID,
 } from "./modelark";
 
 type ComfyOutputFile = {
@@ -50,7 +50,7 @@ export async function reconcileJob(jobId: number): Promise<void> {
 
   if (!job?.comfyPromptId || job.status !== "running") return;
 
-  if (job.workflowId === MODELARK_WORKFLOW_ID && job.comfyPromptId.startsWith("modelark:")) {
+  if (isModelArkWorkflow(job.workflowId) && job.comfyPromptId.startsWith("modelark:")) {
     const taskId = job.comfyPromptId.slice("modelark:".length);
     try {
       const task = await getSeedanceTask(taskId);

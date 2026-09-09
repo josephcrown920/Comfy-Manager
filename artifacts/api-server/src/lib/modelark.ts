@@ -4,8 +4,16 @@ import { getComfyUrl } from "../routes/settings";
 
 const MODELARK_BASE_URL = "https://ark.ap-southeast.bytepluses.com/api/v3";
 export const MODELARK_WORKFLOW_ID = "perform-anywhere-seedance";
+export const MODELARK_REFERENCE_WORKFLOW_ID = "modelark-seedance-reference-video";
 export const MODELARK_OUTPUT_SUBFOLDER = "modelark";
-export const MODELARK_DEFAULT_MODEL = "seedance-2-0-260128";
+export const MODELARK_DEFAULT_MODEL = "dreamina-seedance-2-5-260628";
+
+const MODELARK_WORKFLOW_IDS = new Set([
+  MODELARK_WORKFLOW_ID,
+  MODELARK_REFERENCE_WORKFLOW_ID,
+]);
+const SUPPORTED_RATIOS = new Set(["16:9", "9:16", "1:1"]);
+const SUPPORTED_RESOLUTIONS = new Set(["480p", "720p", "1080p"]);
 
 type ModelArkFile = {
   id?: string;
@@ -20,6 +28,12 @@ export type ModelArkTask = {
   content?: { video_url?: string };
   error?: { message?: string };
 };
+
+type MediaKind = "image" | "video" | "audio";
+
+export function isModelArkWorkflow(workflowId: string): boolean {
+  return MODELARK_WORKFLOW_IDS.has(workflowId);
+}
 
 function getModelArkKey(): string {
   const key = process.env.MODELARK_API_KEY;
@@ -53,9 +67,31 @@ async function modelArkRequest(path: string, init: RequestInit = {}): Promise<Re
   });
 }
 
-async function readComfyInputAsset(filename: string): Promise<{ bytes: Buffer; contentType: string }> {
+function validateUploadedFilename(value: unknown, label: string): string {
+  const filename = String(value ?? "").trim();
+  if (!filename || filename.length > 255 || filename.includes("\0")) {
+    throw new Error(`${label} is missing or invalid.`);
+  }
+  if (filename.includes("/") || filename.includes("\\") || filename === "." || filename === "..") {
+    throw new Error(`${label} must be an uploaded Studio asset.`);
+  }
+  return filename;
+}
+
+function contentTypeMatches(contentType: string, kind: MediaKind): boolean {
+  return contentType.toLowerCase().startsWith(`${kind}/`);
+}
+
+async function readComfyInputAsset(
+  filename: string,
+  kind: MediaKind,
+): Promise<{ bytes: Buffer; contentType: string }> {
   const comfyUrl = await getComfyUrl();
-  const query = new URLSearchParams({ filename, subfolder: "", type: "input" });
+  const query = new URLSearchParams({
+    filename,
+    subfolder: kind === "audio" ? "audio" : "",
+    type: "input",
+  });
   const response = await fetchComfy(comfyUrl, `/view?${query.toString()}`, {
     signal: AbortSignal.timeout(120_000),
   });
@@ -63,10 +99,22 @@ async function readComfyInputAsset(filename: string): Promise<{ bytes: Buffer; c
     throw new Error(`Could not read the uploaded ComfyUI asset (${response.status}).`);
   }
 
-  return {
-    bytes: Buffer.from(await response.arrayBuffer()),
-    contentType: response.headers.get("content-type") || "application/octet-stream",
-  };
+  const contentType = response.headers.get("content-type") || "application/octet-stream";
+  if (contentType !== "application/octet-stream" && !contentTypeMatches(contentType, kind)) {
+    throw new Error(`${filename} is not a valid ${kind} upload.`);
+  }
+
+  return { bytes: Buffer.from(await response.arrayBuffer()), contentType };
+}
+
+function extensionFor(contentType: string, kind: MediaKind): string {
+  const normalized = contentType.toLowerCase();
+  if (normalized.includes("jpeg")) return "jpg";
+  if (normalized.includes("webp")) return "webp";
+  if (normalized.includes("wav")) return "wav";
+  if (normalized.includes("mpeg")) return kind === "audio" ? "mp3" : "mp4";
+  if (normalized.includes("quicktime")) return "mov";
+  return kind === "image" ? "png" : kind === "audio" ? "mp3" : "mp4";
 }
 
 async function uploadModelArkFile(
@@ -96,37 +144,83 @@ async function uploadModelArkFile(
   return payload;
 }
 
-export async function createSeedanceTask(params: Record<string, unknown>): Promise<ModelArkTask> {
-  const model = String(params.model || process.env.MODELARK_SEEDANCE_MODEL || MODELARK_DEFAULT_MODEL);
-  const sourceImage = String(params.source_image ?? "");
-  const sourceVideo = String(params.source_video ?? "");
+export async function createSeedanceTask(
+  params: Record<string, unknown>,
+  workflowId = MODELARK_WORKFLOW_ID,
+): Promise<ModelArkTask> {
+  const model = String(params.model || process.env.MODELARK_SEEDANCE_MODEL || MODELARK_DEFAULT_MODEL).trim();
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,119}$/.test(model)) {
+    throw new Error("The configured ModelArk model ID is invalid.");
+  }
+
+  const sourceImage = validateUploadedFilename(params.source_image, "Opening image");
+  const sourceVideo = validateUploadedFilename(params.source_video, "Reference video");
+  const endImage = params.end_image
+    ? validateUploadedFilename(params.end_image, "Closing image")
+    : "";
+  const sourceAudio = params.source_audio
+    ? validateUploadedFilename(params.source_audio, "Reference audio")
+    : "";
+  if (workflowId === MODELARK_REFERENCE_WORKFLOW_ID && (!endImage || !sourceAudio)) {
+    throw new Error("Seedance Reference Video requires opening and closing images, a reference video, and reference audio.");
+  }
   if (!sourceImage || !sourceVideo) {
     throw new Error("Seedance requires both a selected still and a performance video.");
   }
 
-  const [image, video] = await Promise.all([
-    readComfyInputAsset(sourceImage),
-    readComfyInputAsset(sourceVideo),
+  const [image, endImageAsset, video, audio] = await Promise.all([
+    readComfyInputAsset(sourceImage, "image"),
+    endImage ? readComfyInputAsset(endImage, "image") : null,
+    readComfyInputAsset(sourceVideo, "video"),
+    sourceAudio ? readComfyInputAsset(sourceAudio, "audio") : null,
   ]);
-  const [imageFile, videoFile] = await Promise.all([
-    uploadModelArkFile(image.bytes, "selected-angle.png", image.contentType === "image/jpeg" ? image.contentType : "image/png"),
-    uploadModelArkFile(video.bytes, "performance-reference.mp4", video.contentType || "video/mp4", model),
+  const [imageFile, endImageFile, videoFile, audioFile] = await Promise.all([
+    uploadModelArkFile(image.bytes, `opening-frame.${extensionFor(image.contentType, "image")}`, image.contentType),
+    endImageAsset
+      ? uploadModelArkFile(endImageAsset.bytes, `closing-frame.${extensionFor(endImageAsset.contentType, "image")}`, endImageAsset.contentType)
+      : null,
+    uploadModelArkFile(video.bytes, `reference-video.${extensionFor(video.contentType, "video")}`, video.contentType, model),
+    audio
+      ? uploadModelArkFile(audio.bytes, `reference-audio.${extensionFor(audio.contentType, "audio")}`, audio.contentType)
+      : null,
   ]);
 
   const prompt = String(
     params.motion_context ||
+      params.prompt ||
       "Transfer the performance movement naturally onto the performer in the reference image. Preserve identity, wardrobe, vehicle interior, lighting, and camera composition.",
-  );
+  ).trim();
+  if (!prompt || prompt.length > 4000) {
+    throw new Error("Seedance direction must be between 1 and 4,000 characters.");
+  }
   const duration = Math.min(Math.max(Number(params.duration ?? 5), 2), 15);
+  const ratio = String(params.ratio ?? params.aspect_ratio ?? "16:9");
+  if (!SUPPORTED_RATIOS.has(ratio)) {
+    throw new Error("Seedance aspect ratio must be 16:9, 9:16, or 1:1.");
+  }
+  const resolution = String(params.resolution ?? "720p");
+  if (!SUPPORTED_RESOLUTIONS.has(resolution)) {
+    throw new Error("Seedance resolution must be 480p, 720p, or 1080p.");
+  }
+  const generateAudio = params.generate_audio === true || params.generate_audio === "true";
+  const content: Array<Record<string, unknown>> = [
+    { type: "text", text: prompt },
+    { type: "image_url", image_url: { url: imageFile.download_url }, role: "reference_image" },
+  ];
+  if (endImageFile) {
+    content.push({ type: "image_url", image_url: { url: endImageFile.download_url }, role: "reference_image" });
+  }
+  content.push({ type: "video_url", video_url: { url: videoFile.download_url }, role: "reference_video" });
+  if (audioFile) {
+    content.push({ type: "audio_url", audio_url: { url: audioFile.download_url }, role: "reference_audio" });
+  }
+
   const body = {
     model,
-    content: [
-      { type: "text", text: prompt },
-      { type: "image_url", image_url: { url: imageFile.download_url }, role: "reference_image" },
-      { type: "video_url", video_url: { url: videoFile.download_url }, role: "reference_video" },
-    ],
-    resolution: String(params.resolution ?? "720p"),
-    ratio: String(params.ratio ?? params.aspect_ratio ?? "16:9"),
+    content,
+    generate_audio: generateAudio,
+    resolution,
+    ratio,
     duration,
     watermark: false,
     camera_fixed: false,
@@ -159,7 +253,18 @@ export async function streamSeedanceVideo(taskId: string): Promise<Response> {
   if (!videoUrl) {
     throw new Error("ModelArk has not published a video URL for this task.");
   }
-  const response = await fetch(videoUrl, { signal: AbortSignal.timeout(120_000) });
+  const parsedVideoUrl = new URL(videoUrl);
+  const hostname = parsedVideoUrl.hostname.toLowerCase();
+  if (
+    parsedVideoUrl.protocol !== "https:" ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname.endsWith(".local")
+  ) {
+    throw new Error("ModelArk returned an unsafe video URL.");
+  }
+  const response = await fetch(parsedVideoUrl, { signal: AbortSignal.timeout(120_000) });
   if (!response.ok) {
     throw new Error(`Could not download the ModelArk output (${response.status}).`);
   }

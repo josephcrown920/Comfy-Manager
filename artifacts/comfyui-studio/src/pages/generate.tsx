@@ -54,6 +54,7 @@ import reelLoopThumbnail from "@/assets/thumbnails/reel-loop.jpg";
 import productSwapThumbnail from "@/assets/thumbnails/product-swap.jpg";
 import talkingAvatarThumbnail from "@/assets/thumbnails/talking-avatar.jpg";
 import blogHeroThumbnail from "@/assets/thumbnails/blog-hero.jpg";
+const seedanceReferenceThumbnail = "https://ark-doc.tos-ap-southeast-1.bytepluses.com/doc_image/r2v_tea_pic2.jpg";
 
 const CUSTOM_WORKFLOW_ID = "custom-workflow";
 
@@ -63,6 +64,10 @@ const MOTION_WORKFLOW_ID = "motion-control-animatediff";
 const LIME = "#c8f135";
 
 const WORKFLOW_GUIDANCE: Record<string, { bestFor: string; output: string }> = {
+  "modelark-seedance-reference-video": {
+    bestFor: "Build a reference-led commercial, music clip, or product story with controlled opening and closing frames plus synchronized motion and audio.",
+    output: "Hosted Seedance video with generated audio",
+  },
   "perform-anywhere-angles": {
     bestFor: "Build a consistent five-angle reference set before choosing the strongest still for motion.",
     output: "Five generated cinematic stills",
@@ -354,6 +359,7 @@ const DB_WORKFLOW_THUMBNAILS: Record<string, string> = {
   "seedance-camera-path": svdThumbnail,
   "seedance-vertical-social": reelLoopThumbnail,
   "seedance-product-reveal": productSwapThumbnail,
+  "modelark-seedance-reference-video": seedanceReferenceThumbnail,
   "perform-anywhere-seedance": mimicmotionThumbnail,
   "perform-anywhere-angles": cinematicPortraitThumbnail,
   "perform-anywhere-motion": mimicmotionThumbnail,

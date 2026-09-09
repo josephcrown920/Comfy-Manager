@@ -21,10 +21,79 @@ import { selectWorker, WorkerRoutingError } from "../lib/worker-routing";
 import { getModelAssignments } from "./model-assignments";
 import { withGpuSubmissionLease } from "./gpu-lease";
 import { reconcileJob } from "../lib/job-reconciliation";
-import { createSeedanceTask, MODELARK_OUTPUT_SUBFOLDER, MODELARK_WORKFLOW_ID, modelArkOutputUrl } from "../lib/modelark";
+import {
+  createSeedanceTask,
+  isModelArkWorkflow,
+  MODELARK_OUTPUT_SUBFOLDER,
+  MODELARK_REFERENCE_WORKFLOW_ID,
+  MODELARK_WORKFLOW_ID,
+  modelArkOutputUrl,
+} from "../lib/modelark";
 import { getAuthenticatedUserId } from "../lib/access-control";
 
 const router: IRouter = Router();
+const MODELARK_MAX_ACTIVE_JOBS = 2;
+const MODELARK_MAX_JOBS_PER_DAY = Math.min(
+  Math.max(Number(process.env.MODELARK_MAX_JOBS_PER_DAY || 10), 1),
+  100,
+);
+
+class ModelArkQuotaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ModelArkQuotaError";
+  }
+}
+
+async function reserveModelArkJob(
+  userId: string,
+  workflowId: string,
+  params: Record<string, unknown>,
+) {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const workflowName = workflowId === MODELARK_REFERENCE_WORKFLOW_ID
+    ? "Seedance Reference Video"
+    : "Perform Anywhere — Seedance";
+
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"modelark:" + userId}))`);
+    const [usage] = await tx
+      .select({
+        daily: sql<number>`count(*)::int`,
+        active: sql<number>`count(*) FILTER (WHERE ${jobsTable.status} IN ('pending', 'running'))::int`,
+      })
+      .from(jobsTable)
+      .where(and(
+        eq(jobsTable.ownerId, userId),
+        gte(jobsTable.createdAt, today),
+        sql`${jobsTable.workflowId} IN (${MODELARK_WORKFLOW_ID}, ${MODELARK_REFERENCE_WORKFLOW_ID})`,
+      ));
+
+    if ((usage?.daily ?? 0) >= MODELARK_MAX_JOBS_PER_DAY) {
+      throw new ModelArkQuotaError(`Daily ModelArk limit reached (${MODELARK_MAX_JOBS_PER_DAY} jobs).`);
+    }
+    if ((usage?.active ?? 0) >= MODELARK_MAX_ACTIVE_JOBS) {
+      throw new ModelArkQuotaError("Two ModelArk jobs are already active. Wait for one to finish before starting another.");
+    }
+
+    const [job] = await tx
+      .insert(jobsTable)
+      .values({
+        ownerId: userId,
+        workflowId,
+        workflowName,
+        status: "pending",
+        params,
+        comfyPromptId: null,
+        workerId: null,
+        workerLabel: null,
+        progress: 0,
+      })
+      .returning();
+    return job!;
+  });
+}
 
 function buildJobOutput(job: typeof jobsTable.$inferSelect, outputs: typeof outputsTable.$inferSelect[]) {
   return {
@@ -145,26 +214,35 @@ router.post("/jobs", async (req, res): Promise<void> => {
 
   const { workflowId, params, workerId } = parsed.data;
 
-  if (workflowId === MODELARK_WORKFLOW_ID) {
+  if (isModelArkWorkflow(workflowId)) {
+    let reservedJob: typeof jobsTable.$inferSelect | null = null;
     try {
-      const task = await createSeedanceTask(params as Record<string, unknown>);
+      reservedJob = await reserveModelArkJob(userId, workflowId, params as Record<string, unknown>);
+      const task = await createSeedanceTask(params as Record<string, unknown>, workflowId);
       const [job] = await db
-        .insert(jobsTable)
-        .values({
-          ownerId: userId,
-          workflowId: MODELARK_WORKFLOW_ID,
-          workflowName: "Perform Anywhere — Seedance",
+        .update(jobsTable)
+        .set({
           status: "running",
-          params: params as Record<string, unknown>,
           comfyPromptId: `modelark:${task.id}`,
-          workerId: null,
-          workerLabel: null,
           progress: 5,
         })
+        .where(and(eq(jobsTable.id, reservedJob.id), eq(jobsTable.ownerId, userId)))
         .returning();
       res.status(201).json(CreateJobResponse.parse(buildJobOutput(job!, [])));
     } catch (error) {
-      res.status(502).json({ error: error instanceof Error ? error.message : "Could not start the ModelArk Seedance task." });
+      if (reservedJob) {
+        await db
+          .update(jobsTable)
+          .set({
+            status: "failed",
+            errorMessage: error instanceof Error ? error.message : "Could not start the ModelArk Seedance task.",
+            completedAt: new Date(),
+          })
+          .where(and(eq(jobsTable.id, reservedJob.id), eq(jobsTable.ownerId, userId)));
+      }
+      res.status(error instanceof ModelArkQuotaError ? 429 : 502).json({
+        error: error instanceof Error ? error.message : "Could not start the ModelArk Seedance task.",
+      });
     }
     return;
   }
