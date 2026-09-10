@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowRight, Clapperboard, Film, Image as ImageIcon, Layers3, Play, Sparkles, Video } from "lucide-react";
+import { ArrowRight, Clapperboard, Film, Image as ImageIcon, Layers3, Play, Sparkles } from "lucide-react";
+import { PageHeader } from "@/components/creation-design/page-header";
 
 type BatchType = "scene-variation" | "finished-video-variation";
 
@@ -19,34 +20,38 @@ const GRADES = ["teal-orange", "warm-vintage", "cold-thriller"];
 function MasterPreview({ asset, type }: { asset: string; type: BatchType }) {
   const url = asset ? `/api/comfy/view?filename=${encodeURIComponent(asset)}&subfolder=&type=input` : "";
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[#39305f] bg-[#100d20] min-h-[260px]">
+    <div className="relative overflow-hidden w-full h-[320px]">
       {asset ? (
         type === "scene-variation" ? (
-          <img src={url} alt="Uploaded creative master" className="absolute inset-0 h-full w-full object-cover opacity-75" />
+          <img src={url} alt="Uploaded creative master" className="absolute inset-0 h-full w-full object-cover opacity-80" />
         ) : (
-          <video src={url} muted playsInline autoPlay loop className="absolute inset-0 h-full w-full object-cover opacity-70" />
+          <video src={url} muted playsInline autoPlay loop className="absolute inset-0 h-full w-full object-cover opacity-80" />
         )
       ) : (
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#3c3267,transparent_35%),radial-gradient(circle_at_70%_70%,#314220,transparent_32%)]" />
+        <div className="absolute inset-0 bg-[#09080D] bg-[radial-gradient(circle_at_30%_20%,#A779F5_0%,transparent_35%),radial-gradient(circle_at_70%_70%,#B7F54A_0%,transparent_32%)] opacity-20" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#100d20]/70 via-transparent to-[#100d20]/80" />
-      <div className="relative z-10 grid min-h-[260px] grid-cols-[minmax(120px,1fr)_1.7fr] items-center gap-4 p-5">
-        <div className="rounded-xl border border-[#e8f724]/50 bg-[#17112c]/90 p-3 shadow-xl">
-          <div className="flex items-center gap-2 text-xs font-bold text-[#e8f724]"><Sparkles className="h-3.5 w-3.5" /> Creative master</div>
-          <p className="mt-2 truncate text-xs text-[#d4ceed]">{asset || "Upload your master to preview it here"}</p>
+      <div className="absolute inset-0 bg-gradient-to-r from-[#09080D] via-transparent to-[#09080D]/80" />
+      <div className="relative z-10 grid h-full grid-cols-[minmax(140px,1fr)_1.7fr] items-center gap-6 p-8">
+        <div className="rounded-2xl border border-[#B7F54A]/30 bg-[#171120]/90 backdrop-blur-md p-5 shadow-2xl">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#B7F54A]">
+            <Sparkles className="h-4 w-4" /> Creative master
+          </div>
+          <p className="mt-3 truncate text-sm text-[#BEB2CC]">
+            {asset || "Upload your master to preview it here"}
+          </p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {[0, 1, 2, 3, 4, 5].map((item) => (
-            <div key={item} className="relative aspect-video overflow-hidden rounded-lg border border-[#776ca4]/40 bg-[#211b3c]/90 p-2 shadow-lg">
-              {asset && type === "scene-variation" && <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" />}
-              <span className="relative rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-[#e8f724]">V{item + 1}</span>
-              <div className="absolute inset-x-2 bottom-2 h-1 rounded-full bg-[#e8f724]/60" style={{ width: `${45 + (item % 3) * 18}%` }} />
+            <div key={item} className="relative aspect-video overflow-hidden rounded-xl border border-[#A779F5]/40 bg-[#171120]/80 p-3 shadow-lg">
+              {asset && type === "scene-variation" && <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30 grayscale-[50%]" />}
+              <span className="relative rounded-full bg-[#09080D]/80 px-2 py-1 text-[10px] font-bold text-[#B7F54A] border border-[#B7F54A]/20">V{item + 1}</span>
+              <div className="absolute inset-x-3 bottom-3 h-1 rounded-full bg-[#B7F54A]/40" style={{ width: `${45 + (item % 3) * 18}%` }} />
             </div>
           ))}
         </div>
       </div>
-      <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full opacity-50">
-        <path d="M170 130 C240 130 250 70 340 60 M170 130 C250 130 260 120 340 120 M170 130 C240 130 250 180 340 190" fill="none" stroke="#e8f724" strokeWidth="1.5" />
+      <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full opacity-40 mix-blend-screen">
+        <path d="M170 130 C240 130 250 70 340 60 M170 130 C250 130 260 120 340 120 M170 130 C240 130 250 180 340 190" fill="none" stroke="#B7F54A" strokeWidth="1.5" />
       </svg>
     </div>
   );
@@ -106,58 +111,127 @@ export default function Batches() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-7 animate-in fade-in duration-300">
-      <div className="grid gap-6 lg:grid-cols-[1.35fr_.65fr] lg:items-end">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[.18em] text-[#e8f724]">Viral batch studio</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#f0eeff] sm:text-4xl">Branch one creative master into a campaign.</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#a79dc7]">Build up to 30 controlled versions. Every output keeps the same shared master, style anchor, and production recipe while its camera, crop, grade, caption treatment, and seed change deliberately.</p>
+    <div className="min-h-[100dvh] bg-[#09080D] text-white animate-in fade-in duration-300 pb-20 px-6 sm:px-12 pt-8">
+      <div className="max-w-[1440px] mx-auto space-y-12">
+        <PageHeader 
+          eyebrow="Viral batch studio"
+          title="Branch one creative master into a campaign."
+          description="Build up to 30 controlled versions. Every output keeps the same shared master, style anchor, and production recipe while its camera, crop, grade, caption treatment, and seed change deliberately."
+          visual={<MasterPreview asset={masterAsset} type={batchType} />}
+        />
+
+        <div className="grid gap-5 md:grid-cols-2">
+          {[
+            { type: "scene-variation" as const, title: "New cinematic scenes", copy: "Keep a master reference image and branch it into camera-led scene variations.", icon: ImageIcon },
+            { type: "finished-video-variation" as const, title: "Finished video variations", copy: "Recut the same finished clip into platform-ready grades and compositions.", icon: Film },
+          ].map((option) => {
+            const active = batchType === option.type;
+            const Icon = option.icon;
+            return (
+              <button 
+                key={option.type} 
+                onClick={() => { setBatchType(option.type); setMasterAsset(""); setIdentityAnchor(""); }}
+                className={`overflow-hidden rounded-3xl border text-left transition-all ${active ? "border-[#B7F54A] bg-[#171120] shadow-[0_0_30px_rgba(183,245,74,.15)]" : "border-[#A779F5]/30 bg-[#171120]/50 hover:border-[#A779F5]/70"}`}
+              >
+                <div className={`flex aspect-[4/1] items-center justify-center ${active ? "bg-[#B7F54A]/10" : "bg-[#09080D]"}`}>
+                  <Icon className={`h-12 w-12 ${active ? "text-[#B7F54A]" : "text-[#BEB2CC]/60"}`} />
+                </div>
+                <div className="p-6">
+                  <p className={`font-bold text-lg ${active ? "text-[#B7F54A]" : "text-white"}`}>{option.title}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[#BEB2CC]">{option.copy}</p>
+                </div>
+              </button>
+            );
+          })}
         </div>
-        <div className="rounded-2xl border border-[#e8f724]/30 bg-[#e8f724]/10 p-4">
-          <div className="flex items-center gap-2 text-sm font-bold text-[#e8f724]"><Layers3 className="h-4 w-4" /> GPU-safe queue</div>
-          <p className="mt-1 text-xs leading-relaxed text-[#c8c0de]">Only one variant renders at a time. Failed versions remain independently retryable without losing the rest of the batch.</p>
+
+        <div className="grid gap-8 lg:grid-cols-[1fr_.6fr]">
+          <section className="space-y-6 rounded-3xl border border-[#A779F5]/30 bg-[#171120] p-6 sm:p-8 shadow-xl">
+            <div>
+              <h2 className="text-xl font-bold text-white">Shared creative master</h2>
+              <p className="mt-1 text-sm text-[#BEB2CC]">These anchors are copied into every independently scheduled child job.</p>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div className="space-y-3">
+                <Label className="text-[#BEB2CC]">Batch name</Label>
+                <Input value={name} onChange={(event) => setName(event.target.value)} className="border-[#A779F5]/30 bg-[#09080D] text-white h-12 rounded-xl focus-visible:ring-[#B7F54A]" />
+              </div>
+              <div className="bg-[#09080D] border border-[#A779F5]/30 p-2 rounded-xl">
+                <FileUpload accept={isScene ? "image/*" : "video/*"} label={isScene ? "Master reference image" : "Finished master video"} description={isScene ? "This exact image is supplied to every AnimateDiff child." : "This exact video is graded and reframed by every child."} onFileSelect={(filename) => { setMasterAsset(filename); if (isScene) setIdentityAnchor(filename); }} previouslyUploadedName={masterAsset} />
+              </div>
+            </div>
+            {isScene && (
+              <div className="space-y-3">
+                <Label className="text-[#BEB2CC]">Identity / reference anchor <span className="text-[#EF4444]">*</span></Label>
+                <Input value={identityAnchor} onChange={(event) => setIdentityAnchor(event.target.value)} placeholder="Paste the uploaded master image filename" className="border-[#A779F5]/30 bg-[#09080D] text-white h-12 rounded-xl focus-visible:ring-[#B7F54A]" />
+                <p className="text-xs text-[#BEB2CC]">Required: a plain checkpoint does not preserve identity. Confirm the uploaded reference used by every child.</p>
+              </div>
+            )}
+            <div className="space-y-3">
+              <Label className="text-[#BEB2CC]">{isScene ? "Scene direction" : "Campaign direction"}</Label>
+              <Textarea value={scenePrompt} onChange={(event) => setScenePrompt(event.target.value)} className="min-h-32 border-[#A779F5]/30 bg-[#09080D] text-white rounded-xl focus-visible:ring-[#B7F54A]" />
+            </div>
+            <div className="space-y-3">
+              <Label className="text-[#BEB2CC]">{isScene ? "Style + palette anchor" : "Campaign notes"}</Label>
+              <Textarea value={styleAnchor} onChange={(event) => setStyleAnchor(event.target.value)} className="min-h-24 border-[#A779F5]/30 bg-[#09080D] text-white rounded-xl focus-visible:ring-[#B7F54A]" />
+              <p className="text-xs text-[#BEB2CC]">{isScene ? "This style language is included in each scene-generation prompt." : "Saved with each child for review; the actual finished-video look comes from the color-grade controls above."}</p>
+            </div>
+          </section>
+
+          <aside className="space-y-6 rounded-3xl border border-[#A779F5]/30 bg-[#171120] p-6 sm:p-8 shadow-xl">
+            <div className="rounded-2xl border border-[#A779F5]/30 bg-[#09080D] p-5">
+              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-white">
+                <Clapperboard className="h-5 w-5 text-[#B7F54A]" /> 
+                GPU-safe queue
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-[#BEB2CC]">{requirementText}</p>
+            </div>
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-[#BEB2CC]">Batch size</Label>
+                <span className="font-mono text-lg font-bold text-[#B7F54A]">{batchSize}</span>
+              </div>
+              <Slider value={[batchSize]} min={1} max={30} step={1} onValueChange={([value]) => setBatchSize(value ?? 1)} />
+              <p className="text-sm text-[#BEB2CC]">{summary}</p>
+            </div>
+            <div className="space-y-3 pt-4">
+              <Label className="text-[#BEB2CC]">Seed strategy</Label>
+              <div className="grid grid-cols-3 gap-3">
+                {(["incremental", "fixed", "random"] as const).map((strategy) => (
+                  <button 
+                    key={strategy} 
+                    onClick={() => setSeedStrategy(strategy)} 
+                    className={`rounded-xl border py-3 text-xs font-bold capitalize transition-all ${seedStrategy === strategy ? "border-[#B7F54A] bg-[#B7F54A]/10 text-[#B7F54A]" : "border-[#A779F5]/30 text-[#BEB2CC] hover:border-[#A779F5]/60 hover:text-white"}`}
+                  >
+                    {strategy}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3 pt-4">
+              <Label className="text-[#BEB2CC]">Caption treatment</Label>
+              <Input value={captionTreatment} onChange={(event) => setCaptionTreatment(event.target.value)} className="border-[#A779F5]/30 bg-[#09080D] h-12 rounded-xl focus-visible:ring-[#B7F54A]" />
+            </div>
+            {!isScene && (
+              <div className="space-y-3 pt-4">
+                <Label className="text-[#BEB2CC]">Maximum output duration</Label>
+                <div className="flex items-center gap-4">
+                  <Slider value={[duration]} min={1} max={60} step={1} onValueChange={([value]) => setDuration(value ?? 12)} className="flex-1" />
+                  <span className="w-12 text-right font-mono text-lg font-bold text-[#B7F54A]">{duration}s</span>
+                </div>
+              </div>
+            )}
+            <div className="pt-6">
+              <Button 
+                className="w-full rounded-xl bg-[#B7F54A] py-7 text-base font-bold text-[#09080D] hover:bg-[#A3E030] shadow-[0_0_20px_rgba(183,245,74,0.3)] hover:shadow-[0_0_30px_rgba(183,245,74,0.5)] transition-all" 
+                disabled={createBatch.isPending} 
+                onClick={submit}
+              >
+                {createBatch.isPending ? "Building batch…" : <><Play className="mr-2 h-5 w-5 fill-current" /> Start {batchSize} variations <ArrowRight className="ml-2 h-5 w-5" /></>}
+              </Button>
+            </div>
+          </aside>
         </div>
-      </div>
-
-      <MasterPreview asset={masterAsset} type={batchType} />
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {[
-          { type: "scene-variation" as const, title: "New cinematic scenes", copy: "Keep a master reference image and branch it into camera-led scene variations.", icon: ImageIcon },
-          { type: "finished-video-variation" as const, title: "Finished video variations", copy: "Recut the same finished clip into platform-ready grades and compositions.", icon: Film },
-        ].map((option) => {
-          const active = batchType === option.type;
-          const Icon = option.icon;
-          return <button key={option.type} onClick={() => { setBatchType(option.type); setMasterAsset(""); setIdentityAnchor(""); }}
-            className={`overflow-hidden rounded-2xl border text-left transition-all ${active ? "border-[#e8f724] bg-[#282044] shadow-[0_0_28px_rgba(232,247,36,.12)]" : "border-[#39305f] bg-[#1e1a38] hover:border-[#776ca4]"}`}>
-            <div className={`flex aspect-[3/1] items-center justify-center ${active ? "bg-[radial-gradient(circle,#5b6440_0%,#1e1a38_65%)]" : "bg-[#17132d]"}`}><Icon className={`h-10 w-10 ${active ? "text-[#e8f724]" : "text-[#776ca4]"}`} /></div>
-            <div className="p-4"><p className="font-bold text-[#f0eeff]">{option.title}</p><p className="mt-1 text-xs leading-relaxed text-[#9d93bb]">{option.copy}</p></div>
-          </button>;
-        })}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_.72fr]">
-        <section className="space-y-5 rounded-2xl border border-[#39305f] bg-[#1e1a38] p-5 sm:p-6">
-          <div><h2 className="text-lg font-bold text-[#f0eeff]">Shared creative master</h2><p className="mt-1 text-xs text-[#9d93bb]">These anchors are copied into every independently scheduled child job.</p></div>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2"><Label>Batch name</Label><Input value={name} onChange={(event) => setName(event.target.value)} className="border-[#39305f] bg-[#151127]" /></div>
-            <FileUpload accept={isScene ? "image/*" : "video/*"} label={isScene ? "Master reference image" : "Finished master video"} description={isScene ? "This exact image is supplied to every AnimateDiff child." : "This exact video is graded and reframed by every child."} onFileSelect={(filename) => { setMasterAsset(filename); if (isScene) setIdentityAnchor(filename); }} />
-          </div>
-          {isScene && <div className="space-y-2"><Label>Identity / reference anchor <span className="text-[#e8f724]">*</span></Label><Input value={identityAnchor} onChange={(event) => setIdentityAnchor(event.target.value)} placeholder="Paste the uploaded master image filename" className="border-[#39305f] bg-[#151127]" /><p className="text-xs text-[#9d93bb]">Required: a plain checkpoint does not preserve identity. Confirm the uploaded reference used by every child.</p></div>}
-          <div className="space-y-2"><Label>{isScene ? "Scene direction" : "Campaign direction"}</Label><Textarea value={scenePrompt} onChange={(event) => setScenePrompt(event.target.value)} className="min-h-24 border-[#39305f] bg-[#151127]" /></div>
-          <div className="space-y-2"><Label>{isScene ? "Style + palette anchor" : "Campaign notes"}</Label><Textarea value={styleAnchor} onChange={(event) => setStyleAnchor(event.target.value)} className="min-h-20 border-[#39305f] bg-[#151127]" /><p className="text-xs text-[#9d93bb]">{isScene ? "This style language is included in each scene-generation prompt." : "Saved with each child for review; the actual finished-video look comes from the color-grade controls above."}</p></div>
-        </section>
-
-        <aside className="space-y-5 rounded-2xl border border-[#39305f] bg-[#151127] p-5 sm:p-6">
-          <div className="rounded-xl border border-[#39305f] bg-[#211b3c] p-4"><div className="flex items-center gap-2 text-sm font-bold text-[#f0eeff]"><Clapperboard className="h-4 w-4 text-[#e8f724]" /> Required GPU setup</div><p className="mt-2 text-xs leading-relaxed text-[#a79dc7]">{requirementText}</p></div>
-          <div className="space-y-3"><div className="flex items-center justify-between"><Label>Batch size</Label><span className="font-mono text-sm font-bold text-[#e8f724]">{batchSize}</span></div><Slider value={[batchSize]} min={1} max={30} step={1} onValueChange={([value]) => setBatchSize(value ?? 1)} /><p className="text-xs text-[#9d93bb]">{summary}</p></div>
-          <div className="space-y-2"><Label>Seed strategy</Label><div className="grid grid-cols-3 gap-2">{(["incremental", "fixed", "random"] as const).map((strategy) => <button key={strategy} onClick={() => setSeedStrategy(strategy)} className={`rounded-lg border px-2 py-2 text-xs font-semibold capitalize ${seedStrategy === strategy ? "border-[#e8f724] bg-[#e8f724]/10 text-[#e8f724]" : "border-[#39305f] text-[#9d93bb]"}`}>{strategy}</button>)}</div></div>
-          <div className="space-y-2"><Label>Caption treatment</Label><Input value={captionTreatment} onChange={(event) => setCaptionTreatment(event.target.value)} className="border-[#39305f] bg-[#211b3c]" /></div>
-          {!isScene && <div className="space-y-2"><Label>Maximum output duration</Label><div className="flex items-center gap-3"><Slider value={[duration]} min={1} max={60} step={1} onValueChange={([value]) => setDuration(value ?? 12)} /><span className="w-10 text-right font-mono text-xs text-[#e8f724]">{duration}s</span></div></div>}
-          <Button className="w-full rounded-full bg-[#e8f724] py-6 font-bold text-[#0d0b1a] hover:bg-[#d4e010]" disabled={createBatch.isPending} onClick={submit}>
-            {createBatch.isPending ? "Building batch…" : <><Play className="mr-2 h-4 w-4 fill-current" /> Start {batchSize} variations <ArrowRight className="ml-2 h-4 w-4" /></>}
-          </Button>
-        </aside>
       </div>
     </div>
   );

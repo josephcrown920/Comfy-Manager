@@ -9,7 +9,7 @@
 @custom-variant dark (&:is(.dark *));
 
 .cl-formFieldInput::placeholder {
-  color: #817a9e;
+  color: #BEB2CC;
   opacity: 1;
 }
 
@@ -23,10 +23,6 @@
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-card-border: var(--card-border);
-
-  --color-popover: var(--card);
-  --color-popover-foreground: var(--card-foreground);
-  --color-popover-border: var(--card-border);
 
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
@@ -51,32 +47,24 @@
 
   --font-sans: 'Outfit', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Mono', monospace;
-
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
 }
 
 :root {
-  /* ── Cinematic Dark Palette ── */
-  --background:         #080712;   /* Aurora deep violet-black page bg */
-  --foreground:         #f5f5f5;   /* sharp white text */
+  --background:         #09080D;
+  --foreground:         #ffffff;
 
-  /* Panel surfaces */
-  --card:               #111022;
-  --card-foreground:    #ffffff;
+  --card:               #171120;
+  --card-foreground:    #BEB2CC;
   --card-border:        #2a2250;
 
-  /* Yellow-green brand accent — energizing */
-  --primary:            #e8f724;
-  --primary-foreground: #000000;
+  --primary:            #B7F54A;
+  --primary-foreground: #09080D;
 
-  --secondary:          #19152f;
-  --secondary-foreground: #b4afd0;
+  --secondary:          #A779F5;
+  --secondary-foreground: #09080D;
 
-  --muted:              #0d0b1a;
-  --muted-foreground:   #817a9e;
+  --muted:              #171120;
+  --muted-foreground:   #BEB2CC;
 
   --accent:             #2a2250;
   --accent-foreground:  #ffffff;
@@ -84,72 +72,64 @@
   --destructive:        #ff453a;
   --destructive-foreground: #ffffff;
 
-  --success:            #32d74b;
-  --success-foreground: #ffffff;
+  --success:            #B7F54A;
+  --success-foreground: #09080D;
 
-  --info:               #0a84ff;
+  --info:               #A779F5;
   --info-foreground:    #ffffff;
 
-  --input:              #0e0e0e;
-  --ring:               #e8f724;
+  --input:              #171120;
+  --ring:               #B7F54A;
   --border:             #2a2250;
 
   --radius: 12px;
 }
 
 .dark {
-  /* Same as root since it's dark mode default */
+  /* Inherit from root */
 }
 
 @layer base {
   * { @apply border-border; }
   body { @apply font-sans antialiased bg-background text-foreground selection:bg-primary/30 selection:text-white; }
-  h1, h2, h3, h4, h5, h6 { @apply font-sans font-semibold tracking-tight text-foreground; }
+  h1, h2, h3, h4, h5, h6 { @apply font-sans font-bold tracking-tight text-foreground; }
 
   /* Cards */
   .card, [class*="Card"] {
-    @apply bg-card border-card-border rounded-2xl shadow-2xl shadow-black/50 backdrop-blur-xl;
+    @apply bg-card border-card-border rounded-3xl backdrop-blur-xl shadow-2xl;
   }
 
   /* Buttons */
-  button, .button, [class*="Button"] { @apply rounded-lg transition-all duration-300; }
+  button, .button, [class*="Button"] { @apply rounded-xl transition-all duration-300 font-semibold; }
   button.bg-primary, .bg-primary {
-    @apply bg-primary text-primary-foreground hover:brightness-110 hover:shadow-[0_0_20px_rgba(232,247,36,0.3)] font-semibold;
+    @apply bg-primary text-primary-foreground hover:brightness-110 hover:shadow-[0_0_20px_rgba(183,245,74,0.3)];
   }
 
   /* Inputs */
   input, textarea, select {
-    @apply bg-input border-border text-foreground rounded-lg text-sm focus:ring-1 focus:ring-primary focus:border-primary transition-all;
+    @apply bg-input border-border text-foreground rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary transition-all;
   }
   [role="combobox"] {
-    @apply bg-input border-border text-foreground rounded-lg text-sm;
+    @apply bg-input border-border text-foreground rounded-xl text-sm;
   }
 
   /* Badges */
   .badge, [class*="Badge"] {
-    @apply rounded-full bg-secondary border-border text-secondary-foreground font-medium text-xs backdrop-blur-md;
+    @apply rounded-full bg-secondary/10 border border-secondary/20 text-secondary font-bold text-xs backdrop-blur-md;
   }
 
   /* Progress fill */
-  [role="progressbar"] > div { @apply bg-primary shadow-[0_0_10px_rgba(232,247,36,0.5)]; }
+  [role="progressbar"] > div { @apply bg-primary shadow-[0_0_10px_rgba(183,245,74,0.5)]; }
 }
 
 @layer components {
-  /* Aurora visual language: atmospheric violet depth, while primary remains
-     the Studio yellow-green action colour for fast workflow scanning. */
   .aurora-ambient {
     position: absolute;
     inset: 0;
     pointer-events: none;
+    z-index: 0;
     background:
-      radial-gradient(ellipse 70% 45% at 80% -5%, rgba(124, 58, 237, .18), transparent 70%),
-      radial-gradient(ellipse 45% 35% at 0% 35%, rgba(75, 38, 140, .12), transparent 70%);
-  }
-
-  .aurora-glass {
-    background: linear-gradient(135deg, rgba(25, 20, 52, .82), rgba(12, 10, 26, .9));
-    border: 1px solid rgba(126, 93, 221, .22);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .04);
-    backdrop-filter: blur(18px);
+      radial-gradient(ellipse 60% 50% at 80% -10%, rgba(167, 121, 245, 0.15), transparent 70%),
+      radial-gradient(ellipse 40% 40% at 10% 40%, rgba(183, 245, 74, 0.05), transparent 70%);
   }
 }

@@ -29,7 +29,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetModelAssignmentsQueryKey,
 } from "@workspace/api-client-react";
-import { Cpu, Globe, ShieldCheck, RefreshCw, AlertTriangle } from "lucide-react";
+import { Cpu, Globe, ShieldCheck, RefreshCw, AlertTriangle, Layers, Server, Sparkles } from "lucide-react";
+import { PageHeader } from "@/components/operations-design/PageHeader";
 
 // The unset sentinel shown in the select
 const NONE_VALUE = "__none__";
@@ -57,7 +58,7 @@ function ModelSelect({
   placeholder: string;
   loading: boolean;
 }) {
-  if (loading) return <Skeleton className="h-9 w-full" />;
+  if (loading) return <Skeleton className="h-10 w-full rounded-xl bg-[#1e1a38]" />;
 
   const selectValue = value || NONE_VALUE;
 
@@ -66,21 +67,21 @@ function ModelSelect({
       value={selectValue}
       onValueChange={(v) => onChange(v === NONE_VALUE ? "" : v)}
     >
-      <SelectTrigger className="w-full font-mono text-xs">
+      <SelectTrigger className="w-full font-mono text-xs h-10 bg-[#09080D] border-[#2d2650] text-[#BEB2CC] focus:ring-[#A779F5]/30 rounded-xl">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={NONE_VALUE} className="text-muted-foreground italic">
+      <SelectContent className="bg-[#171120] border-[#2d2650] text-[#BEB2CC]">
+        <SelectItem value={NONE_VALUE} className="text-[#7b72a8] italic focus:bg-[#2d2650]">
           {placeholder}
         </SelectItem>
         {checkpoints.map((ckpt) => (
-          <SelectItem key={ckpt} value={ckpt} className="font-mono text-xs">
+          <SelectItem key={ckpt} value={ckpt} className="font-mono text-xs focus:bg-[#2d2650] focus:text-white">
             {ckpt}
           </SelectItem>
         ))}
         {checkpoints.length === 0 && (
-          <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-            No checkpoints found — connect your ComfyUI server first.
+          <div className="px-3 py-4 text-center text-sm text-[#7b72a8]">
+            No checkpoints found — connect your server first.
           </div>
         )}
       </SelectContent>
@@ -104,16 +105,18 @@ function AssignmentRow({
   onChange: (a: WorkflowAssignment) => void;
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 p-5 rounded-2xl bg-[#171120] border border-[#2d2650] hover:border-[#A779F5]/30 transition-colors">
       <div>
-        <p className="text-sm font-medium">{label}</p>
+        <p className="text-base font-bold text-white flex items-center gap-2">
+          {label}
+        </p>
         {description && (
-          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+          <p className="text-sm text-[#BEB2CC] mt-1">{description}</p>
         )}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Primary Checkpoint</Label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold tracking-wider uppercase text-[#7b72a8]">Primary Checkpoint</Label>
           <ModelSelect
             value={assignment.checkpoint}
             onChange={(v) => onChange({ ...assignment, checkpoint: v })}
@@ -122,10 +125,10 @@ function AssignmentRow({
             loading={modelsLoading}
           />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <ShieldCheck className="h-3 w-3 text-amber-500" />
-            Fallback (if primary unavailable)
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold tracking-wider uppercase text-[#7b72a8] flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5 text-[#B7F54A]" />
+            Fallback Checkpoint
           </Label>
           <ModelSelect
             value={assignment.checkpointFallback}
@@ -134,6 +137,47 @@ function AssignmentRow({
             placeholder="No fallback"
             loading={modelsLoading}
           />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModelsVisual() {
+  return (
+    <div className="absolute inset-0 bg-[#09080D] overflow-hidden flex items-center justify-center">
+      {/* Background pattern */}
+      <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#BEB2CC 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+      
+      {/* Visual abstract representation of routing models */}
+      <div className="relative z-10 flex items-center gap-8 md:gap-16 w-full px-12 max-w-4xl mx-auto">
+        <div className="flex flex-col gap-4 w-1/3">
+          <div className="h-12 border border-[#A779F5]/40 bg-[#171120] rounded-xl flex items-center px-4 gap-3 shadow-[0_0_15px_rgba(167,121,245,0.15)] relative">
+            <div className="absolute right-0 top-1/2 w-8 border-b-2 border-dashed border-[#A779F5]/50 translate-x-full"></div>
+            <Sparkles className="w-4 h-4 text-[#A779F5]" />
+            <div className="h-2 bg-[#BEB2CC]/20 rounded w-full"></div>
+          </div>
+          <div className="h-12 border border-[#2d2650] bg-[#171120] rounded-xl flex items-center px-4 gap-3 relative opacity-50">
+            <div className="absolute right-0 top-1/2 w-8 border-b-2 border-dashed border-[#2d2650] translate-x-full"></div>
+            <Layers className="w-4 h-4 text-[#BEB2CC]" />
+            <div className="h-2 bg-[#BEB2CC]/20 rounded w-full"></div>
+          </div>
+        </div>
+        
+        <div className="w-16 h-16 rounded-2xl bg-[#B7F54A] flex items-center justify-center shadow-[0_0_30px_rgba(183,245,74,0.3)] z-10 shrink-0">
+          <Cpu className="w-8 h-8 text-[#09080D]" />
+        </div>
+        
+        <div className="flex flex-col gap-3 w-1/3">
+          <div className="h-16 border-2 border-[#A779F5] bg-[#A779F5]/10 rounded-xl flex items-center px-4 gap-3 relative">
+            <div className="absolute left-0 top-1/2 w-8 border-b-2 border-[#A779F5] -translate-x-full"></div>
+            <Server className="w-5 h-5 text-[#A779F5]" />
+            <div className="flex-1">
+              <div className="h-2 bg-[#A779F5] rounded w-3/4 mb-2"></div>
+              <div className="h-1.5 bg-[#A779F5]/50 rounded w-1/2"></div>
+            </div>
+            <ShieldCheck className="w-4 h-4 text-[#B7F54A] ml-auto" />
+          </div>
         </div>
       </div>
     </div>
@@ -208,106 +252,96 @@ export default function Models() {
   };
 
   return (
-    <div className="max-w-3xl space-y-6 animate-in fade-in duration-300">
-      <div>
-        <h1 className="text-2xl font-semibold">Model Orchestrator</h1>
-        <p className="text-muted-foreground mt-1">
-          Assign which checkpoint to use per workflow and configure fallbacks
-          for when a model isn't available.
-        </p>
-      </div>
+    <div className="max-w-4xl mx-auto pb-12">
+      <PageHeader 
+        title="Model Orchestrator"
+        description="Assign checkpoints per workflow and configure robust fallbacks for when primary models are unavailable."
+        visual={<ModelsVisual />}
+      />
 
-      {/* Available model counts */}
-      <div className="flex flex-wrap gap-2 items-center">
-        {modelsLoading ? (
-          <Skeleton className="h-6 w-48" />
-        ) : (
-          <>
-            <Badge variant="secondary" className="gap-1.5">
-              <Cpu className="h-3 w-3" />
-              {checkpoints.length} checkpoints
-            </Badge>
-            <Badge variant="secondary">{models?.loras.length ?? 0} LoRAs</Badge>
-            <Badge variant="secondary">{models?.vaes.length ?? 0} VAEs</Badge>
-            <Badge variant="secondary">
-              {models?.controlnets.length ?? 0} ControlNets
-            </Badge>
-            {checkpoints.length === 0 && (
-              <span className="flex items-center gap-1.5 text-xs text-amber-500">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                Connect your ComfyUI server to see available models
-              </span>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto gap-1.5 text-xs"
-              onClick={() => refetchModels()}
-              disabled={modelsFetching}
-            >
-              <RefreshCw className={`h-3 w-3 ${modelsFetching ? "animate-spin" : ""}`} />
-              Refresh models
-            </Button>
-          </>
-        )}
-      </div>
+      <div className="space-y-8 animate-in fade-in duration-500 delay-150 fill-mode-both">
+        {/* Available model counts */}
+        <div className="flex flex-wrap gap-2 items-center p-4 bg-[#171120] border border-[#2d2650] rounded-2xl">
+          {modelsLoading ? (
+            <Skeleton className="h-8 w-64 bg-[#2d2650] rounded-xl" />
+          ) : (
+            <>
+              <div className="flex gap-2 items-center bg-[#09080D] px-3 py-1.5 rounded-xl border border-[#2d2650]">
+                <Cpu className="h-4 w-4 text-[#A779F5]" />
+                <span className="text-sm font-bold text-white">{checkpoints.length} <span className="text-[#BEB2CC] font-normal">Checkpoints</span></span>
+              </div>
+              <div className="flex gap-2 items-center bg-[#09080D] px-3 py-1.5 rounded-xl border border-[#2d2650]">
+                <span className="text-sm font-bold text-white">{models?.loras.length ?? 0} <span className="text-[#BEB2CC] font-normal">LoRAs</span></span>
+              </div>
+              <div className="flex gap-2 items-center bg-[#09080D] px-3 py-1.5 rounded-xl border border-[#2d2650]">
+                <span className="text-sm font-bold text-white">{models?.vaes.length ?? 0} <span className="text-[#BEB2CC] font-normal">VAEs</span></span>
+              </div>
+              <div className="flex gap-2 items-center bg-[#09080D] px-3 py-1.5 rounded-xl border border-[#2d2650]">
+                <span className="text-sm font-bold text-white">{models?.controlnets.length ?? 0} <span className="text-[#BEB2CC] font-normal">ControlNets</span></span>
+              </div>
+              
+              {checkpoints.length === 0 && (
+                <span className="flex items-center gap-2 text-sm text-red-400 font-medium ml-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Connect server to see available models
+                </span>
+              )}
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-auto gap-2 bg-transparent border-[#2d2650] text-[#BEB2CC] hover:bg-[#2d2650] hover:text-white rounded-xl h-9"
+                onClick={() => refetchModels()}
+                disabled={modelsFetching}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${modelsFetching ? "animate-spin text-[#B7F54A]" : ""}`} />
+                Refresh
+              </Button>
+            </>
+          )}
+        </div>
 
-      {/* Global defaults */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Globe className="h-5 w-5 text-primary" />
-            Global Defaults
-          </CardTitle>
-          <CardDescription>
-            Applies to any workflow that doesn't have a specific assignment
-            below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        {/* Global defaults */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 px-1">
+            <Globe className="h-5 w-5 text-[#A779F5]" />
+            <h2 className="text-xl font-bold text-white">Global Routing Defaults</h2>
+          </div>
+          <p className="text-sm text-[#BEB2CC] px-1 max-w-2xl">
+            Applies to any workflow that doesn't have a specific assignment explicitly configured below.
+          </p>
+          
           {isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-9 w-full" />
-            </div>
+            <Skeleton className="h-32 w-full rounded-2xl bg-[#171120] border border-[#2d2650]" />
           ) : (
             <AssignmentRow
-              label="Default checkpoint"
+              label="Default Checkpoint Pipeline"
               assignment={state.global}
               checkpoints={checkpoints}
               modelsLoading={modelsLoading}
               onChange={(a) => setState((prev) => ({ ...prev, global: a }))}
             />
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Per-workflow assignments */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Cpu className="h-5 w-5 text-primary" />
-            Per-Workflow Assignments
-          </CardTitle>
-          <CardDescription>
-            Override the global default for specific workflows. Leaving a field
-            empty falls back to the global default.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="divide-y divide-border">
-          {isLoading
-            ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="py-5">
-                  <Skeleton className="h-4 w-32 mb-3" />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Skeleton className="h-9" />
-                    <Skeleton className="h-9" />
-                  </div>
-                </div>
-              ))
-            : (workflows ?? []).map((wf) => (
-                <div key={wf.id} className="py-5 first:pt-0 last:pb-0">
+        {/* Per-workflow assignments */}
+        <div className="space-y-4 pt-6 border-t border-[#2d2650]">
+          <div className="flex items-center gap-3 px-1">
+            <Layers className="h-5 w-5 text-[#B7F54A]" />
+            <h2 className="text-xl font-bold text-white">Per-Workflow Overrides</h2>
+          </div>
+          <p className="text-sm text-[#BEB2CC] px-1 max-w-2xl">
+            Specify alternative pipelines for particular workflows. Leaving an assignment empty gracefully falls back to the global routing default.
+          </p>
+          
+          <div className="grid grid-cols-1 gap-4 mt-4">
+            {isLoading
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-32 w-full rounded-2xl bg-[#171120] border border-[#2d2650]" />
+                ))
+              : (workflows ?? []).map((wf) => (
                   <AssignmentRow
+                    key={wf.id}
                     label={wf.name}
                     description={wf.description}
                     assignment={
@@ -320,22 +354,35 @@ export default function Models() {
                     modelsLoading={modelsLoading}
                     onChange={(a) => setWorkflowAssignment(wf.id, a)}
                   />
-                </div>
-              ))}
-        </CardContent>
-        <CardFooter className="bg-muted/30 border-t py-4 flex justify-between items-center">
-          <p className="text-xs text-muted-foreground">
-            Changes apply to new jobs only — existing running jobs are
-            unaffected.
-          </p>
-          <Button
-            onClick={handleSave}
-            disabled={updateAssignments.isPending || isLoading}
-          >
-            {updateAssignments.isPending ? "Saving…" : "Save Assignments"}
-          </Button>
-        </CardFooter>
-      </Card>
+                ))}
+            {workflows && workflows.length === 0 && !isLoading && (
+              <div className="p-8 text-center border border-dashed border-[#2d2650] rounded-2xl bg-[#171120]/50">
+                <p className="text-[#7b72a8]">No workflows discovered yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Floating Save Action */}
+        <div className="sticky bottom-6 z-20 flex justify-end">
+          <div className="bg-[#171120]/90 backdrop-blur-md border border-[#2d2650] p-4 rounded-2xl shadow-2xl flex items-center gap-6 max-w-lg w-full sm:w-auto mt-8">
+            <p className="text-xs text-[#BEB2CC] hidden sm:block">
+              Changes apply to new jobs only.<br />Running queues remain unaffected.
+            </p>
+            <Button
+              onClick={handleSave}
+              disabled={updateAssignments.isPending || isLoading}
+              className="bg-[#B7F54A] text-[#09080D] hover:bg-[#a4de3a] font-bold rounded-xl px-8 h-12 w-full sm:w-auto flex-shrink-0"
+            >
+              {updateAssignments.isPending ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                </>
+              ) : "Save Architecture"}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

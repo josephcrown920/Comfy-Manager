@@ -3,11 +3,12 @@ import { useListJobs, useDeleteJob, getListJobsQueryKey, refreshJob, useListBatc
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Trash2, ExternalLink, Loader2, PlayCircle, CheckCircle2, AlertCircle, GitBranch, RotateCcw, Square, Search, X } from "lucide-react";
+import { Trash2, ExternalLink, Loader2, PlayCircle, CheckCircle2, AlertCircle, GitBranch, RotateCcw, Square, Search, X, ListOrdered } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { PageHeader } from "@/components/operations-design/PageHeader";
 
 type ProgressMap = Record<string, { value: number; max: number }>;
 type PromptJobMap = Record<string, number>;
@@ -71,6 +72,33 @@ function useComfyWebSocket(hasRunningJobs: boolean, promptJobMap: PromptJobMap) 
   return liveProgress;
 }
 
+function JobsVisual() {
+  return (
+    <div className="absolute inset-0 bg-[#09080D] overflow-hidden flex items-center justify-center">
+      <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#BEB2CC 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+      <div className="relative z-10 flex gap-4 overflow-hidden w-full px-12">
+        <div className="h-16 w-32 border border-[#B7F54A]/40 bg-[#171120] rounded-xl flex items-center justify-center relative translate-x-12 opacity-30 shadow-[0_0_15px_rgba(183,245,74,0.1)]">
+          <div className="h-2 w-16 bg-[#B7F54A]/30 rounded-full" />
+        </div>
+        <div className="h-16 w-32 border border-[#A779F5]/40 bg-[#171120] rounded-xl flex items-center justify-center relative translate-x-6 opacity-60 shadow-[0_0_15px_rgba(167,121,245,0.1)]">
+          <div className="h-2 w-16 bg-[#A779F5]/50 rounded-full" />
+        </div>
+        <div className="h-16 w-48 border-2 border-[#B7F54A] bg-[#B7F54A]/10 rounded-xl flex items-center justify-center relative shadow-[0_0_30px_rgba(183,245,74,0.2)]">
+          <div className="absolute top-0 left-0 h-1 bg-[#B7F54A] shadow-[0_0_10px_#B7F54A] transition-all" style={{ width: '60%' }} />
+          <Loader2 className="w-5 h-5 text-[#B7F54A] animate-spin mr-3" />
+          <div className="h-2 w-16 bg-[#B7F54A] rounded-full" />
+        </div>
+        <div className="h-16 w-32 border border-[#2d2650] bg-[#171120] rounded-xl flex items-center justify-center relative -translate-x-6 opacity-60">
+          <div className="h-2 w-16 bg-[#BEB2CC]/30 rounded-full" />
+        </div>
+        <div className="h-16 w-32 border border-[#2d2650] bg-[#171120] rounded-xl flex items-center justify-center relative -translate-x-12 opacity-30">
+          <div className="h-2 w-16 bg-[#BEB2CC]/20 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Jobs() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [jobSearch, setJobSearch] = useState("");
@@ -131,26 +159,26 @@ export default function Jobs() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed": return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#4caf50]/10 text-[#4caf50] text-xs font-semibold">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#B7F54A]/10 border border-[#B7F54A]/20 text-[#B7F54A] text-[10px] uppercase font-bold tracking-wider">
           <CheckCircle2 className="h-3 w-3" /> Completed
         </span>
       );
       case "failed": return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#e05555]/10 text-[#e05555] text-xs font-semibold">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] uppercase font-bold tracking-wider">
           <AlertCircle className="h-3 w-3" /> Failed
         </span>
       );
       case "running": return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#e8f724]/10 text-[#e8f724] text-xs font-semibold">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#A779F5]/10 border border-[#A779F5]/20 text-[#A779F5] text-[10px] uppercase font-bold tracking-wider">
           <Loader2 className="h-3 w-3 animate-spin" /> Running
         </span>
       );
       case "pending": return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#2a2448] text-[#7b72a8] text-xs font-semibold">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#171120] border border-[#2d2650] text-[#7b72a8] text-[10px] uppercase font-bold tracking-wider">
           <PlayCircle className="h-3 w-3" /> Pending
         </span>
       );
-      default: return <span className="text-xs text-[#7b72a8]">{status}</span>;
+      default: return <span className="text-[10px] uppercase font-bold tracking-wider text-[#7b72a8]">{status}</span>;
     }
   };
 
@@ -164,166 +192,186 @@ export default function Jobs() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#f0eeff]">Jobs</h1>
-          <p className="text-[#7b72a8] text-sm mt-0.5">Monitor and manage your generation queue.</p>
-        </div>
-        <Link href="/generate">
-          <Button className="bg-[#e8f724] text-[#0d0b1a] hover:bg-[#d4e010] rounded-full font-bold px-5">
-            New Generation
-          </Button>
-        </Link>
-      </div>
+    <div className="max-w-[1400px] mx-auto pb-12">
+      <PageHeader 
+        title="Generation Queue"
+        description="Monitor processing status, batch variations, and review logs for all your active and past generation jobs."
+        visual={<JobsVisual />}
+        actions={
+          <Link href="/generate">
+            <Button className="bg-[#B7F54A] text-[#09080D] hover:bg-[#a4de3a] font-bold rounded-xl h-12 px-6 shadow-lg shadow-[#B7F54A]/20">
+              New Generation
+            </Button>
+          </Link>
+        }
+      />
 
-      {batches && batches.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <GitBranch className="h-4 w-4 text-[#e8f724]" />
-            <h2 className="text-sm font-bold text-[#f0eeff]">Creative batches</h2>
-            <span className="text-xs text-[#7b72a8]">Children are scheduled across healthy connected GPUs</span>
-          </div>
-          <div className="space-y-3">
-            {batches.map((batch) => {
-              const done = batch.completedJobs + batch.failedJobs + batch.cancelledJobs;
-              const value = batch.totalJobs ? Math.round((done / batch.totalJobs) * 100) : 0;
-              return (
-                <div key={batch.id} className="overflow-hidden rounded-2xl border border-[#39305f] bg-[#1e1a38]">
-                  <div className="flex flex-col gap-3 border-b border-[#39305f] p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div><p className="font-semibold text-[#f0eeff]">{batch.name}</p><p className="mt-0.5 text-xs capitalize text-[#7b72a8]">{batch.batchType.replace(/-/g, " ")} · {batch.totalJobs} controlled variations</p></div>
-                    <div className="flex items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${batch.status === "completed" ? "bg-[#4caf50]/10 text-[#7bd47f]" : batch.status === "failed" ? "bg-[#e05555]/10 text-[#e87979]" : batch.status === "cancelled" ? "bg-[#776ca4]/15 text-[#a79dc7]" : "bg-[#e8f724]/10 text-[#e8f724]"}`}>{batch.status}</span>
-                      {(batch.status === "pending" || batch.status === "running") && <Button size="sm" variant="ghost" className="h-8 rounded-full text-[#a79dc7] hover:text-[#e87979]" onClick={() => cancelBatch.mutate({ id: batch.id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListBatchesQueryKey() }) })}><Square className="mr-1 h-3.5 w-3.5 fill-current" /> Stop queue</Button>}
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <div className="mb-3 flex items-center gap-3"><Progress value={value} className="h-1.5 flex-1 bg-[#2a2448]" /><span className="whitespace-nowrap font-mono text-xs text-[#a79dc7]">{done}/{batch.totalJobs} complete · {batch.failedJobs} failed</span></div>
-                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {batch.children.map((child) => (
-                        <div key={child.id} className="rounded-xl border border-[#39305f] bg-[#151127] p-3">
-                          <div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-[#e8f724]">V{child.batchIndex}</span><span className="text-xs capitalize text-[#a79dc7]">{child.status}</span></div>
-                          <p className="mt-1 truncate text-[11px] text-[#7b72a8]">{child.workerLabel || "Waiting for a compatible GPU"}</p>
-                          <p className="mt-1 line-clamp-1 text-xs text-[#d4ceed]">{String((child.params as Record<string, any>).variation?.camera ?? (child.params as Record<string, any>).variation?.aspect ?? child.workflowName)}</p>
-                          {child.errorMessage && <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[#e87979]">{child.errorMessage}</p>}
-                          <div className="mt-2 flex items-center gap-2">
-                            {child.outputs?.length ? <Link href="/gallery" className="text-[11px] font-bold text-[#e8f724]">View output →</Link> : null}
-                            {child.status === "failed" && <button className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-[#e8f724]" onClick={() => retryBatchChild.mutate({ id: batch.id, jobId: child.id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListBatchesQueryKey() }) })}><RotateCcw className="h-3 w-3" /> Retry</button>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {["all", "running", "pending", "completed", "failed"].map((status) => (
-            <button
-              key={status}
-              type="button"
-              onClick={() => setStatusFilter(status)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
-                statusFilter === status
-                  ? "border-[#e8f724] bg-[#e8f724] text-[#0d0b1a]"
-                  : "border-[#2d2650] bg-[#1e1a38] text-[#7b72a8] hover:border-[#e8f724]/50 hover:text-[#f0eeff]"
-              }`}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
-        <div className="relative w-full sm:max-w-xs">
-          <label htmlFor="job-search" className="sr-only">Search jobs</label>
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7b72a8]" />
-          <input
-            id="job-search"
-            value={jobSearch}
-            onChange={(event) => setJobSearch(event.target.value)}
-            placeholder="Search workflow or job ID"
-            className="h-10 w-full rounded-full border border-[#2d2650] bg-[#1e1a38] pl-10 pr-10 text-sm text-[#f0eeff] outline-none placeholder:text-[#4a4269] focus:border-[#e8f724]/60"
-          />
-          {jobSearch && (
-            <button type="button" aria-label="Clear job search" onClick={() => setJobSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7b72a8] hover:text-[#f0eeff]">
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="border border-[#2d2650] bg-[#1e1a38] rounded-2xl overflow-hidden">
-        <Table>
-          <TableHeader className="bg-[#16122a] border-b border-[#2d2650]">
-            <TableRow className="border-none hover:bg-[#16122a]">
-              {["ID", "Workflow", "GPU", "Status", "Progress", "Created", "Actions"].map((h, i) => (
-                <TableHead key={h} className={`text-[#4a4269] text-xs font-semibold h-10 ${i === 6 ? "text-right" : ""} ${i === 0 ? "w-[80px]" : ""} ${i === 4 ? "w-[180px]" : ""}`}>
-                  {h}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow className="border-b border-[#2d2650]">
-              <TableCell colSpan={7} className="h-32 text-center text-[#4a4269]">
-                  <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[#e8f724]" />
-                  <span className="text-sm">Loading jobs…</span>
-                </TableCell>
-              </TableRow>
-            ) : visibleJobs.length > 0 ? (
-              visibleJobs.map((job) => {
-                const progress = getProgress(job);
+      <div className="space-y-8 animate-in fade-in duration-500 delay-150 fill-mode-both">
+        {batches && batches.length > 0 && (
+          <section className="space-y-4">
+            <div className="flex items-center gap-3 px-1">
+              <GitBranch className="h-5 w-5 text-[#A779F5]" />
+              <h2 className="text-xl font-bold text-white">Creative Batches</h2>
+            </div>
+            <div className="space-y-4">
+              {batches.map((batch) => {
+                const done = batch.completedJobs + batch.failedJobs + batch.cancelledJobs;
+                const value = batch.totalJobs ? Math.round((done / batch.totalJobs) * 100) : 0;
                 return (
-                  <TableRow key={job.id} className="border-b border-[#2d2650] hover:bg-[#231f42] transition-colors">
-                    <TableCell className="font-mono text-xs text-[#4a4269]">#{job.id}</TableCell>
-                    <TableCell className="font-medium text-sm text-[#f0eeff]">{job.workflowId}</TableCell>
-                    <TableCell className="max-w-[150px]">
-                      <span className="inline-flex max-w-full items-center rounded-full border border-[#39305f] bg-[#151127] px-2.5 py-1 text-xs text-[#b9b1d7]">
-                        <span className="truncate">{job.workerLabel || "External provider"}</span>
-                      </span>
+                  <div key={batch.id} className="overflow-hidden rounded-3xl border border-[#2d2650] bg-[#171120] hover:border-[#A779F5]/30 transition-colors group">
+                    <div className="flex flex-col gap-4 border-b border-[#2d2650] p-6 bg-[#1a1325] sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="font-bold text-lg text-white">{batch.name}</p>
+                        <p className="mt-1 text-xs text-[#BEB2CC] capitalize">{batch.batchType.replace(/-/g, " ")} · {batch.totalJobs} controlled variations</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`rounded-full px-3 py-1 text-[10px] uppercase font-bold tracking-wider ${batch.status === "completed" ? "bg-[#B7F54A]/10 text-[#B7F54A] border border-[#B7F54A]/20" : batch.status === "failed" ? "bg-red-500/10 text-red-400 border border-red-500/20" : batch.status === "cancelled" ? "bg-[#2d2650]/50 text-[#7b72a8] border border-[#2d2650]" : "bg-[#A779F5]/10 text-[#A779F5] border border-[#A779F5]/20"}`}>{batch.status}</span>
+                        {(batch.status === "pending" || batch.status === "running") && <Button size="sm" variant="outline" className="h-8 rounded-xl bg-transparent border-[#2d2650] text-[#BEB2CC] hover:bg-[#2d2650] hover:text-white" onClick={() => cancelBatch.mutate({ id: batch.id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListBatchesQueryKey() }) })}><Square className="mr-2 h-3.5 w-3.5 fill-current" /> Stop Queue</Button>}
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <div className="mb-6 flex items-center gap-4">
+                        <Progress value={value} className="h-2 flex-1 bg-[#09080D] border border-[#2d2650]" />
+                        <span className="whitespace-nowrap font-mono text-xs text-[#7b72a8]">{done}/{batch.totalJobs} complete {batch.failedJobs > 0 && <span className="text-red-400 ml-1">· {batch.failedJobs} failed</span>}</span>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {batch.children.map((child) => (
+                          <div key={child.id} className="rounded-2xl border border-[#2d2650] bg-[#09080D] p-4 group/child hover:border-[#A779F5]/30 transition-colors">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#A779F5] bg-[#A779F5]/10 px-2 py-0.5 rounded-md">Var {child.batchIndex}</span>
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7b72a8]">{child.status}</span>
+                            </div>
+                            <p className="mt-3 truncate text-xs text-[#7b72a8] font-mono">{child.workerLabel || "Waiting for a compatible GPU"}</p>
+                            <p className="mt-1 line-clamp-1 text-sm text-white font-medium">{String((child.params as Record<string, any>).variation?.camera ?? (child.params as Record<string, any>).variation?.aspect ?? child.workflowName)}</p>
+                            {child.errorMessage && <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-red-400 bg-red-500/5 p-2 rounded-lg border border-red-500/10">{child.errorMessage}</p>}
+                            <div className="mt-4 flex items-center gap-2">
+                              {child.outputs?.length ? <Link href="/gallery" className="text-xs font-bold text-[#B7F54A] hover:underline underline-offset-4">View Output →</Link> : null}
+                              {child.status === "failed" && <button className="ml-auto inline-flex items-center gap-1.5 text-xs font-bold text-white hover:text-[#B7F54A] transition-colors bg-[#2d2650]/50 px-3 py-1.5 rounded-lg" onClick={() => retryBatchChild.mutate({ id: batch.id, jobId: child.id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListBatchesQueryKey() }) })}><RotateCcw className="h-3 w-3" /> Retry</button>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        <section className="space-y-4 pt-4 border-t border-[#2d2650]">
+          <div className="flex items-center gap-3 px-1 mb-6">
+            <ListOrdered className="h-5 w-5 text-[#B7F54A]" />
+            <h2 className="text-xl font-bold text-white">All Jobs</h2>
+          </div>
+          
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-[#171120] p-4 rounded-3xl border border-[#2d2650]">
+            <div className="flex flex-wrap gap-2">
+              {["all", "running", "pending", "completed", "failed"].map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => setStatusFilter(status)}
+                  className={`rounded-xl border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${
+                    statusFilter === status
+                      ? "border-[#A779F5] bg-[#A779F5]/10 text-[#A779F5]"
+                      : "border-[#2d2650] bg-[#09080D] text-[#7b72a8] hover:border-[#A779F5]/50 hover:text-white"
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+            <div className="relative w-full sm:max-w-xs">
+              <label htmlFor="job-search" className="sr-only">Search jobs</label>
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7b72a8]" />
+              <input
+                id="job-search"
+                value={jobSearch}
+                onChange={(event) => setJobSearch(event.target.value)}
+                placeholder="Search workflow or ID..."
+                className="h-10 w-full rounded-xl border border-[#2d2650] bg-[#09080D] pl-10 pr-10 text-sm text-white outline-none placeholder:text-[#7b72a8] focus:border-[#A779F5]/60 focus:ring-1 focus:ring-[#A779F5]/30 transition-all"
+              />
+              {jobSearch && (
+                <button type="button" aria-label="Clear job search" onClick={() => setJobSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7b72a8] hover:text-white transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="border border-[#2d2650] bg-[#171120] rounded-3xl overflow-hidden shadow-xl shadow-[#09080D]">
+            <Table>
+              <TableHeader className="bg-[#1a1325] border-b border-[#2d2650]">
+                <TableRow className="border-none hover:bg-[#1a1325]">
+                  {["ID", "Workflow", "GPU", "Status", "Progress", "Created", "Actions"].map((h, i) => (
+                    <TableHead key={h} className={`text-[#7b72a8] text-[10px] uppercase font-bold tracking-wider h-12 ${i === 6 ? "text-right pr-6" : ""} ${i === 0 ? "w-[80px] pl-6" : ""} ${i === 4 ? "w-[180px]" : ""}`}>
+                      {h}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow className="border-b border-[#2d2650]">
+                    <TableCell colSpan={7} className="h-48 text-center text-[#7b72a8]">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3 text-[#A779F5]" />
+                      <span className="text-sm font-medium">Fetching jobs...</span>
                     </TableCell>
-                    <TableCell>{getStatusBadge(job.status)}</TableCell>
-                    <TableCell>
-                      {progress !== null ? (
-                        <div className="space-y-1">
-                          <Progress value={progress} className="h-1.5 bg-[#2a2448] rounded-full" />
-                          <span className="text-xs text-[#7b72a8] font-mono">{progress}%</span>
-                        </div>
-                      ) : <span className="text-xs text-[#2d2650]">—</span>}
-                    </TableCell>
-                    <TableCell className="text-xs text-[#7b72a8]">{formatDate(job.createdAt)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {job.status === "completed" && (
-                          <Link href="/gallery">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-[#4a4269] hover:text-[#e8f724] rounded-full">
-                              <ExternalLink className="h-3.5 w-3.5" />
+                  </TableRow>
+                ) : visibleJobs.length > 0 ? (
+                  visibleJobs.map((job) => {
+                    const progress = getProgress(job);
+                    return (
+                      <TableRow key={job.id} className="border-b border-[#2d2650] hover:bg-[#231f42]/50 transition-colors">
+                        <TableCell className="font-mono text-xs text-[#BEB2CC] pl-6">#{job.id}</TableCell>
+                        <TableCell className="font-medium text-sm text-white">{job.workflowId}</TableCell>
+                        <TableCell className="max-w-[150px]">
+                          <span className="inline-flex max-w-full items-center rounded-lg border border-[#2d2650] bg-[#09080D] px-3 py-1 text-xs text-[#BEB2CC] font-mono shadow-inner">
+                            <span className="truncate">{job.workerLabel || "External Pool"}</span>
+                          </span>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(job.status)}</TableCell>
+                        <TableCell>
+                          {progress !== null ? (
+                            <div className="space-y-2">
+                              <Progress value={progress} className="h-1.5 bg-[#09080D] border border-[#2d2650]" />
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-[#A779F5]">{progress}%</span>
+                            </div>
+                          ) : <span className="text-xs text-[#2d2650]">—</span>}
+                        </TableCell>
+                        <TableCell className="text-xs text-[#7b72a8]">{formatDate(job.createdAt)}</TableCell>
+                        <TableCell className="text-right pr-6">
+                          <div className="flex items-center justify-end gap-2">
+                            {job.status === "completed" && (
+                              <Link href="/gallery">
+                                <Button variant="ghost" size="icon" className="h-9 w-9 text-[#BEB2CC] hover:text-[#B7F54A] hover:bg-[#B7F54A]/10 rounded-xl transition-colors">
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-9 w-9 text-[#BEB2CC] hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
+                              onClick={() => handleDelete(job.id)}>
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                          </Link>
-                        )}
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[#4a4269] hover:text-[#e05555] rounded-full"
-                          onClick={() => handleDelete(job.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-48 text-center text-[#7b72a8] text-sm">
+                      <div className="border border-dashed border-[#2d2650] rounded-2xl p-8 max-w-md mx-auto bg-[#09080D]">
+                        No jobs match the current filters.
                       </div>
                     </TableCell>
                   </TableRow>
-                );
-              })
-            ) : (
-              <TableRow>
-              <TableCell colSpan={7} className="h-32 text-center text-[#4a4269] text-sm">
-                No jobs match the current filters.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </section>
       </div>
     </div>
   );

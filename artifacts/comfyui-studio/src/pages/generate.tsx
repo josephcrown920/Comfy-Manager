@@ -22,7 +22,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Play, LayoutGrid, Code, AlertCircle, Bookmark, Trash2, Save, History, BookOpen, Plus, Loader2, CheckCircle2, Sparkles, Video, Search, X, Download, Info } from "lucide-react";
+import { 
+  ArrowLeft, Play, LayoutGrid, Code, AlertCircle, Bookmark, Trash2, Save, 
+  History, BookOpen, Plus, Loader2, CheckCircle2, Sparkles, Video, Search, 
+  X, Download, Info, ZoomIn, Minimize, ArrowRight as ArrowRightIcon, 
+  ArrowUp, ArrowDown, RotateCw, Timer
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { uploadFile } from "@/components/ui/file-upload";
 import sdxlImageTemplate from "@/assets/templates/sdxl-image.workflow.json";
@@ -39,6 +44,7 @@ import productSwapTemplate from "@/assets/templates/product-background-swap.work
 import talkingAvatarTemplate from "@/assets/templates/talking-avatar.workflow.json";
 import blogHeroTemplate from "@/assets/templates/blog-hero-image.workflow.json";
 import { WorkflowVisualizer } from "@/components/workflow-visualizer";
+import { PageHeader } from "@/components/creation-design/page-header";
 
 // Image Assets
 import sdxlThumbnail from "@/assets/thumbnails/sdxl-image.jpg";
@@ -54,14 +60,21 @@ import reelLoopThumbnail from "@/assets/thumbnails/reel-loop.jpg";
 import productSwapThumbnail from "@/assets/thumbnails/product-swap.jpg";
 import talkingAvatarThumbnail from "@/assets/thumbnails/talking-avatar.jpg";
 import blogHeroThumbnail from "@/assets/thumbnails/blog-hero.jpg";
+
 const seedanceReferenceThumbnail = "https://ark-doc.tos-ap-southeast-1.bytepluses.com/doc_image/r2v_tea_pic2.jpg";
 
 const CUSTOM_WORKFLOW_ID = "custom-workflow";
-
 const UPLOAD_STORAGE_PREFIX = "comfyui-upload:";
 const MOTION_WORKFLOW_ID = "motion-control-animatediff";
 
-const LIME = "#c8f135";
+const PALETTE = {
+  black: "#09080D",
+  plum: "#171120",
+  purple: "#A779F5",
+  green: "#B7F54A",
+  lavender: "#BEB2CC",
+  red: "#EF4444"
+};
 
 const WORKFLOW_GUIDANCE: Record<string, { bestFor: string; output: string }> = {
   "modelark-seedance-reference-video": {
@@ -99,14 +112,31 @@ function downloadJsonFile(filename: string, payload: unknown) {
 }
 
 const MOTION_PRESETS = [
-  { id: "zoom-in",   label: "Zoom In",    icon: "🔍", description: "Slow push toward the subject" },
-  { id: "zoom-out",  label: "Zoom Out",   icon: "🔭", description: "Pull back to reveal the scene" },
-  { id: "pan-left",  label: "Pan Left",   icon: "⬅",  description: "Slide the camera left" },
-  { id: "pan-right", label: "Pan Right",  icon: "➡",  description: "Slide the camera right" },
-  { id: "tilt-up",   label: "Tilt Up",    icon: "⬆",  description: "Lift the camera upward" },
-  { id: "tilt-down", label: "Tilt Down",  icon: "⬇",  description: "Dip the camera downward" },
-  { id: "rotate",    label: "Rotate",     icon: "↻",  description: "Spin around the subject" },
+  { id: "zoom-in",   label: "Zoom In",    icon: ZoomIn, description: "Slow push toward the subject" },
+  { id: "zoom-out",  label: "Zoom Out",   icon: Minimize, description: "Pull back to reveal the scene" },
+  { id: "pan-left",  label: "Pan Left",   icon: ArrowLeft,  description: "Slide the camera left" },
+  { id: "pan-right", label: "Pan Right",  icon: ArrowRightIcon,  description: "Slide the camera right" },
+  { id: "tilt-up",   label: "Tilt Up",    icon: ArrowUp,  description: "Lift the camera upward" },
+  { id: "tilt-down", label: "Tilt Down",  icon: ArrowDown,  description: "Dip the camera downward" },
+  { id: "rotate",    label: "Rotate",     icon: RotateCw,  description: "Spin around the subject" },
 ];
+
+function GenerateHeroVisual() {
+  const showcase = [
+    cinematicPortraitThumbnail, filmGradeThumbnail, epicLandscapeThumbnail, reelLoopThumbnail, talkingAvatarThumbnail
+  ];
+  return (
+    <div className="relative h-[300px] w-full bg-[#171120] overflow-hidden flex">
+      {showcase.map((src, i) => (
+        <div key={i} className="flex-1 relative h-full group border-r border-[#A779F5]/20 last:border-0">
+          <img src={src} alt="" className="absolute inset-0 w-full h-full object-cover opacity-50 grayscale-[40%] group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#09080D] via-[#09080D]/40 to-transparent opacity-80" />
+        </div>
+      ))}
+      <div className="absolute inset-0 bg-gradient-to-r from-[#09080D] via-transparent to-[#09080D] pointer-events-none opacity-50" />
+    </div>
+  );
+}
 
 export default function Generate() {
   const [location, setLocation] = useLocation();
@@ -145,7 +175,6 @@ export default function Generate() {
     });
   }, [workflows, categoryFilter, searchQuery]);
 
-  // Saved custom workflows only make sense in the unfiltered view or "custom" category
   const visibleSaved = (!categoryFilter || categoryFilter === "custom") ? (savedWorkflows ?? []) : [];
 
   if (selectedWorkflowId === CUSTOM_WORKFLOW_ID) {
@@ -164,35 +193,31 @@ export default function Generate() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Cinematic Header */}
-      <div className="space-y-3 relative z-10">
-        <p className="text-xs font-bold tracking-[0.2em] uppercase text-primary">Templates</p>
-        <h1 className="text-4xl md:text-5xl font-extrabold text-foreground tracking-tight drop-shadow-lg">
-          {filteredWorkflows.length > 0 ? `${filteredWorkflows.length} Workflows` : "Workflows"}
-        </h1>
-        <p className="text-muted-foreground text-base max-w-xl">
-          Select a template to begin generating. High-fidelity cinematic tools for your creative pipeline.
-        </p>
-      </div>
+    <div className="min-h-screen bg-[#09080D] text-white space-y-8 animate-in fade-in duration-500 pb-20 px-6 sm:px-12 pt-8">
+      <PageHeader 
+        title={filteredWorkflows.length > 0 ? `${filteredWorkflows.length} Workflows` : "Workflows"}
+        description="Select a template to begin generating. High-fidelity cinematic tools for your creative pipeline."
+        eyebrow="Templates"
+        visual={<GenerateHeroVisual />}
+      />
 
       <div className="relative z-10 max-w-xl">
         <label htmlFor="workflow-search" className="sr-only">Search workflows</label>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#BEB2CC]" />
           <Input
             id="workflow-search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search workflows, formats, or capabilities…"
-            className="h-12 rounded-2xl border-border bg-card/60 pl-11 pr-11 text-sm backdrop-blur-md"
+            className="h-12 rounded-2xl border-[#A779F5]/30 bg-[#171120] pl-11 pr-11 text-sm text-white placeholder:text-[#BEB2CC]/50 focus-visible:ring-[#B7F54A]/50 focus-visible:border-[#B7F54A]"
           />
           {searchQuery && (
             <button
               type="button"
               aria-label="Clear workflow search"
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-[#BEB2CC] transition-colors hover:bg-[#A779F5]/20 hover:text-white"
             >
               <X className="h-4 w-4" />
             </button>
@@ -200,7 +225,6 @@ export default function Generate() {
         </div>
       </div>
 
-      {/* Category pill filters */}
       <div className="flex flex-wrap gap-2 relative z-10">
         {[
           { value: null,                   label: "All" },
@@ -209,7 +233,7 @@ export default function Generate() {
           { value: "lip-sync",             label: "Lip Sync" },
           { value: "motion-control",       label: "Motion Control" },
           { value: "seedance-style",       label: "Seedance-style" },
-           { value: "perform-anywhere",     label: "Perform Anywhere" },
+          { value: "perform-anywhere",     label: "Perform Anywhere" },
           { value: "cinematic",            label: "Cinematic" },
           { value: "content-creation",     label: "Content Creation" },
         ].map(({ value, label }) => {
@@ -223,8 +247,8 @@ export default function Generate() {
               }}
               className={`px-5 py-2 rounded-full text-sm font-semibold border transition-all duration-300 ${
                 active
-                  ? "bg-primary text-primary-foreground border-primary shadow-[0_0_15px_rgba(232,247,36,0.3)]"
-                  : "bg-card/50 text-muted-foreground border-border hover:text-foreground hover:border-primary/50 hover:bg-card backdrop-blur-md"
+                  ? "bg-[#B7F54A] text-[#09080D] border-[#B7F54A] shadow-[0_0_15px_rgba(183,245,74,0.3)]"
+                  : "bg-[#171120] text-[#BEB2CC] border-[#A779F5]/30 hover:text-white hover:border-[#A779F5] hover:bg-[#A779F5]/10"
               }`}
             >
               {label}
@@ -235,17 +259,16 @@ export default function Generate() {
 
       {isListLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="aspect-[4/5] rounded-2xl bg-card/50" />)}
+          {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="aspect-[4/5] rounded-3xl bg-[#171120] border border-[#A779F5]/20" />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredWorkflows.map(workflow => (
             <div
               key={workflow.id}
-              className="relative rounded-3xl cursor-pointer group flex flex-col overflow-hidden aspect-[4/5] border border-white/5 hover:border-primary/50 transition-all duration-500 shadow-2xl bg-card"
+              className="relative rounded-3xl cursor-pointer group flex flex-col overflow-hidden aspect-[4/5] border border-[#A779F5]/20 hover:border-[#B7F54A]/80 transition-all duration-500 shadow-2xl bg-[#171120]"
               onClick={() => setSelectedWorkflowId(workflow.id)}
             >
-              {/* Full-bleed thumbnail */}
               {DB_WORKFLOW_THUMBNAILS[workflow.id] ? (
                 <img
                   src={DB_WORKFLOW_THUMBNAILS[workflow.id]}
@@ -253,32 +276,29 @@ export default function Generate() {
                   className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                 />
               ) : (
-                <div className="absolute inset-0 bg-secondary flex items-center justify-center">
-                  <LayoutGrid className="h-10 w-10 text-muted-foreground/30" />
+                <div className="absolute inset-0 bg-[#09080D] flex items-center justify-center">
+                  <LayoutGrid className="h-10 w-10 text-[#BEB2CC]/30" />
                 </div>
               )}
-              {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#09080D] via-[#09080D]/30 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
               
-              {/* Top info */}
               <div className="absolute top-4 left-4 flex gap-2 z-10">
-                <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 text-xs text-primary font-bold tracking-wide shadow-lg">
+                <div className="flex items-center gap-1.5 bg-[#09080D]/80 backdrop-blur-md border border-[#A779F5]/30 rounded-full px-3 py-1.5 text-xs text-[#B7F54A] font-bold tracking-wide shadow-lg">
                   <LayoutGrid className="h-3.5 w-3.5" />
                   Node graph
                 </div>
               </div>
 
-              {/* Bottom info */}
               <div className="absolute bottom-0 left-0 right-0 p-6 z-10 flex flex-col gap-3 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
                 <h3 className="font-extrabold text-2xl text-white leading-tight drop-shadow-md">{workflow.name}</h3>
-                <p className="text-sm text-white/80 line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-75">{workflow.description}</p>
+                <p className="text-sm text-[#BEB2CC] line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-75">{workflow.description}</p>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  <span className="px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs text-white/90 font-semibold shadow-lg">
+                  <span className="px-3 py-1.5 rounded-full bg-[#171120]/80 backdrop-blur-md border border-[#A779F5]/30 text-xs text-[#BEB2CC] font-semibold shadow-lg">
                     {workflow.category.replace(/-/g, ' ')}
                   </span>
                   {workflow.estimatedTime && (
-                    <span className="px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs text-white/90 font-semibold shadow-lg">
-                      ⏱ {workflow.estimatedTime}
+                    <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#171120]/80 backdrop-blur-md border border-[#A779F5]/30 text-xs text-[#BEB2CC] font-semibold shadow-lg">
+                      <Timer className="h-3 w-3" /> {workflow.estimatedTime}
                     </span>
                   )}
                 </div>
@@ -288,19 +308,19 @@ export default function Generate() {
           {visibleSaved.map(saved => (
             <div
               key={`saved-${saved.id}`}
-              className="relative rounded-3xl cursor-pointer group flex flex-col overflow-hidden aspect-[4/5] border border-white/5 hover:border-primary/50 transition-all duration-500 shadow-2xl bg-card"
+              className="relative rounded-3xl cursor-pointer group flex flex-col overflow-hidden aspect-[4/5] border border-[#A779F5]/20 hover:border-[#B7F54A]/80 transition-all duration-500 shadow-2xl bg-[#171120]"
               onClick={() => {
                 setInitialCustomJson(saved.json);
                 setSelectedWorkflowId(CUSTOM_WORKFLOW_ID);
               }}
             >
-              <div className="absolute inset-0 bg-secondary/80 flex items-center justify-center">
-                <Bookmark className="h-16 w-16 text-muted-foreground/30 group-hover:scale-110 transition-transform duration-700 ease-out" />
+              <div className="absolute inset-0 bg-[#171120]/80 flex items-center justify-center">
+                <Bookmark className="h-16 w-16 text-[#BEB2CC]/30 group-hover:scale-110 transition-transform duration-700 ease-out" />
               </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#09080D] via-[#09080D]/30 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
               
               <div className="absolute top-4 left-4 flex gap-2 z-10">
-                <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 text-xs text-primary font-bold tracking-wide shadow-lg">
+                <div className="flex items-center gap-1.5 bg-[#09080D]/80 backdrop-blur-md border border-[#A779F5]/30 rounded-full px-3 py-1.5 text-xs text-[#B7F54A] font-bold tracking-wide shadow-lg">
                   <Bookmark className="h-3.5 w-3.5" />
                   Saved Custom
                 </div>
@@ -310,7 +330,7 @@ export default function Generate() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-white/50 hover:text-destructive bg-black/40 hover:bg-black/80 backdrop-blur-md rounded-full transition-all"
+                  className="h-8 w-8 text-[#BEB2CC] hover:text-[#EF4444] bg-[#09080D]/40 hover:bg-[#09080D]/80 backdrop-blur-md rounded-full transition-all"
                   aria-label={`Delete saved workflow ${saved.name}`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -331,9 +351,9 @@ export default function Generate() {
 
               <div className="absolute bottom-0 left-0 right-0 p-6 z-10 flex flex-col gap-3 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
                 <h3 className="font-extrabold text-2xl text-white leading-tight drop-shadow-md truncate">{saved.name}</h3>
-                <p className="text-sm text-white/80 line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-75">Your saved custom workflow — click to load and run.</p>
+                <p className="text-sm text-[#BEB2CC] line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-75">Your saved custom workflow — click to load and run.</p>
                 <div className="flex gap-2 mt-1">
-                  <span className="px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs text-white/90 font-semibold shadow-lg">
+                  <span className="px-3 py-1.5 rounded-full bg-[#171120]/80 backdrop-blur-md border border-[#A779F5]/30 text-xs text-[#BEB2CC] font-semibold shadow-lg">
                     {new Date(saved.createdAt).toLocaleDateString()}
                   </span>
                 </div>
@@ -344,7 +364,7 @@ export default function Generate() {
       )}
 
       {filteredWorkflows.length === 0 && !isListLoading && (
-        <div className="text-center p-16 border-2 border-dashed border-border rounded-3xl text-muted-foreground/50 font-medium">
+        <div className="text-center p-16 border-2 border-dashed border-[#A779F5]/30 rounded-3xl text-[#BEB2CC]/60 font-medium">
           No workflows match your search. Try a different phrase or clear the search.
         </div>
       )}
@@ -402,15 +422,13 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [saveName, setSaveName] = useState("");
 
-  // Debounced missing-node check (informational, never blocks Run)
   const validateNodes = useValidateComfyNodes();
   const [nodeCheck, setNodeCheck] = useState<{ reachable: boolean; missingNodes: string[] } | null>(null);
   const [viewMode, setViewMode] = useState<"json" | "diagram">("json");
   const checkSeq = useRef(0);
+  
   useEffect(() => {
     setNodeCheck(null);
-    // Invalidate any in-flight check on EVERY edit, so a stale response
-    // can never resurface a warning for content that changed since.
     const seq = ++checkSeq.current;
     const value = workflowJson.trim();
     if (!value) return;
@@ -418,7 +436,7 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
       const parsed = JSON.parse(value);
       if (typeof parsed !== "object" || Array.isArray(parsed) || parsed === null) return;
     } catch {
-      return; // not valid JSON yet — validateJson handles messaging
+      return;
     }
     const t = setTimeout(() => {
       validateNodes.mutate(
@@ -429,34 +447,11 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
               setNodeCheck({ reachable: result.reachable, missingNodes: result.missingNodes });
             }
           },
-          // Silently ignore errors — this check is best-effort.
         }
       );
     }, 700);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflowJson]);
-
-  const onSave = () => {
-    if (!validateJson(workflowJson)) return;
-    if (!saveName.trim()) {
-      toast({ title: "Give your workflow a name first", variant: "destructive" });
-      return;
-    }
-    createSaved.mutate(
-      { data: { name: saveName.trim(), json: workflowJson } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListSavedWorkflowsQueryKey() });
-          toast({ title: `Saved "${saveName.trim()}"`, description: "It now appears in your template grid." });
-          setSaveName("");
-        },
-        onError: (err: any) => {
-          toast({ title: "Failed to save workflow", description: err.message, variant: "destructive" });
-        },
-      }
-    );
-  };
+  }, [workflowJson, validateNodes]);
 
   const validateJson = (value: string): boolean => {
     if (!value.trim()) {
@@ -466,7 +461,7 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
     try {
       const parsed = JSON.parse(value);
       if (typeof parsed !== "object" || Array.isArray(parsed) || parsed === null) {
-        setJsonError("Workflow JSON must be an object (the ComfyUI API-format prompt graph).");
+        setJsonError("Workflow JSON must be an object.");
         return false;
       }
       setJsonError(null);
@@ -500,6 +495,27 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
     );
   };
 
+  const onSave = () => {
+    if (!validateJson(workflowJson)) return;
+    if (!saveName.trim()) {
+      toast({ title: "Give your workflow a name first", variant: "destructive" });
+      return;
+    }
+    createSaved.mutate(
+      { data: { name: saveName.trim(), json: workflowJson } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListSavedWorkflowsQueryKey() });
+          toast({ title: `Saved "${saveName.trim()}"`, description: "It now appears in your template grid." });
+          setSaveName("");
+        },
+        onError: (err: any) => {
+          toast({ title: "Failed to save", description: err.message, variant: "destructive" });
+        },
+      }
+    );
+  };
+
   const onDownloadApiJson = () => {
     if (!validateJson(workflowJson)) return;
     downloadJsonFile("comfyui-studio-workflow-api.json", JSON.parse(workflowJson));
@@ -507,33 +523,33 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
   };
 
   return (
-    <div className="animate-in slide-in-from-right-8 duration-300">
-      <Button variant="ghost" className="mb-6 -ml-4 text-[#7b72a8] hover:text-white rounded-lg" onClick={onBack}>
+    <div className="min-h-screen bg-[#09080D] text-white p-6 sm:p-12 animate-in slide-in-from-right-8 duration-300">
+      <Button variant="ghost" className="mb-6 -ml-4 text-[#BEB2CC] hover:text-white rounded-lg" onClick={onBack}>
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Templates
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
-        <div className="bg-[#1e1a38] border border-[#2d2650] rounded-lg">
-          <div className="p-6 border-b border-[#2d2650]">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Code className="h-5 w-5 text-[#e8f724]" />
+        <div className="bg-[#171120] border border-[#A779F5]/30 rounded-2xl shadow-xl">
+          <div className="p-6 border-b border-[#A779F5]/20">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Code className="h-6 w-6 text-[#B7F54A]" />
               Custom Workflow
             </h2>
-            <p className="text-[#7b72a8] text-sm mt-1">
+            <p className="text-[#BEB2CC] text-sm mt-2">
               Paste your ComfyUI API-format workflow JSON and run it directly on your server.
             </p>
           </div>
           <div className="p-6">
-            <Alert className="mb-6 border-[#2d2650] bg-[#1e1a38] rounded-lg">
-              <AlertCircle className="h-4 w-4 text-[#e8f724]" />
-              <AlertDescription className="text-sm">
-                Export your workflow from ComfyUI using <strong>Save (API format)</strong> in the settings menu, then paste the resulting JSON below. The workflow is submitted unchanged to your ComfyUI server.
+            <Alert className="mb-6 border-[#A779F5]/30 bg-[#09080D] rounded-xl">
+              <AlertCircle className="h-4 w-4 text-[#B7F54A]" />
+              <AlertDescription className="text-sm text-[#BEB2CC]">
+                Export your workflow from ComfyUI using <strong className="text-white">Save (API format)</strong> in the settings menu, then paste the resulting JSON below.
               </AlertDescription>
             </Alert>
 
-            <div className="mb-6 space-y-2">
-              <Label className="text-sm font-medium">Start from a template</Label>
+            <div className="mb-6 space-y-3">
+              <Label className="text-sm font-semibold text-white">Start from a template</Label>
               <div className="flex flex-wrap gap-2">
                 {WORKFLOW_TEMPLATES.map((t) => (
                   <Button
@@ -541,7 +557,7 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="bg-[#1e1a38] border-[#2d2650] hover:bg-[#2a2448] rounded-lg"
+                    className="bg-[#09080D] border-[#A779F5]/30 text-[#BEB2CC] hover:bg-[#A779F5]/20 hover:text-white rounded-lg"
                     title={t.description}
                     onClick={() => {
                       setWorkflowJson(JSON.stringify(t.json, null, 2));
@@ -552,29 +568,26 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                   </Button>
                 ))}
               </div>
-              <p className="text-xs text-[#7b72a8] font-mono">
-                Templates reference specific models and custom nodes — edit prompts, filenames, and inputs to match what's installed on your server.
-              </p>
             </div>
 
             <form id="custom-workflow-form" onSubmit={onSubmit} className="space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">
-                    Workflow JSON <span className="text-[#e05555]">*</span>
+                  <Label className="text-sm font-semibold text-white">
+                    Workflow JSON <span className="text-[#EF4444]">*</span>
                   </Label>
-                  <div className="flex items-center gap-1 bg-[#1e1a38] p-1 rounded-lg border border-[#2d2650]">
+                  <div className="flex items-center gap-1 bg-[#09080D] p-1 rounded-lg border border-[#A779F5]/30">
                     <button
                       type="button"
                       onClick={() => setViewMode("json")}
-                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${viewMode === "json" ? "bg-[#2a2448] text-white" : "text-[#7b72a8] hover:text-white"}`}
+                      className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${viewMode === "json" ? "bg-[#B7F54A] text-[#09080D]" : "text-[#BEB2CC] hover:text-white"}`}
                     >
                       JSON
                     </button>
                     <button
                       type="button"
                       onClick={() => setViewMode("diagram")}
-                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${viewMode === "diagram" ? "bg-[#2a2448] text-white" : "text-[#7b72a8] hover:text-white"}`}
+                      className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${viewMode === "diagram" ? "bg-[#B7F54A] text-[#09080D]" : "text-[#BEB2CC] hover:text-white"}`}
                     >
                       Diagram
                     </button>
@@ -585,37 +598,18 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
                     value={workflowJson}
                     onChange={(e) => handleChange(e.target.value)}
                     placeholder={'{\n  "1": {\n    "class_type": "KSampler",\n    "inputs": { ... }\n  }\n}'}
-                    className={`font-mono text-xs min-h-[400px] resize-y rounded-lg bg-[#1e1a38] border-[#2d2650] ${jsonError ? "border-[#e05555]" : ""}`}
+                    className={`font-mono text-sm min-h-[400px] resize-y rounded-xl bg-[#09080D] border-[#A779F5]/30 text-white placeholder:text-[#BEB2CC]/30 focus-visible:ring-[#B7F54A] ${jsonError ? "border-[#EF4444]" : ""}`}
                     spellCheck={false}
                   />
                 ) : (
-                  <div className="min-h-[400px] h-[500px] border border-[#2d2650] rounded-lg bg-[#1e1a38]">
+                  <div className="min-h-[400px] h-[500px] border border-[#A779F5]/30 rounded-xl bg-[#09080D] overflow-hidden">
                     <WorkflowVisualizer jsonString={workflowJson} />
                   </div>
                 )}
                 {jsonError && (
-                  <p className="text-sm text-[#e05555] flex items-center gap-1 font-mono">
-                    <AlertCircle className="h-3 w-3" />
+                  <p className="text-sm text-[#EF4444] flex items-center gap-2 font-mono mt-2">
+                    <AlertCircle className="h-4 w-4" />
                     {jsonError}
-                  </p>
-                )}
-                {!jsonError && nodeCheck && nodeCheck.missingNodes.length > 0 && (
-                  <Alert className="border-yellow-500/40 bg-yellow-500/10 rounded-lg">
-                    <AlertCircle className="h-4 w-4 text-yellow-500" />
-                    <AlertDescription className="text-sm">
-                      <strong>Missing nodes:</strong> {nodeCheck.missingNodes.join(", ")}
-                      <span className="block mt-1 text-xs text-[#7b72a8]">
-                        These node types aren't installed on your ComfyUI server. The job will likely fail
-                        unless you install the matching node packs (or the node exists under another name).
-                        You can still run it.
-                      </span>
-                    </AlertDescription>
-                  </Alert>
-                )}
-                {!jsonError && nodeCheck && !nodeCheck.reachable && (
-                  <p className="text-xs text-[#7b72a8] flex items-center gap-1 font-mono">
-                    <AlertCircle className="h-3 w-3" />
-                    Couldn't check nodes — ComfyUI server is unreachable right now.
                   </p>
                 )}
               </div>
@@ -624,68 +618,54 @@ function CustomWorkflowForm({ onBack, initialJson = "" }: { onBack: () => void; 
         </div>
 
         <div className="space-y-6">
-          <div className="bg-[#1e1a38] border border-[#2d2650] rounded-lg p-4 sticky top-6">
-            <h3 className="font-semibold mb-4 text-sm uppercase tracking-widest text-[#f0eeff]">Ready?</h3>
+          <div className="bg-[#171120] border border-[#A779F5]/30 rounded-2xl p-6 sticky top-6 shadow-xl">
+            <h3 className="font-bold mb-5 text-sm uppercase tracking-widest text-white">Execute</h3>
             <div className="space-y-4">
               <Button
                 type="submit"
                 form="custom-workflow-form"
                 size="lg"
-                className="w-full text-sm font-medium py-6 rounded-lg bg-[#e8f724] text-black hover:bg-[#d4e010]"
+                className="w-full text-sm font-bold py-6 rounded-xl bg-[#B7F54A] text-[#09080D] hover:bg-[#A3E030] shadow-[0_0_20px_rgba(183,245,74,0.3)] hover:shadow-[0_0_30px_rgba(183,245,74,0.5)] transition-all"
                 disabled={createJob.isPending}
               >
                 {createJob.isPending ? "Starting Job..." : (
                   <>
-                    <Play className="mr-2 h-4 w-4 fill-current" />
+                    <Play className="mr-2 h-5 w-5 fill-current" />
                     Run Workflow
                   </>
                 )}
               </Button>
-              <div className="text-xs text-[#7b72a8] text-center font-mono">
-                This job will be added to your queue.
-              </div>
               <Button
                 type="button"
                 variant="outline"
-                className="w-full rounded-lg border-[#2d2650] bg-transparent hover:bg-[#2a2448]"
+                className="w-full rounded-xl border-[#A779F5]/30 bg-transparent text-white hover:bg-[#A779F5]/20 hover:text-white py-6"
                 onClick={onDownloadApiJson}
               >
                 <Download className="mr-2 h-4 w-4" />
-                Download API JSON
+                Download JSON
               </Button>
-              <div className="flex gap-2 rounded-lg border border-[#2d2650] bg-[#17132b] p-3 text-xs text-[#9b93bd]">
-                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#e8f724]" />
-                Import this file in another ComfyUI-compatible app using its API-format workflow option.
+              <div className="bg-[#09080D] border border-[#A779F5]/30 rounded-xl p-5 space-y-4 mt-6">
+                <h3 className="font-bold text-sm uppercase tracking-widest text-white flex items-center gap-2">
+                  <Bookmark className="h-4 w-4 text-[#B7F54A]" />
+                  Save for later
+                </h3>
+                <Input
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  placeholder="Workflow name"
+                  maxLength={100}
+                  className="bg-[#171120] border-[#A779F5]/30 rounded-lg text-white"
+                />
+                <Button
+                  type="button"
+                  className="w-full bg-[#A779F5]/20 text-[#A779F5] hover:bg-[#A779F5]/40 hover:text-white rounded-lg"
+                  onClick={onSave}
+                  disabled={createSaved.isPending}
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  {createSaved.isPending ? "Saving..." : "Save Template"}
+                </Button>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-[#1e1a38] border border-[#2d2650] rounded-lg p-4">
-            <h3 className="font-semibold mb-4 text-sm uppercase tracking-widest text-[#f0eeff] flex items-center gap-2">
-              <Bookmark className="h-4 w-4 text-[#e8f724]" />
-              Save for later
-            </h3>
-            <div className="space-y-3">
-              <Input
-                value={saveName}
-                onChange={(e) => setSaveName(e.target.value)}
-                placeholder="Workflow name"
-                maxLength={100}
-                className="bg-[#1e1a38] border-[#2d2650] rounded-lg"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full bg-transparent border-[#2d2650] hover:bg-[#2a2448] rounded-lg"
-                onClick={onSave}
-                disabled={createSaved.isPending}
-              >
-                <Save className="mr-2 h-4 w-4" />
-                {createSaved.isPending ? "Saving..." : "Save as…"}
-              </Button>
-              <p className="text-xs text-[#7b72a8] font-mono">
-                Saved workflows appear in the template grid so you can rerun them without re-pasting.
-              </p>
             </div>
           </div>
         </div>
@@ -710,20 +690,14 @@ export function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBac
 
   useEffect(() => {
     if (!workflow) return;
-
     const restoredFiles = workflow.params.reduce<Record<string, string>>((restored, param) => {
       if (param.type !== "file") return restored;
-
       try {
         const storedFilename = sessionStorage.getItem(getUploadStorageKey(workflow.id, param.key));
         if (storedFilename) restored[param.key] = storedFilename;
-      } catch {
-        // Storage can be unavailable in privacy-restricted browser contexts.
-      }
-
+      } catch {}
       return restored;
     }, {});
-
     setRehydratedFiles(restoredFiles);
     if (Object.keys(restoredFiles).length > 0) {
       setFormData((previous) => ({ ...previous, ...restoredFiles }));
@@ -736,19 +710,14 @@ export function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBac
 
   const handleFileSelect = (paramKey: string, filename: string) => {
     handleParamChange(paramKey, filename);
-
     try {
       sessionStorage.setItem(getUploadStorageKey(workflowId, paramKey), filename);
-    } catch {
-      // Storage can be unavailable in privacy-restricted browser contexts.
-    }
+    } catch {}
   };
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!workflow) return;
-
-    // Validate required fields
     for (const param of workflow.params) {
       const value = formData[param.key];
       const hasValue = value !== undefined && value !== null && String(value).trim().length > 0;
@@ -758,22 +727,16 @@ export function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBac
         return;
       }
     }
-
-    // Merge defaults
     const finalParams = { ...formData };
     for (const param of workflow.params) {
       if (finalParams[param.key] === undefined && param.defaultValue !== undefined) {
         finalParams[param.key] = param.defaultValue;
       }
     }
-
     createJob.mutate({
-      data: {
-        workflowId: workflow.id,
-        params: finalParams
-      }
+      data: { workflowId: workflow.id, params: finalParams }
     }, {
-      onSuccess: (job) => {
+      onSuccess: () => {
         toast({ title: "Job created successfully!" });
         setLocation("/jobs");
       },
@@ -783,27 +746,11 @@ export function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBac
     });
   };
 
-  const onExportPreset = () => {
-    if (!workflow) return;
-    downloadJsonFile(`${workflow.id}-preset.json`, {
-      format: "comfyui-studio-preset",
-      version: 1,
-      workflowId: workflow.id,
-      name: workflow.name,
-      description: workflow.description,
-      params: workflow.params,
-    });
-    toast({
-      title: "Preset downloaded",
-      description: "This portable settings file can be shared with another Studio installation.",
-    });
-  };
-
   if (isLoading || !workflow) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-40" />
-        <Skeleton className="h-[400px] w-full max-w-2xl rounded-xl" />
+      <div className="min-h-screen bg-[#09080D] p-12 space-y-6">
+        <Skeleton className="h-10 w-40 bg-[#171120]" />
+        <Skeleton className="h-[400px] w-full max-w-4xl rounded-2xl bg-[#171120]" />
       </div>
     );
   }
@@ -815,48 +762,44 @@ export function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBac
   const thumbnail = DB_WORKFLOW_THUMBNAILS[workflow.id];
 
   return (
-    <div className="animate-in slide-in-from-right-8 duration-300">
-      <Button variant="ghost" className="mb-6 -ml-4 text-muted-foreground" onClick={onBack}>
+    <div className="min-h-screen bg-[#09080D] text-white p-6 sm:p-12 animate-in slide-in-from-right-8 duration-300">
+      <Button variant="ghost" className="mb-8 -ml-4 text-[#BEB2CC] hover:text-white rounded-lg" onClick={onBack}>
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Templates
       </Button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
-        <Card className="border-border">
-          <CardHeader className="overflow-hidden bg-secondary/30 border-b p-0">
-            {thumbnail && (
-              <img
-                src={thumbnail}
-                alt={`${workflow.name} workflow thumbnail`}
-                className="h-48 w-full object-cover"
-              />
-            )}
-            <div className="space-y-2 p-6">
-              <CardTitle className="text-2xl">{workflow.name}</CardTitle>
-              <CardDescription>{workflow.description}</CardDescription>
-              <div className="grid gap-3 pt-3 text-sm sm:grid-cols-2">
-                <div className="rounded-xl border border-border/70 bg-background/30 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">Best for</p>
-                  <p className="mt-1 text-muted-foreground">{guidance.bestFor}</p>
-                </div>
-                <div className="rounded-xl border border-border/70 bg-background/30 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">Output</p>
-                  <p className="mt-1 text-muted-foreground">{guidance.output}</p>
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
+        <div className="bg-[#171120] border border-[#A779F5]/30 rounded-3xl shadow-2xl overflow-hidden">
+          {thumbnail && (
+            <div className="h-64 w-full relative">
+              <img src={thumbnail} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#171120] to-transparent" />
+            </div>
+          )}
+          <div className="p-8 relative z-10 -mt-10">
+            <h2 className="text-4xl font-black mb-3">{workflow.name}</h2>
+            <p className="text-[#BEB2CC] text-lg leading-relaxed max-w-2xl">{workflow.description}</p>
+            
+            <div className="grid gap-4 mt-8 sm:grid-cols-2">
+              <div className="rounded-2xl border border-[#A779F5]/20 bg-[#09080D]/50 p-5">
+                <p className="text-xs font-bold uppercase tracking-widest text-[#B7F54A]">Best for</p>
+                <p className="mt-2 text-sm text-[#BEB2CC] leading-relaxed">{guidance.bestFor}</p>
+              </div>
+              <div className="rounded-2xl border border-[#A779F5]/20 bg-[#09080D]/50 p-5">
+                <p className="text-xs font-bold uppercase tracking-widest text-[#B7F54A]">Output</p>
+                <p className="mt-2 text-sm text-[#BEB2CC] leading-relaxed">{guidance.output}</p>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <form id="workflow-form" onSubmit={onSubmit} className="space-y-6">
+
+            <form id="workflow-form" onSubmit={onSubmit} className="mt-10 space-y-8">
               {workflow.params.map(param => {
                 const value = formData[param.key] !== undefined ? formData[param.key] : (param.defaultValue || "");
-                
                 return (
-                  <div key={param.key} className="space-y-2">
-                    <Label className="flex items-center justify-between text-base">
-                      <span>{param.label} {param.required && <span className="text-destructive">*</span>}</span>
+                  <div key={param.key} className="space-y-3">
+                    <Label className="flex items-center justify-between text-base font-semibold text-white">
+                      <span>{param.label} {param.required && <span className="text-[#EF4444]">*</span>}</span>
                     </Label>
-                    {param.description && <p className="text-sm text-muted-foreground">{param.description}</p>}
+                    {param.description && <p className="text-sm text-[#BEB2CC]">{param.description}</p>}
                     
                     {param.type === 'text' && (
                       param.max && param.max > 100 ? (
@@ -864,7 +807,7 @@ export function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBac
                           value={value}
                           onChange={(e) => handleParamChange(param.key, e.target.value)}
                           placeholder={param.defaultValue?.toString() || ""}
-                          className="font-mono text-sm h-32"
+                          className="font-mono text-sm min-h-[120px] rounded-xl bg-[#09080D] border-[#A779F5]/30 text-white placeholder:text-[#BEB2CC]/30 focus-visible:ring-[#B7F54A]"
                         />
                       ) : (
                         <Input 
@@ -872,6 +815,7 @@ export function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBac
                           value={value}
                           onChange={(e) => handleParamChange(param.key, e.target.value)}
                           placeholder={param.defaultValue?.toString() || ""}
+                          className="rounded-xl bg-[#09080D] border-[#A779F5]/30 text-white focus-visible:ring-[#B7F54A]"
                         />
                       )
                     )}
@@ -883,11 +827,12 @@ export function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBac
                         onChange={(e) => handleParamChange(param.key, Number(e.target.value))}
                         min={param.min || undefined}
                         max={param.max || undefined}
+                        className="rounded-xl bg-[#09080D] border-[#A779F5]/30 text-white focus-visible:ring-[#B7F54A]"
                       />
                     )}
 
                     {param.type === 'slider' && (
-                      <div className="pt-4 pb-2">
+                      <div className="pt-4 pb-2 bg-[#09080D] rounded-xl border border-[#A779F5]/20 p-5">
                         <Slider 
                           value={[Number(value) || 0]} 
                           min={param.min || 0} 
@@ -895,7 +840,7 @@ export function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBac
                           step={1}
                           onValueChange={(v) => handleParamChange(param.key, v[0])}
                         />
-                        <div className="mt-2 text-right text-sm text-primary font-mono font-medium">
+                        <div className="mt-3 text-right text-sm text-[#B7F54A] font-mono font-bold">
                           {value}
                         </div>
                       </div>
@@ -903,83 +848,75 @@ export function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBac
 
                     {param.type === 'select' && (
                       <Select value={value} onValueChange={(v) => handleParamChange(param.key, v)}>
-                        <SelectTrigger>
+                        <SelectTrigger className="rounded-xl bg-[#09080D] border-[#A779F5]/30 text-white">
                           <SelectValue placeholder="Select an option" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-[#171120] border-[#A779F5]/30 text-white rounded-xl">
                           {param.options?.map(opt => (
-                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            <SelectItem key={opt} value={opt} className="focus:bg-[#A779F5]/20 focus:text-white">{opt}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     )}
 
                     {param.type === 'file' && (
-                      <FileUpload 
-                        accept={param.accept || undefined}
-                        previouslyUploadedName={rehydratedFiles[param.key]}
-                        onFileSelect={(filename) => handleFileSelect(param.key, filename)}
-                      />
+                      <div className="bg-[#09080D] rounded-xl border border-[#A779F5]/20 p-2">
+                        <FileUpload 
+                          accept={param.accept || undefined}
+                          previouslyUploadedName={rehydratedFiles[param.key]}
+                          onFileSelect={(filename) => handleFileSelect(param.key, filename)}
+                        />
+                      </div>
                     )}
                   </div>
                 );
               })}
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         <div className="space-y-6">
-          <Card className="sticky top-6">
-            <CardHeader>
-              <CardTitle className="text-lg">Ready?</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button 
-                type="submit" 
-                form="workflow-form"
-                size="lg" 
-                className="w-full text-base py-6 shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:shadow-[0_0_30px_rgba(var(--primary),0.5)] transition-all"
-                disabled={createJob.isPending}
-              >
-                {createJob.isPending ? "Starting Job..." : (
-                  <>
-                    <Play className="mr-2 h-5 w-5 fill-current" />
-                    Generate
-                  </>
-                )}
-              </Button>
-              <div className="text-xs text-muted-foreground text-center">
-                This job will be added to your queue.
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={onExportPreset}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Export preset
-              </Button>
-              <div className="flex gap-2 rounded-lg border border-border bg-secondary/40 p-3 text-xs text-muted-foreground">
-                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                Built-in presets export their settings. For a runnable ComfyUI node graph, use Custom Workflow and download API JSON.
-              </div>
-            </CardContent>
-          </Card>
+          <div className="bg-[#171120] border border-[#A779F5]/30 rounded-3xl p-6 sticky top-6 shadow-xl">
+            <h3 className="font-bold mb-5 text-sm uppercase tracking-widest text-white">Execute</h3>
+            <Button 
+              type="submit" 
+              form="workflow-form"
+              size="lg" 
+              className="w-full text-sm font-bold py-6 rounded-xl bg-[#B7F54A] text-[#09080D] hover:bg-[#A3E030] shadow-[0_0_20px_rgba(183,245,74,0.3)] hover:shadow-[0_0_30px_rgba(183,245,74,0.5)] transition-all mb-4"
+              disabled={createJob.isPending}
+            >
+              {createJob.isPending ? "Starting Job..." : (
+                <>
+                  <Play className="mr-2 h-5 w-5 fill-current" />
+                  Generate Media
+                </>
+              )}
+            </Button>
+            <p className="text-xs text-[#BEB2CC] text-center mb-6">
+              This job will be added to your queue.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full rounded-xl border-[#A779F5]/30 bg-transparent text-white hover:bg-[#A779F5]/20 hover:text-white py-6"
+              onClick={() => {
+                downloadJsonFile(`${workflow.id}-preset.json`, {
+                  format: "comfyui-studio-preset", version: 1, workflowId: workflow.id,
+                  name: workflow.name, description: workflow.description, params: workflow.params,
+                });
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export preset
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Motion Control ───────────────────────────────────────────────────────────
-
-function MotionUploadSlot({
-  label, hint, accept, onUploaded, uploaded,
-}: {
-  label: string; hint: string; accept: string;
-  onUploaded: (filename: string) => void; uploaded: boolean;
-}) {
+function MotionUploadSlot({ label, hint, accept, onUploaded, uploaded }: any) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -1004,24 +941,24 @@ function MotionUploadSlot({
 
   return (
     <div
-      className="aspect-video bg-black/50 rounded-lg flex flex-col items-center justify-center gap-2 border border-dashed border-white/20 cursor-pointer hover:border-white/40 transition-colors relative overflow-hidden"
+      className="aspect-video bg-[#09080D] rounded-xl flex flex-col items-center justify-center gap-2 border border-dashed border-[#A779F5]/40 cursor-pointer hover:border-[#B7F54A] transition-colors relative overflow-hidden group"
       onClick={() => fileRef.current?.click()}
     >
       <input ref={fileRef} type="file" accept={accept} className="hidden" onChange={handleChange} />
       {uploading ? (
         <>
-          <Loader2 className="h-5 w-5 text-white/50 animate-spin" />
-          <span className="text-xs text-white/40">{progress}%</span>
-          <div className="absolute bottom-0 left-0 h-0.5 transition-all" style={{ width: `${progress}%`, background: LIME }} />
+          <Loader2 className="h-6 w-6 text-[#B7F54A] animate-spin" />
+          <span className="text-xs text-[#BEB2CC]">{progress}%</span>
+          <div className="absolute bottom-0 left-0 h-1 transition-all bg-[#B7F54A]" style={{ width: `${progress}%` }} />
         </>
       ) : uploaded ? (
-        <CheckCircle2 className="h-7 w-7" style={{ color: LIME }} />
+        <CheckCircle2 className="h-8 w-8 text-[#B7F54A]" />
       ) : (
-        <Plus className="h-7 w-7 text-white/25" />
+        <Plus className="h-8 w-8 text-[#BEB2CC]/50 group-hover:text-[#B7F54A]" />
       )}
-      <div className="mt-1 text-center px-2">
-        <p className="text-sm font-semibold text-white">{label}</p>
-        <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>{hint}</p>
+      <div className="mt-1 text-center px-4">
+        <p className="text-sm font-bold text-white">{label}</p>
+        <p className="text-xs mt-1 text-[#BEB2CC]">{hint}</p>
       </div>
     </div>
   );
@@ -1031,7 +968,6 @@ function MotionControlForm({ onBack }: { onBack: () => void }) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const createJob = useCreateJob();
-
   const [activeTab, setActiveTab] = useState<"library" | "history">("library");
   const [sourceImage, setSourceImage] = useState("");
   const [selectedPreset, setSelectedPreset] = useState("zoom-in");
@@ -1045,209 +981,142 @@ function MotionControlForm({ onBack }: { onBack: () => void }) {
       return;
     }
     createJob.mutate(
-      {
-        data: {
-          workflowId: MOTION_WORKFLOW_ID,
-          params: { source_image: sourceImage, motion_preset: selectedPreset, motion_strength: motionStrength, num_frames: numFrames, prompt },
-        },
-      },
-      {
-        onSuccess: () => { toast({ title: "Motion job started!" }); setLocation("/jobs"); },
-        onError: (err: any) => { toast({ title: "Failed to start job", description: err.message, variant: "destructive" }); },
-      }
+      { data: { workflowId: MOTION_WORKFLOW_ID, params: { source_image: sourceImage, motion_preset: selectedPreset, motion_strength: motionStrength, num_frames: numFrames, prompt } } },
+      { onSuccess: () => { toast({ title: "Motion job started!" }); setLocation("/jobs"); }, onError: (err: any) => { toast({ title: "Failed to start job", description: err.message, variant: "destructive" }); } }
     );
   };
 
+  const SelectedIcon = MOTION_PRESETS.find(p => p.id === selectedPreset)?.icon || Video;
+
   return (
-    <div
-      className="animate-in slide-in-from-right-8 duration-300 -mx-6 -mt-6 flex flex-col"
-      style={{ minHeight: "calc(100vh - 56px)", background: "#0f0f10" }}
-    >
-      {/* Back */}
-      <div className="px-6 pt-4 flex-shrink-0">
-        <Button variant="ghost" className="text-white/50 hover:text-white -ml-2" onClick={onBack}>
+    <div className="min-h-[100dvh] bg-[#09080D] flex flex-col animate-in fade-in duration-500">
+      <div className="px-8 py-6 flex-shrink-0 border-b border-[#A779F5]/20 bg-[#171120]">
+        <Button variant="ghost" className="text-[#BEB2CC] hover:text-white -ml-4" onClick={onBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Templates
         </Button>
       </div>
-
       <div className="flex flex-1 overflow-hidden">
-        {/* ── Left sidebar ── */}
-        <div
-          className="w-72 flex-shrink-0 flex flex-col p-4 gap-3 overflow-y-auto"
-          style={{ borderRight: "1px solid rgba(255,255,255,0.08)" }}
-        >
-          {/* Tabs */}
-          <div className="flex gap-1 rounded-xl p-1" style={{ background: "rgba(255,255,255,0.05)" }}>
+        <div className="w-80 flex-shrink-0 flex flex-col p-6 gap-5 overflow-y-auto border-r border-[#A779F5]/20 bg-[#171120]">
+          <div className="flex gap-1 rounded-xl p-1 bg-[#09080D] border border-[#A779F5]/30">
             {(["history", "library"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  activeTab === tab ? "text-white" : "text-white/40 hover:text-white/70"
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                  activeTab === tab ? "bg-[#A779F5]/20 text-[#B7F54A]" : "text-[#BEB2CC] hover:text-white"
                 }`}
-                style={activeTab === tab ? { background: "rgba(255,255,255,0.1)" } : {}}
               >
-                {tab === "history" ? <History className="h-3 w-3" /> : <BookOpen className="h-3 w-3" />}
-                {tab === "history" ? "History" : "Motion Library"}
+                {tab === "history" ? <History className="h-4 w-4" /> : <BookOpen className="h-4 w-4" />}
+                {tab}
               </button>
             ))}
           </div>
 
-          {/* Motion-to-copy shortcut card */}
-          <div
-            onClick={() => setActiveTab("library")}
-            className="rounded-xl p-3 cursor-pointer transition-colors"
-            style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }}
-          >
-            <div
-              className="aspect-video bg-black/50 rounded-lg mb-2 flex flex-col items-center justify-center gap-1"
-              style={{ border: "1px dashed rgba(255,255,255,0.15)" }}
-            >
-              <Video className="h-5 w-5 text-white/25" />
-              <span className="text-xs font-bold" style={{ color: LIME }}>
+          <div className="rounded-2xl p-4 bg-[#09080D] border border-[#A779F5]/30 cursor-pointer hover:border-[#B7F54A]/50 transition-colors" onClick={() => setActiveTab("library")}>
+            <div className="aspect-video bg-[#171120] rounded-xl mb-3 flex flex-col items-center justify-center gap-2 border border-[#A779F5]/20">
+              <SelectedIcon className="h-6 w-6 text-[#B7F54A]" />
+              <span className="text-sm font-bold text-[#B7F54A]">
                 {MOTION_PRESETS.find((p) => p.id === selectedPreset)?.label ?? "Pick a style"}
               </span>
             </div>
-            <p className="text-sm font-semibold text-white">Add motion to copy</p>
-            <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
-              Video duration: 3–30 seconds
-            </p>
+            <p className="text-sm font-bold text-white">Add motion to copy</p>
+            <p className="text-xs mt-1 text-[#BEB2CC]">Video duration: 3–30 seconds</p>
           </div>
 
-          {/* Character upload */}
-          <div
-            className="rounded-xl p-3"
-            style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }}
-          >
-            <MotionUploadSlot
-              label="Add your character"
-              hint="Image with visible face and body"
-              accept="image/*"
-              onUploaded={setSourceImage}
-              uploaded={!!sourceImage}
-            />
+          <div className="rounded-2xl p-4 bg-[#09080D] border border-[#A779F5]/30">
+            <MotionUploadSlot label="Add your character" hint="Image with visible face and body" accept="image/*" onUploaded={setSourceImage} uploaded={!!sourceImage} />
           </div>
 
-          {/* Sliders */}
-          <div
-            className="rounded-xl px-4 py-3 space-y-4"
-            style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }}
-          >
+          <div className="rounded-2xl px-5 py-4 space-y-6 bg-[#09080D] border border-[#A779F5]/30">
             <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>Motion Strength</span>
-                <span className="text-xs font-mono text-white">{motionStrength}</span>
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-xs font-semibold text-[#BEB2CC] uppercase tracking-wider">Motion Strength</span>
+                <span className="text-sm font-mono font-bold text-[#B7F54A]">{motionStrength}</span>
               </div>
               <Slider value={[motionStrength]} min={0} max={100} step={1} onValueChange={(v) => setMotionStrength(v[0])} />
             </div>
             <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>Frames</span>
-                <span className="text-xs font-mono text-white">{numFrames}</span>
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-xs font-semibold text-[#BEB2CC] uppercase tracking-wider">Frames</span>
+                <span className="text-sm font-mono font-bold text-[#B7F54A]">{numFrames}</span>
               </div>
               <Slider value={[numFrames]} min={8} max={64} step={8} onValueChange={(v) => setNumFrames(v[0])} />
             </div>
           </div>
 
-          {/* Optional prompt */}
           <Textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Optional: describe the motion in words…"
-            className="text-sm resize-none min-h-[60px] text-white placeholder:text-white/30"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+            className="text-sm resize-none min-h-[80px] rounded-xl bg-[#09080D] border-[#A779F5]/30 text-white placeholder:text-[#BEB2CC]/50 focus-visible:ring-[#B7F54A]"
           />
 
-          {/* Generate */}
           <button
             onClick={handleGenerate}
             disabled={createJob.isPending}
-            className="w-full py-4 rounded-xl font-black text-sm text-black flex items-center justify-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: LIME }}
+            className="w-full py-4 rounded-xl font-black text-sm text-[#09080D] uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:bg-[#A3E030] bg-[#B7F54A] disabled:opacity-50 shadow-[0_0_15px_rgba(183,245,74,0.3)] mt-2"
           >
-            {createJob.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Generate
-              </>
-            )}
+            {createJob.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Sparkles className="h-5 w-5" /> Generate</>}
           </button>
         </div>
 
-        {/* ── Right panel ── */}
-        <div className="flex-1 overflow-y-auto px-8 py-6">
+        <div className="flex-1 overflow-y-auto p-12 bg-[#09080D]">
           {activeTab === "library" ? (
-            <>
-              {/* Hero */}
-              <div className="flex items-start justify-between gap-6 mb-8">
+            <div className="max-w-5xl mx-auto">
+              <div className="flex items-start justify-between gap-12 mb-12">
                 <div className="flex-1 min-w-0">
-                  <h1
-                    className="font-black leading-[1.05] tracking-tight text-white uppercase"
-                    style={{ fontSize: "clamp(2rem, 4vw, 3.25rem)" }}
-                  >
-                    RECREATE ANY{" "}
-                    <span style={{ color: LIME }}>[MOTION]</span>
-                    <br />WITH YOUR IMAGE
+                  <h1 className="font-black leading-[1.1] tracking-tight text-white uppercase text-4xl sm:text-5xl lg:text-6xl mb-6">
+                    Recreate any <span className="text-[#B7F54A]">motion</span><br />with your image
                   </h1>
-                  <p className="mt-4 text-base leading-relaxed max-w-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
-                    Copy motion from any video and place your character into the same movement.
+                  <p className="text-lg leading-relaxed text-[#BEB2CC] max-w-lg">
+                    Copy camera movement and subject motion from any reference and perfectly map it onto your custom character.
                   </p>
                 </div>
-
-                {/* Fan of sample photos */}
-                <div className="relative flex-shrink-0 hidden lg:block" style={{ width: "11rem", height: "9rem" }}>
-                  <img src={mimicmotionThumbnail} alt="" className="absolute rounded-xl object-cover shadow-xl"
-                    style={{ right: 0, top: 0, width: "6rem", height: "8rem", border: "2px solid rgba(255,255,255,0.12)", transform: "rotate(4deg)" }} />
-                  <img src={animatediffThumbnail} alt="" className="absolute rounded-xl object-cover shadow-xl"
-                    style={{ right: "4.5rem", top: "0.5rem", width: "5.5rem", height: "7rem", border: "2px solid rgba(255,255,255,0.12)", transform: "rotate(-5deg)", opacity: 0.85 }} />
-                  <img src={svdThumbnail} alt="" className="absolute rounded-xl object-cover shadow-lg"
-                    style={{ right: "8rem", top: "1rem", width: "5rem", height: "6.5rem", border: "2px solid rgba(255,255,255,0.10)", transform: "rotate(1deg)", opacity: 0.7 }} />
+                <div className="relative flex-shrink-0 hidden lg:block w-52 h-44 mt-4">
+                  <img src={mimicmotionThumbnail} alt="" className="absolute rounded-2xl object-cover shadow-2xl border-4 border-[#171120]" style={{ right: 0, top: 0, width: "130px", height: "170px", transform: "rotate(6deg)", zIndex: 3 }} />
+                  <img src={animatediffThumbnail} alt="" className="absolute rounded-2xl object-cover shadow-2xl border-4 border-[#171120] opacity-90" style={{ right: "80px", top: "15px", width: "120px", height: "150px", transform: "rotate(-8deg)", zIndex: 2 }} />
+                  <img src={svdThumbnail} alt="" className="absolute rounded-2xl object-cover shadow-2xl border-4 border-[#171120] opacity-75" style={{ right: "150px", top: "25px", width: "100px", height: "130px", transform: "rotate(-2deg)", zIndex: 1 }} />
                 </div>
               </div>
 
-              {/* Library grid */}
-              <p className="text-sm mb-3 font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <p className="text-xs font-bold uppercase tracking-widest text-[#B7F54A] mb-4">
                 Start by copying motion from library
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
                 {MOTION_PRESETS.map((preset) => {
                   const active = selectedPreset === preset.id;
+                  const Icon = preset.icon;
                   return (
                     <button
                       key={preset.id}
                       onClick={() => setSelectedPreset(preset.id)}
-                      className="group rounded-xl text-left transition-all p-3"
-                      style={{
-                        background: active ? "rgba(200,241,53,0.08)" : "rgba(255,255,255,0.04)",
-                        border: active ? `1.5px solid rgba(200,241,53,0.5)` : "1.5px solid rgba(255,255,255,0.08)",
-                      }}
+                      className={`group rounded-3xl text-left transition-all p-5 border-2 ${
+                        active ? "border-[#B7F54A] bg-[#B7F54A]/10 shadow-[0_0_20px_rgba(183,245,74,0.15)]" : "border-[#A779F5]/20 bg-[#171120] hover:border-[#A779F5]/60 hover:bg-[#A779F5]/5"
+                      }`}
                     >
-                      <div
-                        className="w-full aspect-video rounded-lg mb-3 flex items-center justify-center text-3xl"
-                        style={{ background: active ? "rgba(200,241,53,0.1)" : "rgba(0,0,0,0.35)" }}
-                      >
-                        {preset.icon}
+                      <div className={`w-full aspect-square rounded-2xl mb-4 flex items-center justify-center transition-colors ${
+                        active ? "bg-[#B7F54A]/20" : "bg-[#09080D]"
+                      }`}>
+                        <Icon className={`h-12 w-12 ${active ? "text-[#B7F54A]" : "text-[#BEB2CC]"}`} />
                       </div>
-                      <p className="text-sm font-semibold" style={{ color: active ? LIME : "white" }}>
+                      <p className={`text-base font-bold ${active ? "text-[#B7F54A]" : "text-white"}`}>
                         {preset.label}
                       </p>
-                      <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                      <p className="text-sm mt-1 text-[#BEB2CC] leading-relaxed">
                         {preset.description}
                       </p>
                     </button>
                   );
                 })}
               </div>
-            </>
+            </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-64 gap-3" style={{ color: "rgba(255,255,255,0.2)" }}>
-              <History className="h-12 w-12" />
-              <p className="text-sm">No generation history yet.</p>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.12)" }}>
-                Run a motion job and it will appear here.
+            <div className="flex flex-col items-center justify-center h-[60vh] gap-4 text-[#BEB2CC]">
+              <History className="h-16 w-16 opacity-30" />
+              <p className="text-lg font-semibold text-white">No generation history yet</p>
+              <p className="text-sm text-[#BEB2CC]/70 max-w-sm text-center">
+                Run a motion job using the controls on the left and it will appear here.
               </p>
             </div>
           )}

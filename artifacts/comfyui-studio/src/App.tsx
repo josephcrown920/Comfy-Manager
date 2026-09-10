@@ -1,6 +1,8 @@
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme-provider';
+import { AccountSessionBoundary } from '@/components/account-session-boundary';
+import { AuthLayout } from '@/components/auth-layout';
 import NotFound from '@/pages/not-found';
 import { Shell } from '@/components/shell';
 import Dashboard from '@/pages/dashboard';
@@ -21,13 +23,10 @@ import {
   useLocation,
   Router as WouterRouter,
 } from 'wouter';
-import { useEffect, useRef, type ReactNode } from 'react';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { ClerkProvider, SignIn, SignUp, useClerk } from '@clerk/react';
+import { type ReactNode } from 'react';
+import { ClerkProvider, SignIn, SignUp } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
-
-const queryClient = new QueryClient();
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 function Router() {
@@ -61,9 +60,9 @@ function Router() {
 
 function SignInPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+    <AuthLayout>
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
-    </div>
+    </AuthLayout>
   );
 }
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
@@ -85,9 +84,9 @@ export default App;
 
 function SignUpPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+    <AuthLayout>
       <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
-    </div>
+    </AuthLayout>
   );
 }
 
@@ -101,12 +100,12 @@ const clerkAppearance = {
     socialButtonsPlacement: 'top' as const,
   },
   variables: {
-    colorPrimary: '#e8f724',
+    colorPrimary: '#b7f54a',
     colorForeground: '#f5f5f5',
-    colorMutedForeground: '#b4afd0',
+    colorMutedForeground: '#beb2cc',
     colorDanger: '#ff453a',
-    colorBackground: '#111022',
-    colorInput: '#19152f',
+    colorBackground: '#171120',
+    colorInput: '#21172d',
     colorInputForeground: '#f5f5f5',
     colorNeutral: '#817a9e',
     fontFamily: "'Outfit', system-ui, sans-serif",
@@ -114,23 +113,23 @@ const clerkAppearance = {
   },
   elements: {
     rootBox: 'w-full flex justify-center',
-    cardBox: 'bg-[#111022] border border-[#2a2250] rounded-2xl w-[440px] max-w-full overflow-hidden',
+    cardBox: 'bg-[#171120] border border-[#382649] rounded-2xl w-[440px] max-w-full overflow-hidden',
     card: '!shadow-none !border-0 !bg-transparent !rounded-none',
     footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
     headerTitle: 'text-white',
     headerSubtitle: 'text-[#b4afd0]',
     socialButtonsBlockButtonText: 'text-white',
     formFieldLabel: 'text-white',
-    footerActionLink: 'text-[#e8f724]',
+    footerActionLink: 'text-[#b7f54a]',
     footerActionText: 'text-[#b4afd0]',
     dividerText: 'text-[#b4afd0]',
-    identityPreviewEditButton: 'text-[#e8f724]',
+    identityPreviewEditButton: 'text-[#b7f54a]',
     formFieldSuccessText: 'text-[#32d74b]',
     alertText: 'text-white',
     logoBox: 'h-14',
     logoImage: 'h-12 w-12 rounded-xl',
     socialButtonsBlockButton: 'border-[#2a2250] bg-[#19152f] hover:bg-[#2a2250]',
-    formButtonPrimary: 'bg-[#e8f724] text-black hover:bg-[#d4e010]',
+    formButtonPrimary: 'bg-[#b7f54a] text-black hover:bg-[#c9ff6b]',
     formFieldInput: 'border-[#2a2250] bg-[#19152f] text-white',
     footerAction: 'bg-transparent',
     dividerLine: 'bg-[#2a2250]',
@@ -145,22 +144,6 @@ const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
-
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const client = useQueryClient();
-  const previousUserId = useRef<string | null | undefined>(undefined);
-
-  useEffect(() => addListener(({ user }) => {
-    const userId = user?.id ?? null;
-    if (previousUserId.current !== undefined && previousUserId.current !== userId) {
-      client.clear();
-    }
-    previousUserId.current = userId;
-  }), [addListener, client]);
-
-  return null;
-}
 
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
@@ -179,11 +162,10 @@ function ClerkProviderWithRoutes() {
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
-      <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
+      <AccountSessionBoundary>
         <Router />
         <Toaster />
-      </QueryClientProvider>
+      </AccountSessionBoundary>
     </ClerkProvider>
   );
 }

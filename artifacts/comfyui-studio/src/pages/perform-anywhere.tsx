@@ -102,15 +102,15 @@ function ReferenceCard({
   onUploaded: (filename: string) => void;
 }) {
   return (
-    <div data-testid={`card-reference-${slot.key}`} className="group relative overflow-hidden rounded-2xl border border-white/[0.09] bg-[#141326]/80 p-3 transition-colors hover:border-[#c8f135]/35">
-      <div className="mb-3 flex items-start justify-between gap-2">
+    <div data-testid={`card-reference-${slot.key}`} className="group relative overflow-hidden rounded-3xl border border-[#A779F5]/30 bg-[#171120] p-4 transition-all hover:border-[#B7F54A] shadow-xl">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-[10px] font-bold tracking-[0.22em] text-[#c8f135]">{slot.eyebrow}</p>
-          <h3 className="mt-1 text-sm font-semibold text-white">{slot.label}</h3>
+          <p className="font-mono text-xs font-bold tracking-widest text-[#B7F54A]">{slot.eyebrow}</p>
+          <h3 className="mt-2 text-base font-bold text-white">{slot.label}</h3>
         </div>
-        {value ? <CheckCircle2 data-testid={`status-reference-${slot.key}`} className="h-4 w-4 text-[#c8f135]" /> : <span className="h-4 w-4 rounded-full border border-white/15" />}
+        {value ? <CheckCircle2 data-testid={`status-reference-${slot.key}`} className="h-5 w-5 text-[#B7F54A]" /> : <span className="h-5 w-5 rounded-full border border-[#BEB2CC]/30" />}
       </div>
-      <div data-testid={`upload-reference-${slot.key}`}>
+      <div data-testid={`upload-reference-${slot.key}`} className="bg-[#09080D] rounded-xl border border-[#A779F5]/20 p-2">
         <FileUpload
           accept="image/*"
           onFileSelect={onUploaded}
@@ -118,22 +118,6 @@ function ReferenceCard({
           previouslyUploadedName={value || undefined}
         />
       </div>
-    </div>
-  );
-}
-
-function PreviewFrame({ src, alt, placeholder }: { src?: string; alt: string; placeholder: string }) {
-  return (
-    <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-white/10 bg-[#0b0a15]">
-      {src ? (
-        <img src={src} alt={alt} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
-      ) : (
-        <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center">
-          <ImageIcon className="h-5 w-5 text-white/20" />
-          <span className="text-[11px] text-white/30">{placeholder}</span>
-        </div>
-      )}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
     </div>
   );
 }
@@ -146,6 +130,7 @@ export default function PerformAnywhere() {
   const createBatch = useCreateBatch();
   const importOutput = useImportOutput();
   const createJob = useCreateJob();
+  
   const modelArkStatusQuery = useGetModelArkStatus({
     query: {
       queryKey: getGetModelArkStatusQueryKey(),
@@ -153,6 +138,7 @@ export default function PerformAnywhere() {
       refetchInterval: 30000,
     },
   });
+  
   const comfyReadinessQuery = useGetComfyReadiness({
     query: {
       queryKey: getGetComfyReadinessQueryKey(),
@@ -160,6 +146,7 @@ export default function PerformAnywhere() {
       refetchInterval: 15000,
     },
   });
+  
   const batchesQuery = useListBatches({
     query: {
       queryKey: getListBatchesQueryKey(),
@@ -168,11 +155,7 @@ export default function PerformAnywhere() {
   });
 
   const [references, setReferences] = useState<Record<ReferenceKey, string>>({
-    identity: "",
-    outfit: "",
-    location: "",
-    pose: "",
-    prop: "",
+    identity: "", outfit: "", location: "", pose: "", prop: "",
   });
   const [sceneDescription, setSceneDescription] = useState("A midnight performance beneath sodium streetlights, rain caught in the air, the city stretching behind the performer.");
   const [visualDirection, setVisualDirection] = useState("35mm cinematic texture, deep indigo shadows, warm amber practicals, restrained film grain, confident editorial framing.");
@@ -187,6 +170,7 @@ export default function PerformAnywhere() {
   const activeReferenceSlots = REFERENCE_SLOTS
     .filter((slot) => activePreset.keys.includes(slot.key))
     .map((slot) => preset === "luxury-interior" ? { ...slot, ...LUXURY_SLOT_OVERRIDES[slot.key] } : slot);
+  
   const batches = batchesQuery.data ?? [];
   const activeBatch = useMemo(() => {
     if (activeBatchId !== null) return batches.find((batch) => batch.id === activeBatchId);
@@ -197,34 +181,37 @@ export default function PerformAnywhere() {
     () => activeBatch?.children.filter((child) => child.status === "completed" && child.outputs?.length) ?? [],
     [activeBatch],
   );
+  
   const selectedChild = completedChildren.find((child) => child.id === selectedChildId);
   const selectedOutput = selectedChild?.outputs?.[0];
   const completedCount = activeBatch?.completedJobs ?? 0;
   const allReferencesReady = activePreset.keys.every((key) => Boolean(references[key]));
   const canStart = allReferencesReady && sceneDescription.trim().length >= 2 && visualDirection.trim().length >= 2;
+  
   const selectedProviderReady = motionProvider === "seedance"
     ? modelArkStatusQuery.data?.configured === true
     : comfyReadinessQuery.data?.ready === true;
-  const readinessLoading = !isAuthLoaded || !isSignedIn || (
-    modelArkStatusQuery.isLoading || comfyReadinessQuery.isLoading
-  );
+    
+  const readinessLoading = !isAuthLoaded || !isSignedIn || (modelArkStatusQuery.isLoading || comfyReadinessQuery.isLoading);
   const readinessError = modelArkStatusQuery.isError || comfyReadinessQuery.isError;
   const canHandoff = Boolean(selectedOutput && performanceVideo && selectedProviderReady);
 
   const providerStatus = (provider: MotionProvider) => {
-    if (!isAuthLoaded) return { label: "Checking readiness", tone: "text-white/45", dot: "bg-white/40" };
-    if (!isSignedIn) return { label: "Sign in required", tone: "text-white/45", dot: "bg-white/40" };
-    if (readinessLoading) return { label: "Checking readiness", tone: "text-white/45", dot: "bg-white/40" };
+    if (!isAuthLoaded) return { label: "Checking readiness", tone: "text-[#BEB2CC]", dot: "bg-[#BEB2CC]/50" };
+    if (!isSignedIn) return { label: "Sign in required", tone: "text-[#BEB2CC]", dot: "bg-[#BEB2CC]/50" };
+    if (readinessLoading) return { label: "Checking readiness", tone: "text-[#BEB2CC]", dot: "bg-[#BEB2CC]/50" };
+    
     if (provider === "seedance") {
-      if (modelArkStatusQuery.isError) return { label: "Could not check", tone: "text-[#ffb88b]", dot: "bg-[#ffb88b]" };
+      if (modelArkStatusQuery.isError) return { label: "Could not check", tone: "text-[#EF4444]", dot: "bg-[#EF4444]" };
       return modelArkStatusQuery.data?.configured
-        ? { label: "ModelArk configured", tone: "text-[#c8f135]", dot: "bg-[#c8f135]" }
-        : { label: "ModelArk not configured", tone: "text-[#ff8f86]", dot: "bg-[#ff6e62]" };
+        ? { label: "ModelArk configured", tone: "text-[#B7F54A]", dot: "bg-[#B7F54A]" }
+        : { label: "ModelArk not configured", tone: "text-[#EF4444]", dot: "bg-[#EF4444]" };
     }
-    if (comfyReadinessQuery.isError) return { label: "Could not check", tone: "text-[#ffb88b]", dot: "bg-[#ffb88b]" };
+    
+    if (comfyReadinessQuery.isError) return { label: "Could not check", tone: "text-[#EF4444]", dot: "bg-[#EF4444]" };
     return comfyReadinessQuery.data?.ready
-      ? { label: "Compatible GPU connected", tone: "text-[#c8f135]", dot: "bg-[#c8f135]" }
-      : { label: "No compatible GPU", tone: "text-[#ff8f86]", dot: "bg-[#ff6e62]" };
+      ? { label: "Compatible GPU connected", tone: "text-[#B7F54A]", dot: "bg-[#B7F54A]" }
+      : { label: "No compatible GPU", tone: "text-[#EF4444]", dot: "bg-[#EF4444]" };
   };
 
   const selectedProviderMessage = () => {
@@ -281,15 +268,15 @@ export default function PerformAnywhere() {
     createBatch.mutate(
       {
         data: {
-           name: `${activePreset.label} · ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}`,
+          name: `${activePreset.label} · ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}`,
           batchType: "perform-anywhere-angles",
           batchSize: 5,
           masterAsset: references.identity,
           identityAnchor: references.identity,
-           outfitAsset: preset === "luxury-interior" ? references.identity : references.outfit,
+          outfitAsset: preset === "luxury-interior" ? references.identity : references.outfit,
           locationAsset: references.location,
           poseAsset: references.pose,
-           propAsset: preset === "luxury-interior" ? references.location : references.prop,
+          propAsset: preset === "luxury-interior" ? references.location : references.prop,
           scenePrompt: sceneDescription.trim(),
           styleAnchor: visualDirection.trim(),
           cameraTreatments: CAMERA_TREATMENTS.map((camera) => camera.id),
@@ -325,32 +312,32 @@ export default function PerformAnywhere() {
       return;
     }
     importOutput.mutate(
-      { data: { filename: selectedOutput.filename, jobId: selectedChild.id, subfolder: selectedOutput.subfolder, type: "output" } },
+      { data: { filename: selectedOutput.filename, jobId: selectedChild!.id, subfolder: selectedOutput.subfolder, type: "output" } },
       {
         onSuccess: (imported) => {
           createJob.mutate(
             {
               data: {
-                 workflowId: motionProvider === "seedance" ? "perform-anywhere-seedance" : "perform-anywhere-motion",
+                workflowId: motionProvider === "seedance" ? "perform-anywhere-seedance" : "perform-anywhere-motion",
                 params: {
                   source_image: imported.name,
                   source_video: performanceVideo,
-                   performance_video: performanceVideo,
+                  performance_video: performanceVideo,
                   selected_angle: selectedChild?.batchIndex ?? 1,
-                    motion_context: motionContext.trim(),
-                    aspect_ratio: "16:9",
-                    ratio: "16:9",
-                    resolution: "720p",
-                    duration: 5,
-                    num_frames: 48,
-                   scene_description: sceneDescription,
-                   visual_direction: visualDirection,
+                  motion_context: motionContext.trim(),
+                  aspect_ratio: "16:9",
+                  ratio: "16:9",
+                  resolution: "720p",
+                  duration: 5,
+                  num_frames: 48,
+                  scene_description: sceneDescription,
+                  visual_direction: visualDirection,
                 },
               },
             },
             {
               onSuccess: () => {
-                 toast({ title: motionProvider === "seedance" ? "Seedance render is queued" : "Motion transfer is queued", description: "Your selected angle and performance are now becoming a shot." });
+                toast({ title: motionProvider === "seedance" ? "Seedance render is queued" : "Motion transfer is queued", description: "Your selected angle and performance are now becoming a shot." });
                 setLocation("/jobs");
               },
               onError: (error: Error) => toast({ title: "Could not queue motion transfer", description: error.message, variant: "destructive" }),
@@ -365,289 +352,307 @@ export default function PerformAnywhere() {
   const busy = createBatch.isPending || importOutput.isPending || createJob.isPending;
 
   return (
-    <div className="mx-auto max-w-[1440px] space-y-8 pb-12 animate-in fade-in duration-500">
-      <section className="relative overflow-hidden rounded-[28px] border border-[#c8f135]/20 bg-[#121025] px-5 py-7 shadow-2xl shadow-black/25 sm:px-8 sm:py-10 lg:px-12">
-        <div className="pointer-events-none absolute -right-24 -top-32 h-96 w-96 rounded-full bg-[#c8f135]/10 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-1/3 h-40 w-96 bg-[#7046c8]/15 blur-3xl" />
-        <div className="relative grid gap-8 lg:grid-cols-[1.2fr_.8fr] lg:items-end">
-          <div>
-            <div className="mb-5 flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#c8f135]/35 bg-[#c8f135]/10 text-[#c8f135]"><Clapperboard className="h-4 w-4" /></span>
-              <p data-testid="text-workflow-eyebrow" className="font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-[#c8f135]">Perform Anywhere / room 01</p>
+    <div className="min-h-[100dvh] bg-[#09080D] text-white animate-in fade-in duration-300 pb-20 px-6 sm:px-12 pt-8">
+      <div className="max-w-[1440px] mx-auto space-y-12">
+        <section className="relative overflow-hidden rounded-[28px] border border-[#A779F5]/30 bg-[#171120] px-8 py-12 lg:px-16 shadow-2xl">
+          <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-[#B7F54A]/10 blur-[100px]" />
+          <div className="pointer-events-none absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-[#A779F5]/10 blur-[100px]" />
+          <div className="relative grid gap-10 lg:grid-cols-[1fr_300px] lg:items-center">
+            <div>
+              <div className="mb-6 flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#09080D] border border-[#A779F5]/30 text-[#A779F5]">
+                  <Clapperboard className="h-5 w-5" />
+                </span>
+                <p data-testid="text-workflow-eyebrow" className="font-mono text-sm font-bold uppercase tracking-widest text-[#B7F54A]">
+                  Perform Anywhere
+                </p>
+              </div>
+              <h1 data-testid="text-page-title" className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.1] tracking-tight text-white mb-6">
+                Turn {activePreset.keys.length} references into a <span className="text-[#B7F54A]">shot list.</span>
+              </h1>
+              <p data-testid="text-page-description" className="text-lg leading-relaxed text-[#BEB2CC] max-w-2xl">
+                Build a consistent cinematic scene from your references, audition five camera treatments, then carry the strongest still into motion with your original performance.
+              </p>
             </div>
-            <h1 data-testid="text-page-title" className="max-w-3xl text-4xl font-black leading-[0.98] tracking-[-0.045em] text-white sm:text-6xl">
-               Turn {activePreset.keys.length} references into a <span className="text-[#c8f135]">shot list.</span>
-            </h1>
-            <p data-testid="text-page-description" className="mt-5 max-w-2xl text-sm leading-relaxed text-white/55 sm:text-base">
-               Build a consistent cinematic scene from your references, audition five camera treatments, then carry the strongest still into motion with your original performance.
-            </p>
+            <div className="rounded-3xl border border-[#A779F5]/30 bg-[#09080D]/50 p-6 backdrop-blur-md shadow-xl">
+              <div className="flex items-center justify-between gap-3 mb-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-[#BEB2CC]">Workflow</p>
+                <Sparkles className="h-5 w-5 text-[#B7F54A]" />
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 bg-[#171120] rounded-xl p-3 border border-[#A779F5]/20">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#09080D] text-xs font-bold text-[#A779F5]">1</span>
+                  <span className="text-sm font-semibold text-white">Moodboard</span>
+                </div>
+                <div className="pl-4 border-l-2 border-[#A779F5]/20 ml-3 h-4"></div>
+                <div className="flex items-center gap-3 bg-[#B7F54A]/10 rounded-xl p-3 border border-[#B7F54A]/30">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#B7F54A] text-xs font-bold text-[#09080D]">2</span>
+                  <span className="text-sm font-semibold text-[#B7F54A]">Angles</span>
+                </div>
+                <div className="pl-4 border-l-2 border-[#A779F5]/20 ml-3 h-4"></div>
+                <div className="flex items-center gap-3 bg-[#171120] rounded-xl p-3 border border-[#A779F5]/20">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#09080D] text-xs font-bold text-[#A779F5]">3</span>
+                  <span className="text-sm font-semibold text-white">Motion</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4 backdrop-blur">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">The creative handoff</p>
-              <Sparkles className="h-4 w-4 text-[#c8f135]" />
-            </div>
-            <div className="mt-4 flex items-center gap-2 text-xs text-white/75">
-              <span className="rounded-full bg-white/10 px-2.5 py-1">Moodboard</span><ArrowRight className="h-3 w-3 text-white/30" />
-              <span className="rounded-full bg-[#c8f135]/15 px-2.5 py-1 text-[#c8f135]">Angles</span><ArrowRight className="h-3 w-3 text-white/30" />
-              <span className="rounded-full bg-white/10 px-2.5 py-1">Motion</span>
-            </div>
-            <p className="mt-4 text-xs leading-relaxed text-white/40">No node graph. Just references, taste, and one decisive frame.</p>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <div className="grid gap-7 xl:grid-cols-[1fr_360px]">
-        <main className="space-y-7">
-          <section className="aurora-glass rounded-3xl p-5 sm:p-7">
-            <div className="mb-5 flex items-end justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#bba3ff]"><span className="font-mono">00</span><span className="h-px w-8 bg-[#bba3ff]/40" /> Choose a starting room</div>
-                <h2 className="mt-3 text-2xl font-bold text-white">Pick the world you want to build.</h2>
-                <p className="mt-1 max-w-xl text-sm text-white/45">Both presets use the same five-angle audition and motion handoff. The luxury interior preset keeps the reference room focused on a seated performance inside the vehicle.</p>
+        <div className="grid gap-8 xl:grid-cols-[1fr_400px]">
+          <main className="space-y-8">
+            <section className="bg-[#171120] rounded-3xl p-6 sm:p-10 border border-[#A779F5]/20 shadow-xl">
+              <div className="mb-8">
+                <div className="flex items-center gap-3 text-sm font-bold uppercase tracking-widest text-[#B7F54A] mb-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#B7F54A] text-[#09080D]">1</span>
+                  Choose a room
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Pick the world you want to build.</h2>
+                <p className="max-w-2xl text-sm text-[#BEB2CC]">Both presets use the same five-angle audition and motion handoff. The luxury interior preset keeps the reference room focused on a seated performance inside the vehicle.</p>
               </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {PRESETS.map((option) => {
-                const selected = option.id === preset;
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    data-testid={`button-preset-${option.id}`}
-                    onClick={() => selectPreset(option.id)}
-                    className={`rounded-2xl border p-4 text-left transition-all ${selected ? "border-[#c8f135] bg-[#c8f135]/[0.08] shadow-[0_12px_35px_rgba(200,241,53,.08)]" : "border-white/[0.09] bg-black/10 hover:border-white/20"}`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className={`font-semibold ${selected ? "text-[#c8f135]" : "text-white"}`}>{option.label}</p>
-                        <p className="mt-1 text-xs leading-relaxed text-white/45">{option.description}</p>
-                      </div>
-                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${selected ? "border-[#c8f135] bg-[#c8f135] text-[#10110a]" : "border-white/15 text-transparent"}`}><Check className="h-3.5 w-3.5" /></span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="aurora-glass rounded-3xl p-5 sm:p-7">
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#c8f135]"><span className="font-mono">01</span><span className="h-px w-8 bg-[#c8f135]/40" /> Build the moodboard</div>
-                <h2 className="mt-3 text-2xl font-bold text-white">{activePreset.keys.length === 5 ? "Five anchors. One world." : "Three anchors. One interior."}</h2>
-                <p className="mt-1 max-w-xl text-sm text-white/45">Give the scene enough visual evidence to stay recognizably yours from every angle.</p>
-              </div>
-              <div data-testid="text-reference-count" className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[11px] text-white/45">
-                 {activePreset.keys.filter((key) => Boolean(references[key])).length} / {activePreset.keys.length} uploaded
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-               {activeReferenceSlots.map((slot) => (
-                <ReferenceCard key={slot.key} slot={slot} value={references[slot.key]} onUploaded={(filename) => updateReference(slot.key, filename)} />
-              ))}
-            </div>
-          </section>
-
-          <section className="aurora-glass rounded-3xl p-5 sm:p-7">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7046c8]/20 text-[#bba3ff]"><Film className="h-4 w-4" /></div>
-              <div><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#bba3ff]"><span className="font-mono">02</span><span className="h-px w-8 bg-[#bba3ff]/40" /> Direct the scene</div><h2 className="mt-1 text-xl font-bold text-white">Put the feeling into words.</h2></div>
-            </div>
-            <div className="grid gap-5 lg:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="scene-description" className="text-xs font-semibold text-white/70">Scene description</Label>
-                <Textarea data-testid="input-scene-description" id="scene-description" value={sceneDescription} onChange={(event) => setSceneDescription(event.target.value)} className="min-h-32 resize-none border-white/10 bg-black/20 text-sm leading-relaxed text-white placeholder:text-white/25" placeholder="Describe the place, time, energy, and what the viewer should feel." />
-                <p className="text-[11px] text-white/30">Place and atmosphere. The generative scene prompt starts here.</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="visual-direction" className="text-xs font-semibold text-white/70">Visual direction</Label>
-                <Textarea data-testid="input-visual-direction" id="visual-direction" value={visualDirection} onChange={(event) => setVisualDirection(event.target.value)} className="min-h-32 resize-none border-white/10 bg-black/20 text-sm leading-relaxed text-white placeholder:text-white/25" placeholder="Name the lens, light, grade, texture, and editorial references." />
-                <p className="text-[11px] text-white/30">Lens, light, color, and texture. The taste layer that keeps five angles together.</p>
-              </div>
-            </div>
-            <div className="mt-6 flex flex-col justify-between gap-4 rounded-2xl border border-[#c8f135]/20 bg-[#c8f135]/[0.06] p-4 sm:flex-row sm:items-center">
-               <div className="flex gap-3"><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[#c8f135]" /><p className="max-w-xl text-xs leading-relaxed text-white/55">We will create exactly five children with the camera treatments below. They share your {activePreset.keys.length} references, scene, and visual direction.</p></div>
-              <Button data-testid="button-start-angles" onClick={startAngles} disabled={createBatch.isPending} className="shrink-0 rounded-full bg-[#c8f135] px-5 font-bold text-[#10110a] hover:bg-[#d9f85d]">
-                {createBatch.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Building angles</> : <><Sparkles className="mr-2 h-4 w-4" />Build five angles</>}
-              </Button>
-            </div>
-          </section>
-
-          <section className="aurora-glass rounded-3xl p-5 sm:p-7">
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#ffb88b]"><span className="font-mono">03</span><span className="h-px w-8 bg-[#ffb88b]/40" /> Direct the camera</div>
-                <h2 className="mt-3 text-2xl font-bold text-white">The five-beat audition.</h2>
-              </div>
-              {activeBatch && <div data-testid="status-angle-batch" className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] text-white/55"><span className={`h-1.5 w-1.5 rounded-full ${activeBatch.status === "completed" ? "bg-[#c8f135]" : activeBatch.status === "failed" ? "bg-[#ff6e62]" : "animate-pulse bg-[#ffb88b]"}`} />{completedCount} / 5 ready</div>}
-            </div>
-            {!activeBatch && !batchesQuery.isLoading && (
-              <div data-testid="empty-angle-batch" className="rounded-2xl border border-dashed border-white/10 bg-black/10 px-5 py-12 text-center">
-                <Camera className="mx-auto h-8 w-8 text-white/20" />
-                <p className="mt-4 text-sm font-semibold text-white/65">Your camera tests will land here.</p>
-                <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-white/35">Finish the moodboard above, then build five angles to see your scene from every intentional point of view.</p>
-              </div>
-            )}
-            {batchesQuery.isLoading && (
-              <div data-testid="loading-angle-batch" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                {CAMERA_TREATMENTS.map((camera) => <div key={camera.id} className="h-48 animate-pulse rounded-2xl bg-white/[0.04]" />)}
-              </div>
-            )}
-            {batchesQuery.isError && (
-              <div data-testid="error-angle-batch" className="flex items-center justify-between gap-4 rounded-2xl border border-[#ff6e62]/25 bg-[#ff6e62]/[0.06] p-4 text-sm text-white/65">
-                <div className="flex items-center gap-3"><CircleAlert className="h-4 w-4 text-[#ff6e62]" /><span>Could not read the shot list right now.</span></div>
-                <Button data-testid="button-retry-angles" variant="ghost" size="sm" onClick={() => batchesQuery.refetch()} className="text-[#ffb88b] hover:bg-white/10">Retry</Button>
-              </div>
-            )}
-            {activeBatch && (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                {CAMERA_TREATMENTS.map((camera, index) => {
-                  const child = activeBatch.children[index];
-                  const output = child?.outputs?.[0];
-                  const isSelected = child?.id === selectedChildId;
-                  const isReady = child?.status === "completed" && Boolean(output);
+              <div className="grid gap-4 md:grid-cols-2">
+                {PRESETS.map((option) => {
+                  const selected = option.id === preset;
                   return (
                     <button
-                      key={camera.id}
+                      key={option.id}
                       type="button"
-                      data-testid={`button-select-angle-${camera.id}`}
-                      disabled={!isReady}
-                      onClick={() => child && isReady && setSelectedChildId(child.id)}
-                      className={`group relative overflow-hidden rounded-2xl border text-left transition-all duration-300 ${isSelected ? "border-[#c8f135] bg-[#c8f135]/[0.08] shadow-[0_12px_35px_rgba(200,241,53,.12)]" : "border-white/[0.09] bg-[#101020]/80 hover:border-white/20"} ${!isReady ? "cursor-default" : "cursor-pointer"}`}
+                      data-testid={`button-preset-${option.id}`}
+                      onClick={() => selectPreset(option.id)}
+                      className={`rounded-2xl border p-6 text-left transition-all ${selected ? "border-[#B7F54A] bg-[#B7F54A]/10 shadow-[0_0_20px_rgba(183,245,74,.15)]" : "border-[#A779F5]/30 bg-[#09080D] hover:border-[#A779F5]/70"}`}
                     >
-                      <div className="relative aspect-[4/5] overflow-hidden bg-[#0b0a15]">
-                        {output ? <img src={output.thumbnailUrl || output.comfyUrl} alt={`${camera.label} generated still`} className={`h-full w-full object-cover transition-transform duration-700 ${isSelected ? "scale-[1.04]" : "group-hover:scale-[1.04]"}`} /> : <div className="flex h-full items-center justify-center"><Loader2 className={`h-5 w-5 ${child?.status === "failed" ? "text-[#ff6e62]" : "animate-spin text-[#c8f135]/70"}`} /></div>}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/10" />
-                        <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/35 px-2 py-1 font-mono text-[10px] text-white/70">{camera.index}</span>
-                        {isSelected && <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-[#c8f135] text-[#10110a]"><Check className="h-3.5 w-3.5" /></span>}
-                        <div className="absolute inset-x-3 bottom-3"><p className="text-sm font-bold text-white">{camera.label}</p><p className={`mt-1 text-[10px] ${isReady ? "text-[#c8f135]" : child?.status === "failed" ? "text-[#ff8f86]" : "text-white/45"}`}>{statusLabel(child?.status)}</p></div>
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className={`text-lg font-bold mb-2 ${selected ? "text-[#B7F54A]" : "text-white"}`}>{option.label}</p>
+                          <p className="text-sm leading-relaxed text-[#BEB2CC]">{option.description}</p>
+                        </div>
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${selected ? "border-[#B7F54A] bg-[#B7F54A] text-[#09080D]" : "border-[#A779F5]/30 text-transparent bg-[#171120]"}`}><Check className="h-4 w-4" /></span>
                       </div>
-                      <p className="min-h-10 p-3 text-[11px] leading-relaxed text-white/40">{camera.copy}</p>
                     </button>
                   );
                 })}
               </div>
-            )}
-            {activeBatch?.status === "failed" && <p data-testid="text-angle-error" className="mt-4 text-xs text-[#ff8f86]">One or more camera tests could not render. You can keep any completed still or build a fresh shot list above.</p>}
-          </section>
-        </main>
+            </section>
 
-        <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
-          <section className="rounded-3xl border border-[#ffb88b]/25 bg-[linear-gradient(145deg,rgba(55,29,43,.9),rgba(22,16,31,.92))] p-5 shadow-2xl shadow-black/20 sm:p-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#ffb88b]/15 text-[#ffb88b]"><Video className="h-4 w-4" /></div>
-              <div><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#ffb88b]"><span className="font-mono">04</span><span className="h-px w-8 bg-[#ffb88b]/40" /> Bring the performance</div><h2 className="mt-1 text-xl font-bold text-white">Make it move.</h2></div>
-            </div>
-            <p className="mt-4 text-xs leading-relaxed text-white/50">Choose one finished still, then upload the original phone clip whose movement you want to transfer.</p>
-             <div className="mt-5 space-y-2">
-               <Label className="text-xs font-semibold text-white/70">Motion provider</Label>
-               <div className="grid grid-cols-2 gap-2">
-                 <button
-                   type="button"
-                   data-testid="button-motion-provider-seedance"
-                   onClick={() => setMotionProvider("seedance")}
-                   className={`rounded-xl border px-3 py-3 text-left transition-colors ${motionProvider === "seedance" ? "border-[#ffb88b] bg-[#ffb88b]/10" : "border-white/10 bg-black/15 hover:border-white/20"}`}
-                 >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className={`text-xs font-bold ${motionProvider === "seedance" ? "text-[#ffb88b]" : "text-white/75"}`}>Seedance API</p>
-                      <span className={`flex items-center gap-1 text-[9px] font-semibold ${providerStatus("seedance").tone}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${providerStatus("seedance").dot}`} />
-                        {providerStatus("seedance").label}
-                      </span>
-                    </div>
-                   <p className="mt-1 text-[10px] leading-relaxed text-white/35">ModelArk hosted video. No local GPU for this stage.</p>
-                 </button>
-                 <button
-                   type="button"
-                   data-testid="button-motion-provider-mimicmotion"
-                   onClick={() => setMotionProvider("mimicmotion")}
-                   className={`rounded-xl border px-3 py-3 text-left transition-colors ${motionProvider === "mimicmotion" ? "border-[#ffb88b] bg-[#ffb88b]/10" : "border-white/10 bg-black/15 hover:border-white/20"}`}
-                 >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className={`text-xs font-bold ${motionProvider === "mimicmotion" ? "text-[#ffb88b]" : "text-white/75"}`}>MimicMotion</p>
-                      <span className={`flex items-center gap-1 text-[9px] font-semibold ${providerStatus("mimicmotion").tone}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${providerStatus("mimicmotion").dot}`} />
-                        {providerStatus("mimicmotion").label}
-                      </span>
-                    </div>
-                   <p className="mt-1 text-[10px] leading-relaxed text-white/35">Local ComfyUI workflow. Uses your connected GPU.</p>
-                 </button>
-               </div>
-                <div className={`mt-3 rounded-xl border p-3 ${selectedProviderReady ? "border-[#c8f135]/25 bg-[#c8f135]/[0.06]" : "border-[#ffb88b]/25 bg-[#ffb88b]/[0.06]"}`}>
-                  <div className="flex items-start gap-2.5">
-                    {selectedProviderReady
-                      ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#c8f135]" />
-                      : <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[#ffb88b]" />}
-                    <p data-testid="text-provider-readiness" className={`text-[11px] leading-relaxed ${selectedProviderReady ? "text-[#d9f58a]" : "text-[#ffd1bb]"}`}>
-                      {selectedProviderMessage()}
-                    </p>
-                    {(readinessError || (!readinessLoading && !selectedProviderReady)) && (
-                      <>
-                      {motionProvider === "mimicmotion" && !readinessError && (
-                        <button
-                          type="button"
-                          onClick={() => setLocation("/settings")}
-                          className="ml-auto shrink-0 rounded-lg px-2 py-1 text-[10px] font-semibold text-[#ffb88b] transition-colors hover:bg-white/10 hover:text-white"
-                        >
-                          Settings
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        aria-label="Refresh provider readiness"
-                        onClick={() => {
-                          void modelArkStatusQuery.refetch();
-                          void comfyReadinessQuery.refetch();
-                        }}
-                        className="shrink-0 rounded-lg p-1 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
-                      >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                      </button>
-                      </>
-                    )}
+            <section className="bg-[#171120] rounded-3xl p-6 sm:p-10 border border-[#A779F5]/20 shadow-xl">
+              <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-3 text-sm font-bold uppercase tracking-widest text-[#B7F54A] mb-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#B7F54A] text-[#09080D]">2</span>
+                    Build the moodboard
                   </div>
-                  {motionProvider === "mimicmotion" && comfyReadinessQuery.data?.ready && (
-                    <p className="mt-2 pl-6 text-[10px] text-white/40">
-                      {comfyReadinessQuery.data.workers
-                        .filter((worker) => worker.selected && worker.connected && worker.compatible)
-                        .map((worker) => `${worker.label} · ${worker.gpuName || "GPU"} · ${worker.queueRemaining} queued`)
-                        .join(" · ")}
-                    </p>
-                  )}
+                  <h2 className="text-2xl font-bold text-white mb-2">{activePreset.keys.length === 5 ? "Five anchors. One world." : "Three anchors. One interior."}</h2>
+                  <p className="max-w-2xl text-sm text-[#BEB2CC]">Give the scene enough visual evidence to stay recognizably yours from every angle.</p>
                 </div>
-             </div>
-            <div data-testid="upload-performance-video" className="mt-5">
-              <FileUpload accept="video/*" label="Performance video" description="A clean 3–30 second phone performance works best." onFileSelect={setPerformanceVideo} previouslyUploadedName={performanceVideo || undefined} />
-            </div>
-             <div className="mt-5 space-y-2">
-               <Label htmlFor="motion-context" className="text-xs font-semibold text-white/70">Motion context</Label>
-               <Textarea data-testid="input-motion-context" id="motion-context" value={motionContext} onChange={(event) => setMotionContext(event.target.value)} className="min-h-24 resize-none border-white/10 bg-black/20 text-sm leading-relaxed text-white placeholder:text-white/25" placeholder="Describe the movement and the scene context so the transfer stays grounded." />
-               <p className="text-[11px] text-white/30">This prompt guides the animation stage and helps prevent vehicle or environment morphing.</p>
-             </div>
-            <div data-testid="status-selected-angle" className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/35">Selected still</p>
-              {selectedOutput ? (
-                <div className="mt-3 flex items-center gap-3">
-                  <img src={selectedOutput.thumbnailUrl || selectedOutput.comfyUrl} alt="Selected generated still" className="h-14 w-14 rounded-lg object-cover" />
-                  <div className="min-w-0"><p className="truncate text-xs font-semibold text-white">{CAMERA_TREATMENTS[(selectedChild?.batchIndex ?? 1) - 1]?.label ?? "Selected angle"}</p><p className="mt-1 text-[11px] text-[#c8f135]">Ready for motion</p></div>
+                <div data-testid="text-reference-count" className="rounded-full border border-[#B7F54A]/30 bg-[#B7F54A]/10 px-4 py-2 font-mono text-sm font-bold text-[#B7F54A]">
+                  {activePreset.keys.filter((key) => Boolean(references[key])).length} / {activePreset.keys.length} uploaded
                 </div>
-              ) : <p className="mt-2 text-xs leading-relaxed text-white/35">Select a completed camera treatment above.</p>}
-            </div>
-             <Button data-testid="button-submit-motion" onClick={submitMotion} disabled={!canHandoff || busy || readinessLoading} className="mt-5 w-full rounded-full bg-[#ffb88b] py-6 font-bold text-[#24131b] hover:bg-[#ffc9a9]">
-               {importOutput.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Preparing still</> : createJob.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Queueing {motionProvider === "seedance" ? "Seedance" : "motion"}</> : <><Upload className="mr-2 h-4 w-4" />Send to {motionProvider === "seedance" ? "Seedance" : "motion"}</>}
-            </Button>
-            {!selectedOutput && <p className="mt-3 text-center text-[11px] text-white/30">The handoff unlocks when a finished angle is selected.</p>}
-             {selectedOutput && performanceVideo && !selectedProviderReady && !readinessLoading && (
-               <p className="mt-3 text-center text-[11px] text-[#ffb88b]">The handoff is paused until the selected provider is ready.</p>
-             )}
-          </section>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {activeReferenceSlots.map((slot) => (
+                  <ReferenceCard key={slot.key} slot={slot} value={references[slot.key]} onUploaded={(filename) => updateReference(slot.key, filename)} />
+                ))}
+              </div>
+            </section>
 
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4">
-            <div className="flex items-center gap-2 text-xs font-semibold text-white/65"><RefreshCw className="h-3.5 w-3.5 text-[#c8f135]" /> Live render room</div>
-            <p className="mt-2 text-[11px] leading-relaxed text-white/35">This room checks the batch every few seconds, so you can keep shaping the handoff while the GPU works.</p>
-          </div>
-        </aside>
+            <section className="bg-[#171120] rounded-3xl p-6 sm:p-10 border border-[#A779F5]/20 shadow-xl">
+              <div className="mb-8">
+                <div className="flex items-center gap-3 text-sm font-bold uppercase tracking-widest text-[#B7F54A] mb-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#B7F54A] text-[#09080D]">3</span>
+                  Direct the scene
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Put the feeling into words.</h2>
+              </div>
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="space-y-3">
+                  <Label htmlFor="scene-description" className="text-sm font-bold text-white">Scene description</Label>
+                  <Textarea data-testid="input-scene-description" id="scene-description" value={sceneDescription} onChange={(event) => setSceneDescription(event.target.value)} className="min-h-[160px] resize-none border-[#A779F5]/30 bg-[#09080D] text-sm leading-relaxed text-white placeholder:text-[#BEB2CC]/50 focus-visible:ring-[#B7F54A] rounded-2xl p-4" placeholder="Describe the place, time, energy, and what the viewer should feel." />
+                  <p className="text-xs text-[#BEB2CC]">Place and atmosphere. The generative scene prompt starts here.</p>
+                </div>
+                <div className="space-y-3">
+                  <Label htmlFor="visual-direction" className="text-sm font-bold text-white">Visual direction</Label>
+                  <Textarea data-testid="input-visual-direction" id="visual-direction" value={visualDirection} onChange={(event) => setVisualDirection(event.target.value)} className="min-h-[160px] resize-none border-[#A779F5]/30 bg-[#09080D] text-sm leading-relaxed text-white placeholder:text-[#BEB2CC]/50 focus-visible:ring-[#B7F54A] rounded-2xl p-4" placeholder="Name the lens, light, grade, texture, and editorial references." />
+                  <p className="text-xs text-[#BEB2CC]">Lens, light, color, and texture. The taste layer that keeps five angles together.</p>
+                </div>
+              </div>
+              <div className="mt-8 flex flex-col justify-between gap-6 rounded-2xl border border-[#B7F54A]/30 bg-[#B7F54A]/5 p-6 sm:flex-row sm:items-center">
+                <div className="flex gap-4 items-start">
+                  <LockKeyhole className="h-6 w-6 shrink-0 text-[#B7F54A]" />
+                  <p className="max-w-xl text-sm leading-relaxed text-[#BEB2CC]">We will create exactly five children with the camera treatments below. They share your {activePreset.keys.length} references, scene, and visual direction.</p>
+                </div>
+                <Button data-testid="button-start-angles" onClick={startAngles} disabled={createBatch.isPending} className="shrink-0 rounded-xl bg-[#B7F54A] py-6 px-8 font-bold text-[#09080D] hover:bg-[#A3E030] shadow-[0_0_20px_rgba(183,245,74,0.3)] transition-all text-base">
+                  {createBatch.isPending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Building angles</> : <><Sparkles className="mr-2 h-5 w-5" />Build five angles</>}
+                </Button>
+              </div>
+            </section>
+
+            <section className="bg-[#171120] rounded-3xl p-6 sm:p-10 border border-[#A779F5]/20 shadow-xl">
+              <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-3 text-sm font-bold uppercase tracking-widest text-[#B7F54A] mb-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#B7F54A] text-[#09080D]">4</span>
+                    Direct the camera
+                  </div>
+                  <h2 className="text-2xl font-bold text-white">The five-beat audition.</h2>
+                </div>
+                {activeBatch && <div data-testid="status-angle-batch" className="flex items-center gap-3 rounded-full border border-[#B7F54A]/30 bg-[#B7F54A]/10 px-4 py-2 font-mono text-sm font-bold text-[#B7F54A]"><span className={`h-2 w-2 rounded-full ${activeBatch.status === "completed" ? "bg-[#B7F54A]" : activeBatch.status === "failed" ? "bg-[#EF4444]" : "animate-pulse bg-[#B7F54A]"}`} />{completedCount} / 5 ready</div>}
+              </div>
+              {!activeBatch && !batchesQuery.isLoading && (
+                <div data-testid="empty-angle-batch" className="rounded-3xl border-2 border-dashed border-[#A779F5]/30 bg-[#09080D] px-6 py-16 text-center">
+                  <Camera className="mx-auto h-12 w-12 text-[#BEB2CC]/40 mb-4" />
+                  <p className="text-lg font-bold text-white mb-2">Your camera tests will land here.</p>
+                  <p className="mx-auto max-w-md text-sm leading-relaxed text-[#BEB2CC]">Finish the moodboard above, then build five angles to see your scene from every intentional point of view.</p>
+                </div>
+              )}
+              {batchesQuery.isLoading && (
+                <div data-testid="loading-angle-batch" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                  {CAMERA_TREATMENTS.map((camera) => <div key={camera.id} className="h-64 animate-pulse rounded-2xl bg-[#09080D] border border-[#A779F5]/20" />)}
+                </div>
+              )}
+              {batchesQuery.isError && (
+                <div data-testid="error-angle-batch" className="flex items-center justify-between gap-4 rounded-2xl border border-[#EF4444]/30 bg-[#EF4444]/10 p-5 text-sm text-white">
+                  <div className="flex items-center gap-3"><CircleAlert className="h-5 w-5 text-[#EF4444]" /><span>Could not read the shot list right now.</span></div>
+                  <Button data-testid="button-retry-angles" variant="outline" className="border-[#EF4444]/50 hover:bg-[#EF4444]/20" onClick={() => batchesQuery.refetch()}>Retry</Button>
+                </div>
+              )}
+              {activeBatch && (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                  {CAMERA_TREATMENTS.map((camera, index) => {
+                    const child = activeBatch.children[index];
+                    const output = child?.outputs?.[0];
+                    const isSelected = child?.id === selectedChildId;
+                    const isReady = child?.status === "completed" && Boolean(output);
+                    return (
+                      <button
+                        key={camera.id}
+                        type="button"
+                        data-testid={`button-select-angle-${camera.id}`}
+                        disabled={!isReady}
+                        onClick={() => child && isReady && setSelectedChildId(child.id)}
+                        className={`group relative overflow-hidden rounded-2xl border text-left transition-all duration-300 ${isSelected ? "border-[#B7F54A] bg-[#B7F54A]/10 shadow-[0_0_30px_rgba(183,245,74,.2)]" : "border-[#A779F5]/30 bg-[#09080D] hover:border-[#A779F5]/70"} ${!isReady ? "cursor-default" : "cursor-pointer"}`}
+                      >
+                        <div className="relative aspect-[4/5] overflow-hidden bg-[#171120]">
+                          {output ? <img src={output.thumbnailUrl || output.comfyUrl} alt={`${camera.label} generated still`} className={`h-full w-full object-cover transition-transform duration-700 ${isSelected ? "scale-105" : "group-hover:scale-105"}`} /> : <div className="flex h-full items-center justify-center"><Loader2 className={`h-8 w-8 ${child?.status === "failed" ? "text-[#EF4444]" : "animate-spin text-[#B7F54A]"}`} /></div>}
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#09080D] via-transparent to-[#09080D]/40" />
+                          <span className="absolute left-3 top-3 rounded-full border border-[#BEB2CC]/30 bg-[#09080D]/60 px-3 py-1 font-mono text-xs font-bold text-white backdrop-blur-sm">{camera.index}</span>
+                          {isSelected && <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#B7F54A] text-[#09080D] shadow-lg"><Check className="h-4 w-4 font-bold" /></span>}
+                          <div className="absolute inset-x-4 bottom-4">
+                            <p className="text-base font-bold text-white mb-1">{camera.label}</p>
+                            <p className={`text-xs font-bold uppercase tracking-wider ${isReady ? "text-[#B7F54A]" : child?.status === "failed" ? "text-[#EF4444]" : "text-[#BEB2CC]"}`}>{statusLabel(child?.status)}</p>
+                          </div>
+                        </div>
+                        <p className="p-4 text-xs leading-relaxed text-[#BEB2CC]">{camera.copy}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {activeBatch?.status === "failed" && <p data-testid="text-angle-error" className="mt-6 text-sm font-semibold text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/30 rounded-xl p-4">One or more camera tests could not render. You can keep any completed still or build a fresh shot list above.</p>}
+            </section>
+          </main>
+
+          <aside className="space-y-6 xl:sticky xl:top-8 xl:self-start">
+            <section className="rounded-3xl border border-[#A779F5]/30 bg-[#171120] p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-[#A779F5]/5 to-transparent pointer-events-none" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 text-sm font-bold uppercase tracking-widest text-[#B7F54A] mb-3">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#B7F54A] text-[#09080D]">5</span>
+                  Bring the performance
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-4">Make it move.</h2>
+                <p className="text-sm leading-relaxed text-[#BEB2CC]">Choose one finished still, then upload the original phone clip whose movement you want to transfer.</p>
+                
+                <div className="mt-8 space-y-3">
+                  <Label className="text-sm font-bold text-white">Motion provider</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      data-testid="button-motion-provider-seedance"
+                      onClick={() => setMotionProvider("seedance")}
+                      className={`rounded-2xl border p-4 text-left transition-all ${motionProvider === "seedance" ? "border-[#B7F54A] bg-[#B7F54A]/10 shadow-[0_0_15px_rgba(183,245,74,.15)]" : "border-[#A779F5]/30 bg-[#09080D] hover:border-[#A779F5]/70"}`}
+                    >
+                      <div className="flex flex-col gap-2">
+                        <p className={`text-base font-bold ${motionProvider === "seedance" ? "text-[#B7F54A]" : "text-white"}`}>Seedance</p>
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${providerStatus("seedance").tone} bg-[#09080D] border border-current/20 w-fit`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${providerStatus("seedance").dot}`} />
+                          {providerStatus("seedance").label.split(" ")[0]}
+                        </span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="button-motion-provider-mimicmotion"
+                      onClick={() => setMotionProvider("mimicmotion")}
+                      className={`rounded-2xl border p-4 text-left transition-all ${motionProvider === "mimicmotion" ? "border-[#B7F54A] bg-[#B7F54A]/10 shadow-[0_0_15px_rgba(183,245,74,.15)]" : "border-[#A779F5]/30 bg-[#09080D] hover:border-[#A779F5]/70"}`}
+                    >
+                      <div className="flex flex-col gap-2">
+                        <p className={`text-base font-bold ${motionProvider === "mimicmotion" ? "text-[#B7F54A]" : "text-white"}`}>MimicMotion</p>
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${providerStatus("mimicmotion").tone} bg-[#09080D] border border-current/20 w-fit`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${providerStatus("mimicmotion").dot}`} />
+                          {providerStatus("mimicmotion").label.split(" ")[0]}
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                  <div className={`mt-4 rounded-xl border p-4 ${selectedProviderReady ? "border-[#B7F54A]/30 bg-[#B7F54A]/10" : "border-[#EF4444]/30 bg-[#EF4444]/10"}`}>
+                    <div className="flex items-start gap-3">
+                      {selectedProviderReady
+                        ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#B7F54A]" />
+                        : <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-[#EF4444]" />}
+                      <p data-testid="text-provider-readiness" className={`text-sm leading-relaxed ${selectedProviderReady ? "text-[#B7F54A]" : "text-white"}`}>
+                        {selectedProviderMessage()}
+                      </p>
+                      {(readinessError || (!readinessLoading && !selectedProviderReady)) && (
+                        <div className="flex flex-col gap-2 ml-auto shrink-0">
+                        {motionProvider === "mimicmotion" && !readinessError && (
+                          <button type="button" onClick={() => setLocation("/settings")} className="rounded-lg px-3 py-1.5 text-xs font-bold bg-[#EF4444]/20 text-[#EF4444] hover:bg-[#EF4444]/30">Settings</button>
+                        )}
+                        <button type="button" aria-label="Refresh provider readiness" onClick={() => { void modelArkStatusQuery.refetch(); void comfyReadinessQuery.refetch(); }} className="rounded-lg p-2 bg-[#09080D] text-[#BEB2CC] hover:text-white border border-[#A779F5]/30">
+                          <RefreshCw className="h-4 w-4" />
+                        </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div data-testid="upload-performance-video" className="mt-8">
+                  <div className="bg-[#09080D] rounded-2xl border border-[#A779F5]/30 p-2">
+                    <FileUpload accept="video/*" label="Performance video" description="A clean 3–30 second phone performance works best." onFileSelect={setPerformanceVideo} previouslyUploadedName={performanceVideo || undefined} />
+                  </div>
+                </div>
+
+                <div className="mt-8 space-y-3">
+                  <Label htmlFor="motion-context" className="text-sm font-bold text-white">Motion context</Label>
+                  <Textarea data-testid="input-motion-context" id="motion-context" value={motionContext} onChange={(event) => setMotionContext(event.target.value)} className="min-h-[100px] resize-none border-[#A779F5]/30 bg-[#09080D] text-sm leading-relaxed text-white placeholder:text-[#BEB2CC]/50 focus-visible:ring-[#B7F54A] rounded-xl" placeholder="Describe the movement and the scene context so the transfer stays grounded." />
+                </div>
+
+                <div data-testid="status-selected-angle" className="mt-8 rounded-2xl border border-[#A779F5]/30 bg-[#09080D] p-5 relative overflow-hidden">
+                  {selectedOutput && <div className="absolute inset-0 bg-gradient-to-r from-[#B7F54A]/10 to-transparent pointer-events-none" />}
+                  <p className="font-mono text-xs font-bold uppercase tracking-widest text-[#BEB2CC] mb-4">Selected still</p>
+                  {selectedOutput ? (
+                    <div className="flex items-center gap-4 relative z-10">
+                      <img src={selectedOutput.thumbnailUrl || selectedOutput.comfyUrl} alt="Selected generated still" className="h-16 w-16 rounded-xl object-cover border-2 border-[#B7F54A]" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-white mb-1">{CAMERA_TREATMENTS[(selectedChild?.batchIndex ?? 1) - 1]?.label ?? "Selected angle"}</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-[#B7F54A] flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Ready</p>
+                      </div>
+                    </div>
+                  ) : <p className="text-sm leading-relaxed text-[#BEB2CC]">Select a completed camera treatment from the grid.</p>}
+                </div>
+
+                <Button data-testid="button-submit-motion" onClick={submitMotion} disabled={!canHandoff || busy || readinessLoading} className="mt-8 w-full rounded-xl bg-[#A779F5] py-7 text-base font-bold text-white hover:bg-[#8B5CF6] shadow-[0_0_20px_rgba(167,121,245,0.3)] transition-all disabled:opacity-50 disabled:bg-[#A779F5]/30">
+                  {importOutput.isPending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Preparing still</> : createJob.isPending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Queueing motion</> : <><Upload className="mr-2 h-5 w-5" />Send to Render</>}
+                </Button>
+                
+                {!selectedOutput && <p className="mt-4 text-center text-xs font-semibold text-[#BEB2CC]">The handoff unlocks when a finished angle is selected.</p>}
+                {selectedOutput && performanceVideo && !selectedProviderReady && !readinessLoading && (
+                  <p className="mt-4 text-center text-xs font-semibold text-[#EF4444]">The handoff is paused until the selected provider is ready.</p>
+                )}
+              </div>
+            </section>
+          </aside>
+        </div>
       </div>
     </div>
   );
