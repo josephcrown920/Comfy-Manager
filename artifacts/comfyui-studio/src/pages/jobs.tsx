@@ -74,7 +74,10 @@ function useComfyWebSocket(hasRunningJobs: boolean, promptJobMap: PromptJobMap) 
 
 function JobsVisual() {
   return (
-    <div className="absolute inset-0 bg-[#09080D] overflow-hidden flex items-center justify-center">
+    <div className="absolute inset-0 bg-[#09080D] overflow-hidden flex items-center justify-center pointer-events-none" aria-hidden="true">
+      <div className="absolute top-2 left-2 px-2 py-1 bg-black/50 border border-white/10 rounded-md z-20">
+        <span className="text-[10px] font-mono text-[#7b72a8] uppercase tracking-wider">Illustrative example (NOT live)</span>
+      </div>
       <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#BEB2CC 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
       <div className="relative z-10 flex gap-4 overflow-hidden w-full px-12">
         <div className="h-16 w-32 border border-[#B7F54A]/40 bg-[#171120] rounded-xl flex items-center justify-center relative translate-x-12 opacity-30 shadow-[0_0_15px_rgba(183,245,74,0.1)]">
@@ -345,12 +348,12 @@ export default function Jobs() {
                           <div className="flex items-center justify-end gap-2">
                             {job.status === "completed" && (
                               <Link href="/gallery">
-                                <Button variant="ghost" size="icon" className="h-9 w-9 text-[#BEB2CC] hover:text-[#B7F54A] hover:bg-[#B7F54A]/10 rounded-xl transition-colors">
+                                <Button variant="ghost" size="icon" aria-label="View output" className="h-9 w-9 text-[#BEB2CC] hover:text-[#B7F54A] hover:bg-[#B7F54A]/10 rounded-xl transition-colors">
                                   <ExternalLink className="h-4 w-4" />
                                 </Button>
                               </Link>
                             )}
-                            <Button variant="ghost" size="icon" className="h-9 w-9 text-[#BEB2CC] hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
+                            <Button variant="ghost" size="icon" aria-label="Delete job" className="h-9 w-9 text-[#BEB2CC] hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
                               onClick={() => handleDelete(job.id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>

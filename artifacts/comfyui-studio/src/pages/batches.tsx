@@ -25,14 +25,14 @@ function MasterPreview({ asset, type }: { asset: string; type: BatchType }) {
         type === "scene-variation" ? (
           <img src={url} alt="Uploaded creative master" className="absolute inset-0 h-full w-full object-cover opacity-80" />
         ) : (
-          <video src={url} muted playsInline autoPlay loop className="absolute inset-0 h-full w-full object-cover opacity-80" />
+          <video src={url} controls preload="metadata" muted playsInline loop className="absolute inset-0 h-full w-full object-cover opacity-80 z-20" />
         )
       ) : (
         <div className="absolute inset-0 bg-[#09080D] bg-[radial-gradient(circle_at_30%_20%,#A779F5_0%,transparent_35%),radial-gradient(circle_at_70%_70%,#B7F54A_0%,transparent_32%)] opacity-20" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#09080D] via-transparent to-[#09080D]/80" />
-      <div className="relative z-10 grid h-full grid-cols-[minmax(140px,1fr)_1.7fr] items-center gap-6 p-8">
-        <div className="rounded-2xl border border-[#B7F54A]/30 bg-[#171120]/90 backdrop-blur-md p-5 shadow-2xl">
+      <div className="absolute inset-0 bg-gradient-to-r from-[#09080D] via-transparent to-[#09080D]/80 pointer-events-none" />
+      <div className="relative z-10 grid h-full grid-cols-[minmax(140px,1fr)_1.7fr] items-center gap-6 p-8 pointer-events-none">
+        <div className="rounded-2xl border border-[#B7F54A]/30 bg-[#171120]/90 backdrop-blur-md p-5 shadow-2xl pointer-events-auto">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#B7F54A]">
             <Sparkles className="h-4 w-4" /> Creative master
           </div>
@@ -40,7 +40,7 @@ function MasterPreview({ asset, type }: { asset: string; type: BatchType }) {
             {asset || "Upload your master to preview it here"}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 pointer-events-auto">
           {[0, 1, 2, 3, 4, 5].map((item) => (
             <div key={item} className="relative aspect-video overflow-hidden rounded-xl border border-[#A779F5]/40 bg-[#171120]/80 p-3 shadow-lg">
               {asset && type === "scene-variation" && <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30 grayscale-[50%]" />}

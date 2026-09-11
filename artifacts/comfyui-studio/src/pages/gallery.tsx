@@ -11,8 +11,7 @@ import { PageHeader } from "@/components/operations-design/PageHeader";
 
 function GalleryVisual() {
   return (
-    <div className="absolute inset-0 bg-[#09080D] overflow-hidden flex items-center justify-center">
-      {/* Background pattern */}
+    <div className="absolute inset-0 bg-[#09080D] overflow-hidden flex items-center justify-center pointer-events-none" aria-hidden="true">
       <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#BEB2CC 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
       
       <div className="relative z-10 w-full h-full flex items-center justify-center">
@@ -107,23 +106,23 @@ export default function Gallery() {
                   <div className="p-5">
                     <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
                       {batch.children.flatMap((child) => (child.outputs ?? []).map((output) => ({ ...output, batchIndex: child.batchIndex }))).map((output) => (
-                        <button key={output.id} onClick={() => setSelectedOutput(output)} className="group/item relative overflow-hidden rounded-2xl border border-[#2d2650] bg-[#09080D] text-left transition-all hover:border-[#A779F5]/70 hover:shadow-lg hover:shadow-[#A779F5]/10 hover:-translate-y-1">
+                        <button key={output.id} type="button" aria-label={`Open ${output.filename}`} onClick={() => setSelectedOutput(output)} className="group/item relative overflow-hidden rounded-2xl border border-[#2d2650] bg-[#09080D] text-left transition-all hover:border-[#A779F5]/70 hover:shadow-lg hover:shadow-[#A779F5]/10 hover:-translate-y-1">
                           {output.outputType === "video" ? (
                             <div className="relative aspect-square">
-                              <video src={output.comfyUrl} muted loop playsInline preload="metadata" className="w-full h-full object-cover" onMouseEnter={(event) => void event.currentTarget.play()} onMouseLeave={(event) => { event.currentTarget.pause(); event.currentTarget.currentTime = 0; }} />
-                              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center justify-center">
+                              <video src={output.comfyUrl} muted loop playsInline preload="none" poster={output.thumbnailUrl || undefined} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                                 <div className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center"><Maximize2 className="w-4 h-4 text-white" /></div>
                               </div>
                             </div>
                           ) : (
                             <div className="relative aspect-square">
                               <img src={output.thumbnailUrl || output.comfyUrl} alt={output.filename} loading="lazy" className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center justify-center">
+                              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                                 <div className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center"><Maximize2 className="w-4 h-4 text-white" /></div>
                               </div>
                             </div>
                           )}
-                          <span className="absolute left-3 top-3 rounded-md bg-black/70 backdrop-blur-md px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-[#A779F5] border border-white/10">Var {output.batchIndex}</span>
+                          <span className="absolute left-3 top-3 rounded-md bg-black/70 backdrop-blur-md px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-[#A779F5] border border-white/10 pointer-events-none">Var {output.batchIndex}</span>
                         </button>
                       ))}
                     </div>
@@ -149,23 +148,24 @@ export default function Gallery() {
           ) : outputs && outputs.length > 0 ? (
             <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 space-y-4">
               {outputs.map((output) => (
-                <div
+                <button
                   key={output.id}
-                  className="relative border border-[#2d2650] bg-[#171120] rounded-3xl overflow-hidden group cursor-pointer break-inside-avoid transition-all hover:border-[#B7F54A]/40 hover:shadow-xl hover:shadow-[#B7F54A]/5 hover:-translate-y-1"
+                  type="button"
+                  aria-label={`Open ${output.filename}`}
+                  className="relative border border-[#2d2650] bg-[#171120] rounded-3xl overflow-hidden group cursor-pointer break-inside-avoid transition-all hover:border-[#B7F54A]/40 hover:shadow-xl hover:shadow-[#B7F54A]/5 hover:-translate-y-1 w-full text-left"
                   onClick={() => setSelectedOutput(output)}
                 >
                   {output.outputType === "video" ? (
                     <div className="relative">
                       <video src={output.comfyUrl} className="w-full h-auto object-cover block"
-                        onMouseEnter={(e) => e.currentTarget.play()}
-                        onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
-                        muted loop playsInline />
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        preload="none" muted loop playsInline poster={output.thumbnailUrl || undefined}
+                      />
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                         <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white border border-white/10 shadow-2xl">
                           <Play className="h-5 w-5 ml-1" />
                         </div>
                       </div>
-                      <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md rounded-lg px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider text-white border border-white/10 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md rounded-lg px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider text-white border border-white/10 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                         <Video className="h-3 w-3 text-[#A779F5]" /> VIDEO
                       </div>
                     </div>
@@ -173,17 +173,17 @@ export default function Gallery() {
                     <div className="relative">
                       <img src={output.thumbnailUrl || output.comfyUrl} alt={output.filename}
                         className="w-full h-auto object-cover block" loading="lazy" />
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                         <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white border border-white/10 shadow-2xl">
                           <Maximize2 className="h-5 w-5" />
                         </div>
                       </div>
-                      <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md rounded-lg px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider text-white border border-white/10 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md rounded-lg px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider text-white border border-white/10 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                         <ImageIcon className="h-3 w-3 text-[#B7F54A]" /> IMAGE
                       </div>
                     </div>
                   )}
-                </div>
+                </button>
               ))}
             </div>
           ) : (
@@ -209,7 +209,7 @@ export default function Gallery() {
             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#BEB2CC 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
             
             {selectedOutput?.outputType === "video" ? (
-              <video src={selectedOutput.comfyUrl} className="max-w-full max-h-[80vh] rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-10 relative object-contain" controls autoPlay />
+              <video src={selectedOutput.comfyUrl} className="max-w-full max-h-[80vh] rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-10 relative object-contain" controls preload="metadata" />
             ) : selectedOutput ? (
               <img src={selectedOutput.comfyUrl} alt={selectedOutput.filename}
                 className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-10 relative" />

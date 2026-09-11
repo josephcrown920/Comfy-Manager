@@ -279,6 +279,83 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: "vast",
+    icon: Terminal,
+    title: "Vast.ai",
+    badge: "Cheap cloud GPU",
+    content: (
+      <div className="space-y-6">
+        <p>
+          Vast.ai is often the cheapest option for renting high-end GPUs. Setup is similar to RunPod.
+        </p>
+        <div className="space-y-4">
+          <Step n={1}>
+            Rent an instance at <ExtLink href="https://vast.ai">vast.ai</ExtLink>. Look for a machine with at least 16 GB VRAM.
+          </Step>
+          <Step n={2}>
+            In the instance template, use a ComfyUI Docker image, or a PyTorch base image where you install ComfyUI manually.
+          </Step>
+          <Step n={3}>
+            Add port <strong className="text-white">8188</strong> under "Open Ports" when creating the instance.
+          </Step>
+          <Step n={4}>
+            SSH in (or use the Jupyter terminal) and start ComfyUI:
+            <div className="mt-3">
+              <Code>{"cd ComfyUI\npython main.py --listen 0.0.0.0 --port 8188"}</Code>
+            </div>
+          </Step>
+          <Step n={5}>
+            In the Vast.ai dashboard, the <strong className="text-white">Open Ports</strong> section shows the public address for port 8188:
+            <div className="mt-3">
+              <Code>{"http://ssh4.vast.ai:12345  (example — yours will differ)"}</Code>
+            </div>
+          </Step>
+          <Step n={6}>
+            Paste that into Studio Settings and save. Label it something like <InlineCode>Vast RTX 4090</InlineCode>.
+          </Step>
+        </div>
+        <Note>
+          If Vast.ai doesn't give you a stable HTTPS URL, install ngrok inside the instance and run <InlineCode>ngrok http 8188</InlineCode>, then use the printed URL instead.
+        </Note>
+      </div>
+    ),
+  },
+  {
+    id: "jupyter",
+    icon: Monitor,
+    title: "Jupyter Notebook",
+    content: (
+      <div className="space-y-6">
+        <p>
+          Jupyter is a notebook interface, not a GPU provider. You can run ComfyUI from Jupyter cells on any machine that has a GPU — Kaggle, Vast.ai, RunPod, or your own computer.
+        </p>
+        <div className="space-y-4">
+          <Step n={1}>
+            Open a Jupyter notebook on a machine with a GPU (any of the providers above, or locally).
+          </Step>
+          <Step n={2}>
+            Install and start ComfyUI in a cell:
+            <div className="mt-3">
+              <Code>{"!git clone https://github.com/comfyanonymous/ComfyUI.git\n%cd ComfyUI\n!pip install -r requirements.txt\n!python main.py --listen 0.0.0.0 --port 8188"}</Code>
+            </div>
+          </Step>
+          <Step n={3}>
+            The last line blocks — ComfyUI is now running. To expose port 8188, run an ngrok tunnel in a separate cell:
+            <div className="mt-3">
+              <Code>{"!pip install pyngrok\nfrom pyngrok import ngrok, conf\nconf.get_default().auth_token = 'YOUR_NGROK_TOKEN'\ntunnel = ngrok.connect(8188)\nprint('URL:', tunnel.public_url)"}</Code>
+            </div>
+          </Step>
+          <Step n={4}>
+            Copy the printed URL and paste into <Link href="/settings" className="text-[#B7F54A] hover:underline">Settings → ComfyUI Server URL</Link>.
+          </Step>
+        </div>
+        <Note>
+          For Kaggle notebooks, the built-in launcher on the <Link href="/launch" className="text-[#B7F54A] hover:underline">Launch GPU</Link> page handles all of this automatically — you don't need to do it manually.
+        </Note>
+      </div>
+    ),
+  },
+  {
     id: "local",
     icon: Wifi,
     title: "Local Infrastructure",
@@ -381,7 +458,8 @@ export default function Guide() {
                 const el = document.getElementById(`section-${s.id}`);
                 if (el) {
                   const y = el.getBoundingClientRect().top + window.scrollY - 100;
-                  window.scrollTo({ top: y, behavior: 'smooth' });
+                  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                  window.scrollTo({ top: y, behavior: reducedMotion ? 'auto' : 'smooth' });
                 }
               }}
               className="px-4 py-2 rounded-xl text-xs font-bold bg-[#09080D] border border-[#2d2650] text-[#BEB2CC] hover:text-white hover:border-[#A779F5]/50 transition-all"

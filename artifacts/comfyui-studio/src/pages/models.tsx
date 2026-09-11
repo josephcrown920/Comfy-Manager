@@ -145,8 +145,10 @@ function AssignmentRow({
 
 function ModelsVisual() {
   return (
-    <div className="absolute inset-0 bg-[#09080D] overflow-hidden flex items-center justify-center">
-      {/* Background pattern */}
+    <div className="absolute inset-0 bg-[#09080D] overflow-hidden flex items-center justify-center pointer-events-none" aria-hidden="true">
+      <div className="absolute top-2 left-2 px-2 py-1 bg-black/50 border border-white/10 rounded-md z-20">
+        <span className="text-[10px] font-mono text-[#7b72a8] uppercase tracking-wider">Illustrative example (NOT live)</span>
+      </div>
       <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#BEB2CC 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
       
       {/* Visual abstract representation of routing models */}

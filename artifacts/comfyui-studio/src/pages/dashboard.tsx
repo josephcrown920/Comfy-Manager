@@ -174,12 +174,12 @@ export default function Dashboard() {
               {recentOutputs.slice(0, 10).map((output) => (
                 <div key={output.id} className="group relative aspect-square rounded-[2rem] bg-card border border-border overflow-hidden shadow-lg">
                   {output.outputType === 'video' ? (
-                    <video 
-                      src={output.comfyUrl} 
+                    <video
+                      src={output.comfyUrl}
                       className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity duration-500"
-                      muted loop playsInline
-                      onMouseEnter={e => e.currentTarget.play()} 
-                      onMouseLeave={e => e.currentTarget.pause()}
+                      controls playsInline preload="none"
+                      poster={output.thumbnailUrl || undefined}
+                      aria-label={`Preview ${output.filename}`}
                     />
                   ) : (
                     <img 

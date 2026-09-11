@@ -266,8 +266,7 @@ export default function Generate() {
           {filteredWorkflows.map(workflow => (
             <div
               key={workflow.id}
-              className="relative rounded-3xl cursor-pointer group flex flex-col overflow-hidden aspect-[4/5] border border-[#A779F5]/20 hover:border-[#B7F54A]/80 transition-all duration-500 shadow-2xl bg-[#171120]"
-              onClick={() => setSelectedWorkflowId(workflow.id)}
+              className="relative rounded-3xl group flex flex-col overflow-hidden aspect-[4/5] border border-[#A779F5]/20 hover:border-[#B7F54A]/80 focus-within:border-[#B7F54A]/80 transition-all duration-500 shadow-2xl bg-[#171120]"
             >
               {DB_WORKFLOW_THUMBNAILS[workflow.id] ? (
                 <img
@@ -290,7 +289,15 @@ export default function Generate() {
               </div>
 
               <div className="absolute bottom-0 left-0 right-0 p-6 z-10 flex flex-col gap-3 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                <h3 className="font-extrabold text-2xl text-white leading-tight drop-shadow-md">{workflow.name}</h3>
+                <h3 className="font-extrabold text-2xl text-white leading-tight drop-shadow-md">
+                  <button
+                    type="button"
+                    className="text-left focus:outline-none before:absolute before:inset-0 before:z-10 focus-visible:before:ring-2 focus-visible:before:ring-[#B7F54A] focus-visible:before:ring-inset"
+                    onClick={() => setSelectedWorkflowId(workflow.id)}
+                  >
+                    {workflow.name}
+                  </button>
+                </h3>
                 <p className="text-sm text-[#BEB2CC] line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-75">{workflow.description}</p>
                 <div className="flex flex-wrap gap-2 mt-1">
                   <span className="px-3 py-1.5 rounded-full bg-[#171120]/80 backdrop-blur-md border border-[#A779F5]/30 text-xs text-[#BEB2CC] font-semibold shadow-lg">
@@ -308,11 +315,7 @@ export default function Generate() {
           {visibleSaved.map(saved => (
             <div
               key={`saved-${saved.id}`}
-              className="relative rounded-3xl cursor-pointer group flex flex-col overflow-hidden aspect-[4/5] border border-[#A779F5]/20 hover:border-[#B7F54A]/80 transition-all duration-500 shadow-2xl bg-[#171120]"
-              onClick={() => {
-                setInitialCustomJson(saved.json);
-                setSelectedWorkflowId(CUSTOM_WORKFLOW_ID);
-              }}
+              className="relative rounded-3xl group flex flex-col overflow-hidden aspect-[4/5] border border-[#A779F5]/20 hover:border-[#B7F54A]/80 focus-within:border-[#B7F54A]/80 transition-all duration-500 shadow-2xl bg-[#171120]"
             >
               <div className="absolute inset-0 bg-[#171120]/80 flex items-center justify-center">
                 <Bookmark className="h-16 w-16 text-[#BEB2CC]/30 group-hover:scale-110 transition-transform duration-700 ease-out" />
@@ -350,7 +353,18 @@ export default function Generate() {
               </div>
 
               <div className="absolute bottom-0 left-0 right-0 p-6 z-10 flex flex-col gap-3 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                <h3 className="font-extrabold text-2xl text-white leading-tight drop-shadow-md truncate">{saved.name}</h3>
+                <h3 className="font-extrabold text-2xl text-white leading-tight drop-shadow-md truncate">
+                  <button
+                    type="button"
+                    className="text-left focus:outline-none before:absolute before:inset-0 before:z-10 focus-visible:before:ring-2 focus-visible:before:ring-[#B7F54A] focus-visible:before:ring-inset"
+                    onClick={() => {
+                      setInitialCustomJson(saved.json);
+                      setSelectedWorkflowId(CUSTOM_WORKFLOW_ID);
+                    }}
+                  >
+                    {saved.name}
+                  </button>
+                </h3>
                 <p className="text-sm text-[#BEB2CC] line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-75">Your saved custom workflow — click to load and run.</p>
                 <div className="flex gap-2 mt-1">
                   <span className="px-3 py-1.5 rounded-full bg-[#171120]/80 backdrop-blur-md border border-[#A779F5]/30 text-xs text-[#BEB2CC] font-semibold shadow-lg">

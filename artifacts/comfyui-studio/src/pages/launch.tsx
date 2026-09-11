@@ -80,14 +80,16 @@ function StepCard({ n, icon: Icon, title, children }: { n: number; icon: any; ti
 
 function LaunchVisual() {
   return (
-    <div className="absolute inset-0 bg-[#09080D] overflow-hidden flex items-center justify-center">
+    <div className="absolute inset-0 bg-[#09080D] overflow-hidden flex items-center justify-center pointer-events-none" aria-hidden="true">
+      <div className="absolute top-2 left-2 px-2 py-1 bg-black/50 border border-white/10 rounded-md z-20">
+        <span className="text-[10px] font-mono text-[#7b72a8] uppercase tracking-wider">Illustrative example (NOT live)</span>
+      </div>
       <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#BEB2CC 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
       
       <div className="relative z-10 w-full h-full flex items-center justify-center gap-8 md:gap-16 px-12">
         <div className="w-24 h-24 rounded-3xl bg-[#171120] border-2 border-[#A779F5] flex items-center justify-center shadow-[0_0_30px_rgba(167,121,245,0.2)] relative z-10 group hover:scale-105 transition-transform duration-500">
           <div className="absolute inset-0 bg-gradient-to-tr from-[#A779F5]/20 to-transparent rounded-3xl" />
           <Cloud className="w-10 h-10 text-[#A779F5]" />
-          <div className="absolute -bottom-3 px-3 py-1 bg-[#09080D] border border-[#2d2650] rounded-lg text-[10px] uppercase font-bold tracking-wider text-[#A779F5]">Cloud GPU</div>
         </div>
 
         <div className="flex-1 max-w-[200px] h-0.5 bg-gradient-to-r from-[#A779F5]/50 via-[#B7F54A]/50 to-[#B7F54A]/50 relative">
@@ -96,14 +98,12 @@ function LaunchVisual() {
           </div>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#09080D] border border-[#2d2650] px-3 py-1.5 rounded-lg flex items-center gap-2">
             <Terminal className="w-3 h-3 text-[#BEB2CC]" />
-            <span className="text-[10px] font-mono text-white">bootstrap.py</span>
           </div>
         </div>
 
         <div className="w-24 h-24 rounded-3xl bg-[#171120] border-2 border-[#B7F54A] flex items-center justify-center shadow-[0_0_30px_rgba(183,245,74,0.2)] relative z-10 group hover:scale-105 transition-transform duration-500">
           <div className="absolute inset-0 bg-gradient-to-tr from-[#B7F54A]/20 to-transparent rounded-3xl" />
           <Rocket className="w-10 h-10 text-[#B7F54A]" />
-          <div className="absolute -bottom-3 px-3 py-1 bg-[#09080D] border border-[#2d2650] rounded-lg text-[10px] uppercase font-bold tracking-wider text-[#B7F54A]">Ready</div>
         </div>
       </div>
     </div>

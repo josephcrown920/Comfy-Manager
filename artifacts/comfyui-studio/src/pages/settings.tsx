@@ -12,12 +12,14 @@ import { PageHeader } from "@/components/operations-design/PageHeader";
 
 function SettingsVisual() {
   return (
-    <div className="absolute inset-0 bg-[#09080D] overflow-hidden flex items-center justify-center">
-      {/* Background pattern */}
+    <div className="absolute inset-0 bg-[#09080D] overflow-hidden flex items-center justify-center pointer-events-none" aria-hidden="true">
+      <div className="absolute top-2 left-2 px-2 py-1 bg-black/50 border border-white/10 rounded-md z-20">
+        <span className="text-[10px] font-mono text-[#7b72a8] uppercase tracking-wider">Illustrative example (NOT live)</span>
+      </div>
       <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#BEB2CC 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
       
       {/* Visual abstract representation of connection details */}
-      <div className="relative z-10 flex items-center gap-4 md:gap-12 w-full px-8 max-w-4xl mx-auto">
+      <div className="relative z-10 flex items-center gap-4 md:gap-12 w-full px-8 max-w-4xl mx-auto opacity-50 grayscale">
         <div className="flex flex-col gap-2 items-end">
           <div className="h-8 border border-[#2d2650] bg-[#171120] rounded-lg flex items-center px-3 text-[#BEB2CC] text-xs font-mono">
             localhost:3000
@@ -34,15 +36,12 @@ function SettingsVisual() {
           </div>
         </div>
 
-        <div className="w-20 h-20 rounded-3xl bg-[#171120] border-2 border-[#B7F54A] flex items-center justify-center shadow-[0_0_30px_rgba(183,245,74,0.15)] z-10 relative">
-          <div className="absolute -top-3 -right-3 w-6 h-6 rounded-full bg-[#B7F54A] flex items-center justify-center shadow-lg">
-            <CheckCircle2 className="w-4 h-4 text-[#09080D]" />
-          </div>
-          <Server className="w-8 h-8 text-[#B7F54A]" />
+        <div className="w-20 h-20 rounded-3xl bg-[#171120] border-2 border-[#2d2650] flex items-center justify-center z-10 relative">
+          <Server className="w-8 h-8 text-[#7b72a8]" />
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="h-8 border border-[#B7F54A]/40 bg-[#171120] rounded-lg flex items-center px-3 text-[#B7F54A] text-xs font-mono shadow-[0_0_15px_rgba(183,245,74,0.1)]">
+          <div className="h-8 border border-[#2d2650] bg-[#171120] rounded-lg flex items-center px-3 text-[#7b72a8] text-xs font-mono">
             ComfyUI Instance
           </div>
           <div className="flex gap-2">
@@ -299,6 +298,7 @@ export default function Settings() {
                           </Button>
                         )}
                         <Button size="icon" variant="ghost" className="h-9 w-9 text-[#7b72a8] hover:text-red-400 hover:bg-red-400/10 rounded-xl"
+                          aria-label={`Delete saved GPU ${gpu.label}`}
                           onClick={() => deleteGpu.mutate({ id: gpu.id }, {
                             onSuccess: () => { toast({ title: `Removed "${gpu.label}"` }); refreshAll(); },
                           })}>
@@ -350,6 +350,7 @@ export default function Settings() {
                 variant="ghost"
                 onClick={handleTestConnection}
                 disabled={isStatusFetching}
+                aria-label="Refresh connection status"
                 className="h-8 w-8 text-[#BEB2CC] hover:text-white hover:bg-[#2d2650] rounded-lg"
               >
                 <RefreshCw className={`w-4 h-4 ${isStatusFetching ? 'animate-spin' : ''}`} />
