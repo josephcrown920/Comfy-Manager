@@ -1,20 +1,10 @@
-export const CINEMATIC_PRESETS = [
-  "anamorphic_dolly", "slow_push_in", "vertigo_zoom", "parallax_depth", "cold_vision", "film_noir_key", "macro_lens_focus", "one_shot_tracking", "imax_landscape",
-] as const;
-
-export const VIRAL_PRESETS = [
-  "HOOK_THUMB_STOP", "FAST_CUT_MONTAGE", "FACELESS_TEXT_OVERLAY", "TRENDING_SPEED_RAMP", "SPLIT_SCREEN_REACTION", "BOOT DOMINANCE", "FIRE MEME", "WATER RAP", "NEON DRIP", "CASH RAIN", "LEAN HAZE", "TRAP HOUSE", "COLD VISION", "BROKEN MIRROR", "FRAGMENTS", "PALETTE", "EARTH ZOOM",
-] as const;
-
-export const PRESET_TO_WORKFLOW: Record<string, string> = {
-  bullet_time_photo: "image-to-video", slow_push_in: "cinematic-video", vertigo_zoom: "cinematic-video", parallax_depth: "image-to-video",
-  neon_outline: "viral-video", chrome_lux: "cinematic-video", broken_mirror: "viral-video", cash_rain: "viral-video", fire_meme: "viral-video",
-  water_rap: "viral-video", trap_house: "cinematic-video", cold_vision: "cinematic-video", earth_zoom: "cinematic-video", speed_ramp_runway: "viral-video",
-  character_sheet: "character-video", album_cover_freeze: "image-to-video", glitch_clone_echo: "character-video", soft_beauty_turn: "character-video",
+/** Canonical Aurora video preset index. Presets select parameters; workflows execute. */
+export const CINEMATIC_PRESET_IDS = ["anamorphic_dolly","slow_push_in","vertigo_zoom","parallax_depth","cold_vision","film_noir_key","macro_lens_focus","one_shot_tracking","imax_landscape"] as const;
+export const VIDEO_PRESET_IDS = ["bullet_time_photo","slow_push_in","vertigo_zoom","parallax_depth","flash_frame_reveal","neon_outline","chrome_lux","broken_mirror","cash_rain","fire_meme","water_rap","trap_house","cold_vision","earth_zoom","speed_ramp_runway","moodboard_sheet","character_sheet","storyboard_previs","album_cover_freeze","glitch_clone_echo","soft_beauty_turn",...CINEMATIC_PRESET_IDS] as const;
+export type VideoPresetId = typeof VIDEO_PRESET_IDS[number];
+export const PRESET_ALIASES: Record<string, VideoPresetId> = {
+  "do bullet time with my photo":"bullet_time_photo","slow zoom on my photo":"slow_push_in","do the dolly zoom effect":"vertigo_zoom","add premium parallax":"parallax_depth","make it neon":"neon_outline","turn this into chrome luxury":"chrome_lux","broken mirror look":"broken_mirror","make it rain money":"cash_rain","house on fire meme":"fire_meme","water rap visual":"water_rap","put him in a trap house":"trap_house","cold blue luxury portrait":"cold_vision","zoom from earth to subject":"earth_zoom","make a moodboard":"moodboard_sheet","make a character sheet":"character_sheet","make a storyboard":"storyboard_previs","album cover look":"album_cover_freeze","cinematic lens dolly":"anamorphic_dolly","film noir mood":"film_noir_key","macro lens close up":"macro_lens_focus","one shot tracking master":"one_shot_tracking","imax sweeping landscape":"imax_landscape",
 };
-
-export function resolvePreset(input?: string | null, mode: "cinematic" | "viral" | "standard" = "standard") {
-  const q = String(input || "").trim();
-  if (q && (PRESET_TO_WORKFLOW[q] || CINEMATIC_PRESETS.includes(q as never) || VIRAL_PRESETS.includes(q as never))) return q;
-  return mode === "cinematic" ? "slow_push_in" : mode === "viral" ? "HOOK_THUMB_STOP" : null;
-}
+export const VIRAL_PRESET_IDS = ["HOOK_THUMB_STOP","FAST_CUT_MONTAGE","FACELESS_TEXT_OVERLAY","TRENDING_SPEED_RAMP","SPLIT_SCREEN_REACTION","BOOT DOMINANCE","FIRE MEME","WATER RAP","NEON DRIP","CASH RAIN","LEAN HAZE","TRAP HOUSE","COLD VISION","BROKEN MIRROR","FRAGMENTS","PALETTE","EARTH ZOOM"] as const;
+export function resolvePreset(input: string) { const q = input.toLowerCase().trim(); return VIDEO_PRESET_IDS.find((x) => x.toLowerCase() === q) || PRESET_ALIASES[q] || VIRAL_PRESET_IDS.find((x) => x.toLowerCase() === q) || null; }
+export function resolvePresetForMode(input: string, mode?: "cinematic" | "viral" | "standard") { const resolved = resolvePreset(input); if (resolved) return resolved; if (mode === "cinematic") return "slow_push_in"; if (mode === "viral") return "HOOK_THUMB_STOP"; return null; }
