@@ -13,6 +13,7 @@ import assistantRouter from "./assistant";
 import batchesRouter from "./batches";
 import modelarkRouter from "./modelark";
 import videoAgentRouter from "./video-agent";
+import grwmRouter from "./grwm";
 import runpodRouter from "./runpod";
 import { getComfyUrl } from "./settings";
 import { db, jobsTable } from "@workspace/db";
@@ -23,7 +24,6 @@ import { requireAdmin, getAuthenticatedUserId } from "../lib/access-control";
 
 const router: IRouter = Router();
 router.use(healthRouter);
-// Free-GPU catalog is public metadata; actual workers remain authenticated.
 router.use(freeGpuRouter);
 router.use(requireAuth);
 router.use(requireAdmin, settingsRouter);
@@ -38,6 +38,7 @@ router.use(assistantRouter);
 router.use(batchesRouter);
 router.use(modelarkRouter);
 router.use(videoAgentRouter);
+router.use(grwmRouter);
 router.use(runpodRouter);
 
 router.get("/comfy/view", async (req, res): Promise<void> => {
