@@ -8,6 +8,7 @@ const MODELARK_BASE_URL = "https://ark.ap-southeast.bytepluses.com/api/v3";
 const MODELARK_GRWM_MODEL = "dreamina-seedance-2-5-260628";
 const MAX_REFERENCE_IMAGES = 8;
 const MAX_REFERENCE_VIDEOS = 4;
+const MAX_SCENE_REFERENCE_IMAGES = 4;
 
 function getKey(): string {
   const key = process.env.MODELARK_API_KEY?.trim();
@@ -83,23 +84,30 @@ router.post("/grwm", async (req, res): Promise<void> => {
     const body = (req.body || {}) as Record<string, unknown>;
     const performanceVideo = filename(body.performance_video, "GRWM performance video");
     const outfitReference = filename(body.outfit_reference, "New outfit reference");
+    const locationReference = body.location_reference ? filename(body.location_reference, "Location reference") : "";
     const referenceImages = cleanArray(body.reference_images);
     const referenceVideos = cleanArray(body.reference_videos);
+    const sceneReferenceImages = cleanArray(body.scene_reference_images);
     if (referenceImages.length > MAX_REFERENCE_IMAGES) throw new Error(`You can supply up to ${MAX_REFERENCE_IMAGES} reference photos.`);
     if (referenceVideos.length > MAX_REFERENCE_VIDEOS) throw new Error(`You can supply up to ${MAX_REFERENCE_VIDEOS} reference videos.`);
+    if (sceneReferenceImages.length > MAX_SCENE_REFERENCE_IMAGES) throw new Error(`You can supply up to ${MAX_SCENE_REFERENCE_IMAGES} scene reference images.`);
 
-    const [performance, outfit, imageAssets, videoAssets] = await Promise.all([
+    const [performance, outfit, location, imageAssets, videoAssets, sceneAssets] = await Promise.all([
       readInputAsset(performanceVideo, "video"),
       readInputAsset(outfitReference, "image"),
+      locationReference ? readInputAsset(locationReference, "image") : null,
       Promise.all(referenceImages.map((item) => readInputAsset(filename(item, "Reference image"), "image"))),
       Promise.all(referenceVideos.map((item) => readInputAsset(filename(item, "Reference video"), "video"))),
+      Promise.all(sceneReferenceImages.map((item) => readInputAsset(filename(item, "Scene reference image"), "image"))),
     ]);
 
-    const [performanceUrl, outfitUrl, imageUrls, videoUrls] = await Promise.all([
+    const [performanceUrl, outfitUrl, locationUrl, imageUrls, videoUrls, sceneUrls] = await Promise.all([
       uploadAsset(performance, "grwm-performance", "video"),
       uploadAsset(outfit, "grwm-outfit", "image"),
+      location ? uploadAsset(location, "grwm-location", "image") : null,
       Promise.all(imageAssets.map((asset, i) => uploadAsset(asset, `grwm-reference-${i + 1}`, "image"))),
       Promise.all(videoAssets.map((asset, i) => uploadAsset(asset, `grwm-motion-reference-${i + 1}`, "video"))),
+      Promise.all(sceneAssets.map((asset, i) => uploadAsset(asset, `grwm-scene-reference-${i + 1}`, "image"))),
     ]);
 
     const scenePrompt = String(body.scene_prompt || "").trim();
@@ -109,16 +117,20 @@ router.post("/grwm", async (req, res): Promise<void> => {
       "Create a cinematic Get Ready With Me video from the supplied original performance video.",
       "The original performance video is the primary motion, action, gesture, timing, and camera-performance anchor.",
       "Preserve the same person's identity, facial features, body proportions, hands, natural gestures, and performance beats.",
-      "Use the supplied reference photos as identity, styling, environment, product, and visual-continuity references.",
+      "Use the supplied reference photos as identity, styling, product, and visual-continuity references.",
       "Use the supplied reference videos as secondary motion, framing, transition, and treatment references; do not replace the user's original performance.",
+      locationUrl ? "The supplied location reference is the target environment. Replace the original location with this environment while preserving the performer, performance, camera intent, and coherent lighting." : "If no location reference is supplied, preserve the original environment unless the scene direction requests a different setting.",
+      sceneUrls.length ? "The supplied scene reference images are production-design references for the target environment, architecture, set dressing, composition, lighting, and atmosphere. Use them to build a coherent new scene rather than copying unrelated subjects." : "Scene references are optional; use the scene/look direction to guide production design when provided.",
       `The supplied outfit reference is the wardrobe source. ${outfitInstruction}`,
       scenePrompt ? `Scene/look direction: ${scenePrompt}` : "Keep the scene polished, coherent, cinematic, and recognizably based on the original GRWM.",
       `Motion direction: ${motionContext}`,
-      "Do not introduce unrelated people. Do not change the performer into another identity. Keep face, hair, hands, wardrobe, and environment temporally consistent.",
+      "Do not introduce unrelated people. Do not change the performer into another identity. Keep face, hair, hands, wardrobe, lighting, and environment temporally consistent.",
     ].join(" ");
 
     const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
     for (const url of imageUrls) content.push({ type: "image_url", image_url: { url }, role: "reference_image" });
+    for (const url of sceneUrls) content.push({ type: "image_url", image_url: { url }, role: "reference_image" });
+    if (locationUrl) content.push({ type: "image_url", image_url: { url: locationUrl }, role: "reference_image" });
     content.push({ type: "image_url", image_url: { url: outfitUrl }, role: "reference_image" });
     content.push({ type: "video_url", video_url: { url: performanceUrl }, role: "reference_video" });
     for (const url of videoUrls) content.push({ type: "video_url", video_url: { url }, role: "reference_video" });
