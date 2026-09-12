@@ -6,7 +6,12 @@ import {
   GetRecentOutputsResponse,
 } from "@workspace/api-zod";
 import { eq, desc, and } from "drizzle-orm";
-import { MODELARK_OUTPUT_SUBFOLDER, modelArkOutputUrl } from "../lib/modelark";
+import {
+  MODELARK_IMAGE_OUTPUT_SUBFOLDER,
+  MODELARK_OUTPUT_SUBFOLDER,
+  modelArkImageOutputUrl,
+  modelArkOutputUrl,
+} from "../lib/modelark";
 import { getAuthenticatedUserId } from "../lib/access-control";
 
 const router: IRouter = Router();
@@ -20,6 +25,8 @@ function formatOutput(o: typeof outputsTable.$inferSelect) {
     outputType: o.outputType,
     comfyUrl: o.subfolder === MODELARK_OUTPUT_SUBFOLDER
       ? modelArkOutputUrl(o.filename)
+      : o.subfolder === MODELARK_IMAGE_OUTPUT_SUBFOLDER
+        ? modelArkImageOutputUrl(o.filename)
       : `/api/comfy/view?filename=${encodeURIComponent(o.filename)}&subfolder=${encodeURIComponent(o.subfolder)}&type=output&jobId=${o.jobId}`,
     thumbnailUrl: null,
     createdAt: o.createdAt,

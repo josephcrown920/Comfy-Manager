@@ -5,12 +5,108 @@ import { getComfyUrl } from "../routes/settings";
 const MODELARK_BASE_URL = "https://ark.ap-southeast.bytepluses.com/api/v3";
 export const MODELARK_WORKFLOW_ID = "perform-anywhere-seedance";
 export const MODELARK_REFERENCE_WORKFLOW_ID = "modelark-seedance-reference-video";
+export const MODELARK_IMAGE_WORKFLOW_ID = "modelark-seedream-image";
 export const MODELARK_OUTPUT_SUBFOLDER = "modelark";
+export const MODELARK_IMAGE_OUTPUT_SUBFOLDER = "modelark-image";
 export const MODELARK_DEFAULT_MODEL = "dreamina-seedance-2-5-260628";
+export const MODELARK_DEFAULT_TEXT_MODEL = "dola-seed-2-1-turbo-260628";
+export const MODELARK_DEFAULT_IMAGE_MODEL = "dola-seedream-5-0-pro-260628";
+
+export type ModelArkCapability = "text" | "image" | "video";
+
+export type ModelArkModel = {
+  id: string;
+  name: string;
+  capability: ModelArkCapability;
+  description: string;
+  hosted: true;
+};
+
+/**
+ * The visual and agent models currently documented by ModelArk.
+ *
+ * This is deliberately server-owned instead of being accepted from the
+ * browser. ModelArk model IDs can change by region or activation state, so
+ * the API still allows an administrator to override the defaults through
+ * environment variables without exposing credentials to the client.
+ */
+export const MODELARK_MODELS: ModelArkModel[] = [
+  {
+    id: MODELARK_DEFAULT_TEXT_MODEL,
+    name: "Dola Seed 2.1 Turbo",
+    capability: "text",
+    description: "Reasoning, text generation, multimodal understanding, and tool use.",
+    hosted: true,
+  },
+  {
+    id: "seed-2-0-pro-260328",
+    name: "Seed 2.0 Pro",
+    capability: "text",
+    description: "General-purpose reasoning, text generation, and visual grounding.",
+    hosted: true,
+  },
+  {
+    id: "seed-2-0-lite-260428",
+    name: "Seed 2.0 Lite",
+    capability: "text",
+    description: "Fast reasoning, text generation, structured output, and tool use.",
+    hosted: true,
+  },
+  {
+    id: "seed-2-0-mini-260428",
+    name: "Seed 2.0 Mini",
+    capability: "text",
+    description: "Lightweight reasoning, text generation, and multimodal understanding.",
+    hosted: true,
+  },
+  {
+    id: MODELARK_DEFAULT_IMAGE_MODEL,
+    name: "Dola Seedream 5.0 Pro",
+    capability: "image",
+    description: "High-fidelity image generation with reference consistency and editing.",
+    hosted: true,
+  },
+  {
+    id: "seedream-5-0-lite-260128",
+    name: "Seedream 5.0 Lite",
+    capability: "image",
+    description: "Fast image generation, editing, and sequential image generation.",
+    hosted: true,
+  },
+  {
+    id: "seedream-5-0-260128",
+    name: "Seedream 5.0",
+    capability: "image",
+    description: "Image generation with reference-image and sequential-generation support.",
+    hosted: true,
+  },
+  {
+    id: "seedream-4-5-251128",
+    name: "Seedream 4.5",
+    capability: "image",
+    description: "Image generation and editing with reference-image support.",
+    hosted: true,
+  },
+  {
+    id: "seedream-4-0-250828",
+    name: "Seedream 4.0",
+    capability: "image",
+    description: "Image generation and editing with reference-image support.",
+    hosted: true,
+  },
+  {
+    id: MODELARK_DEFAULT_MODEL,
+    name: "Dreamina Seedance 2.5",
+    capability: "video",
+    description: "Hosted video generation with multimodal references and extended storytelling.",
+    hosted: true,
+  },
+];
 
 const MODELARK_WORKFLOW_IDS = new Set([
   MODELARK_WORKFLOW_ID,
   MODELARK_REFERENCE_WORKFLOW_ID,
+  MODELARK_IMAGE_WORKFLOW_ID,
 ]);
 const SUPPORTED_RATIOS = new Set(["16:9", "9:16", "1:1"]);
 const SUPPORTED_RESOLUTIONS = new Set(["480p", "720p", "1080p"]);
@@ -47,6 +143,9 @@ export function getModelArkReadiness() {
   return {
     configured: Boolean(process.env.MODELARK_API_KEY?.trim()),
     model: process.env.MODELARK_SEEDANCE_MODEL?.trim() || MODELARK_DEFAULT_MODEL,
+    textModel: process.env.MODELARK_TEXT_MODEL?.trim() || MODELARK_DEFAULT_TEXT_MODEL,
+    imageModel: process.env.MODELARK_IMAGE_MODEL?.trim() || MODELARK_DEFAULT_IMAGE_MODEL,
+    models: MODELARK_MODELS,
   };
 }
 
@@ -245,6 +344,139 @@ export async function getSeedanceTask(taskId: string): Promise<ModelArkTask> {
     throw new Error(`ModelArk status request failed (${response.status}).`);
   }
   return payload;
+}
+
+function validateModelId(value: unknown, fallback: string): string {
+  const model = String(value || fallback).trim();
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,119}$/.test(model)) {
+    throw new Error("The configured ModelArk model ID is invalid.");
+  }
+  return model;
+}
+
+export type ModelArkImage = {
+  url?: string;
+  b64_json?: string;
+};
+
+export async function createSeedreamImage(params: Record<string, unknown>): Promise<{
+  model: string;
+  data: ModelArkImage[];
+}> {
+  const model = validateModelId(
+    params.model || process.env.MODELARK_IMAGE_MODEL,
+    MODELARK_DEFAULT_IMAGE_MODEL,
+  );
+  const prompt = String(params.prompt || "").trim();
+  if (!prompt || prompt.length > 6000) {
+    throw new Error("Seedream prompt must be between 1 and 6,000 characters.");
+  }
+
+  const size = String(params.size || "2K").trim();
+  const allowedSizes = new Set(["1K", "1.5K", "2K", "auto"]);
+  if (!allowedSizes.has(size)) {
+    throw new Error("Seedream size must be 1K, 1.5K, 2K, or auto.");
+  }
+
+  const count = Math.min(Math.max(Number(params.n ?? 1), 1), 4);
+  const response = await modelArkRequest("/images/generations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      prompt,
+      size,
+      n: count,
+      response_format: "url",
+      watermark: false,
+      sequential_image_generation: "disabled",
+    }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    model?: string;
+    data?: ModelArkImage[];
+    error?: { message?: string };
+  };
+  if (!response.ok || !Array.isArray(payload.data) || payload.data.length === 0) {
+    throw new Error(
+      `ModelArk Seedream request failed (${response.status}): ${payload.error?.message || "no image returned"}`,
+    );
+  }
+  return { model: payload.model || model, data: payload.data };
+}
+
+export type ModelArkChatMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
+
+export async function createModelArkTextCompletion(params: {
+  model?: string;
+  messages: ModelArkChatMessage[];
+  maxTokens?: number;
+  json?: boolean;
+}): Promise<string> {
+  const model = validateModelId(
+    params.model || process.env.MODELARK_TEXT_MODEL,
+    MODELARK_DEFAULT_TEXT_MODEL,
+  );
+  if (!MODELARK_MODELS.some((entry) => entry.capability === "text" && entry.id === model)) {
+    throw new Error("The selected ModelArk model is not a supported text model.");
+  }
+  const response = await modelArkRequest("/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      messages: params.messages,
+      max_tokens: Math.min(Math.max(params.maxTokens ?? 2048, 1), 8192),
+      ...(params.json ? { response_format: { type: "json_object" } } : {}),
+    }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    error?: { message?: string };
+  };
+  if (!response.ok) {
+    throw new Error(`ModelArk text request failed (${response.status}): ${payload.error?.message || "request rejected"}`);
+  }
+  const content = payload.choices?.[0]?.message?.content;
+  if (typeof content !== "string") {
+    throw new Error("ModelArk returned an empty text response.");
+  }
+  return content;
+}
+
+function validateRemoteOutputUrl(value: unknown): URL {
+  const url = new URL(String(value || ""));
+  const hostname = url.hostname.toLowerCase();
+  const isModelArkHost =
+    hostname === "byteplus.com" ||
+    hostname.endsWith(".byteplus.com") ||
+    hostname === "bytepluses.com" ||
+    hostname.endsWith(".bytepluses.com") ||
+    hostname === "volces.com" ||
+    hostname.endsWith(".volces.com");
+  if (
+    url.protocol !== "https:" ||
+    !isModelArkHost
+  ) {
+    throw new Error("ModelArk returned an unsafe media URL.");
+  }
+  return url;
+}
+
+export async function streamSeedreamImage(imageUrl: string): Promise<Response> {
+  const url = validateRemoteOutputUrl(imageUrl);
+  const response = await fetch(url, { signal: AbortSignal.timeout(120_000) });
+  if (!response.ok) {
+    throw new Error(`Could not download the ModelArk image (${response.status}).`);
+  }
+  return response;
+}
+
+export function modelArkImageOutputUrl(imageUrl: string): string {
+  return `/api/modelark/image?url=${encodeURIComponent(imageUrl)}`;
 }
 
 export async function streamSeedanceVideo(taskId: string): Promise<Response> {

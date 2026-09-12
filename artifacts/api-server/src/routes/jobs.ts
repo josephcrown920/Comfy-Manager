@@ -23,11 +23,15 @@ import { withGpuSubmissionLease } from "./gpu-lease";
 import { reconcileJob } from "../lib/job-reconciliation";
 import {
   createSeedanceTask,
+  createSeedreamImage,
   isModelArkWorkflow,
+  MODELARK_IMAGE_OUTPUT_SUBFOLDER,
+  MODELARK_IMAGE_WORKFLOW_ID,
   MODELARK_OUTPUT_SUBFOLDER,
   MODELARK_REFERENCE_WORKFLOW_ID,
   MODELARK_WORKFLOW_ID,
   modelArkOutputUrl,
+  modelArkImageOutputUrl,
 } from "../lib/modelark";
 import { getAuthenticatedUserId } from "../lib/access-control";
 
@@ -54,7 +58,9 @@ async function reserveModelArkJob(
   today.setUTCHours(0, 0, 0, 0);
   const workflowName = workflowId === MODELARK_REFERENCE_WORKFLOW_ID
     ? "Seedance Reference Video"
-    : "Perform Anywhere — Seedance";
+    : workflowId === MODELARK_IMAGE_WORKFLOW_ID
+      ? "Seedream Image"
+      : "Perform Anywhere — Seedance";
 
   return db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"modelark:" + userId}))`);
@@ -67,7 +73,7 @@ async function reserveModelArkJob(
       .where(and(
         eq(jobsTable.ownerId, userId),
         gte(jobsTable.createdAt, today),
-        sql`${jobsTable.workflowId} IN (${MODELARK_WORKFLOW_ID}, ${MODELARK_REFERENCE_WORKFLOW_ID})`,
+        sql`${jobsTable.workflowId} IN (${MODELARK_WORKFLOW_ID}, ${MODELARK_REFERENCE_WORKFLOW_ID}, ${MODELARK_IMAGE_WORKFLOW_ID})`,
       ));
 
     if ((usage?.daily ?? 0) >= MODELARK_MAX_JOBS_PER_DAY) {
@@ -115,8 +121,10 @@ function buildJobOutput(job: typeof jobsTable.$inferSelect, outputs: typeof outp
       filename: o.filename,
       subfolder: o.subfolder,
       outputType: o.outputType,
-       comfyUrl: o.subfolder === MODELARK_OUTPUT_SUBFOLDER
-         ? modelArkOutputUrl(o.filename)
+        comfyUrl: o.subfolder === MODELARK_OUTPUT_SUBFOLDER
+          ? modelArkOutputUrl(o.filename)
+          : o.subfolder === MODELARK_IMAGE_OUTPUT_SUBFOLDER
+            ? modelArkImageOutputUrl(o.filename)
          : `/api/comfy/view?filename=${encodeURIComponent(o.filename)}&subfolder=${encodeURIComponent(o.subfolder)}&type=output&jobId=${o.jobId}`,
       thumbnailUrl: null,
       createdAt: o.createdAt,
@@ -214,7 +222,7 @@ router.post("/jobs", async (req, res): Promise<void> => {
 
   const { workflowId, params, workerId } = parsed.data;
 
-  if (isModelArkWorkflow(workflowId)) {
+  if (isModelArkWorkflow(workflowId) && workflowId !== MODELARK_IMAGE_WORKFLOW_ID) {
     let reservedJob: typeof jobsTable.$inferSelect | null = null;
     try {
       reservedJob = await reserveModelArkJob(userId, workflowId, params as Record<string, unknown>);
@@ -242,6 +250,58 @@ router.post("/jobs", async (req, res): Promise<void> => {
       }
       res.status(error instanceof ModelArkQuotaError ? 429 : 502).json({
         error: error instanceof Error ? error.message : "Could not start the ModelArk Seedance task.",
+      });
+    }
+    return;
+  }
+  if (workflowId === "modelark-seedream-image") {
+    const parsedPrompt = String((params as Record<string, unknown>).prompt || "").trim();
+    if (!parsedPrompt) {
+      res.status(400).json({ error: "A Seedream prompt is required." });
+      return;
+    }
+    let reservedJob: typeof jobsTable.$inferSelect | null = null;
+    try {
+      reservedJob = await reserveModelArkJob(userId, workflowId, params as Record<string, unknown>);
+      const imageResult = await createSeedreamImage(params as Record<string, unknown>);
+      const [job] = await db
+        .update(jobsTable)
+        .set({
+          status: "completed",
+          comfyPromptId: `modelark-image:${imageResult.model}`,
+          progress: 100,
+          completedAt: new Date(),
+        })
+        .where(and(eq(jobsTable.id, reservedJob.id), eq(jobsTable.ownerId, userId)))
+        .returning();
+      const outputRows = imageResult.data
+        .filter((image) => typeof image.url === "string" && image.url.length > 0)
+        .map((image) => ({
+          ownerId: userId,
+          jobId: reservedJob!.id,
+          filename: image.url!,
+          subfolder: MODELARK_IMAGE_OUTPUT_SUBFOLDER,
+          outputType: "image" as const,
+        }));
+      if (!outputRows.length) {
+        throw new Error("ModelArk returned image data without a downloadable URL.");
+      }
+      await db.insert(outputsTable).values(outputRows);
+      const outputs = await db.select().from(outputsTable).where(eq(outputsTable.jobId, reservedJob.id));
+      res.status(201).json(CreateJobResponse.parse(buildJobOutput(job!, outputs)));
+    } catch (error) {
+      if (reservedJob) {
+        await db
+          .update(jobsTable)
+          .set({
+            status: "failed",
+            errorMessage: error instanceof Error ? error.message : "Could not start the ModelArk Seedream task.",
+            completedAt: new Date(),
+          })
+          .where(and(eq(jobsTable.id, reservedJob.id), eq(jobsTable.ownerId, userId)));
+      }
+      res.status(error instanceof ModelArkQuotaError ? 429 : 502).json({
+        error: error instanceof Error ? error.message : "Could not start the ModelArk Seedream task.",
       });
     }
     return;

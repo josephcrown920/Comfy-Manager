@@ -4,6 +4,7 @@ import { Show } from "@clerk/react";
 import { 
   useAssistantChat, 
   useAssistantVideoPlan, 
+  useGetModelArkModels,
   type AssistantChatMessage 
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -94,7 +95,9 @@ function ChatTab() {
     { role: "assistant", content: "Hi! I'm your ComfyUI copilot. Need help understanding a node, or how to build a specific workflow?" }
   ]);
   const [input, setInput] = useState("");
+  const [selectedModel, setSelectedModel] = useState("studio-openai");
   const chatMutation = useAssistantChat();
+  const { data: modelArkCatalog } = useGetModelArkModels();
   const scrollRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -112,7 +115,7 @@ function ChatTab() {
     setInput("");
 
     chatMutation.mutate({
-      data: { messages: newMessages }
+      data: { messages: newMessages, model: selectedModel }
     }, {
       onSuccess: (data) => {
         setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
@@ -132,6 +135,29 @@ function ChatTab() {
 
   return (
     <div className="flex flex-col h-full border border-[#A779F5]/30 bg-[#171120] rounded-3xl overflow-hidden shadow-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#A779F5]/20 bg-[#09080D] px-5 py-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7b72a8]">Text model</p>
+          <p className="text-xs text-[#BEB2CC]">
+            {selectedModel === "studio-openai" ? "Studio Assistant" : "Hosted ModelArk"}
+          </p>
+        </div>
+        <select
+          value={selectedModel}
+          onChange={(event) => setSelectedModel(event.target.value)}
+          className="max-w-full rounded-xl border border-[#2d2650] bg-[#171120] px-3 py-2 text-xs font-medium text-white outline-none focus:border-[#B7F54A]"
+          aria-label="Choose assistant text model"
+        >
+          <option value="studio-openai">Studio Assistant</option>
+          {(modelArkCatalog?.models ?? [])
+            .filter((model) => model.capability === "text")
+            .map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name}
+              </option>
+            ))}
+        </select>
+      </div>
       <ScrollArea className="flex-1 p-8" ref={scrollRef}>
         <div className="space-y-8 max-w-3xl mx-auto">
           {messages.map((msg, i) => (

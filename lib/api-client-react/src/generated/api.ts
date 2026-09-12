@@ -37,6 +37,7 @@ import type {
   JobStats,
   ListJobsParams,
   ListOutputsParams,
+  ModelArkModels,
   ModelArkStatus,
   ModelAssignments,
   ModelAssignmentsInput,
@@ -528,6 +529,83 @@ export function useGetModelArkStatus<TData = Awaited<ReturnType<typeof getModelA
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetModelArkStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetModelArkModelsUrl = () => {
+
+
+
+
+  return `/api/modelark/models`
+}
+
+/**
+ * @summary List the ModelArk models supported by Studio
+ */
+export const getModelArkModels = async ( options?: Parameters<typeof customFetch>[1]): Promise<ModelArkModels> => {
+
+  return customFetch<ModelArkModels>(getGetModelArkModelsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetModelArkModelsQueryKey = () => {
+    return [
+    `/api/modelark/models`
+    ] as const;
+    }
+
+
+export const getGetModelArkModelsQueryOptions = <TData = Awaited<ReturnType<typeof getModelArkModels>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getModelArkModels>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetModelArkModelsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getModelArkModels>>> = ({ signal }) => getModelArkModels({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getModelArkModels>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetModelArkModelsQueryResult = NonNullable<Awaited<ReturnType<typeof getModelArkModels>>>
+export type GetModelArkModelsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the ModelArk models supported by Studio
+ */
+
+export function useGetModelArkModels<TData = Awaited<ReturnType<typeof getModelArkModels>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getModelArkModels>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetModelArkModelsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

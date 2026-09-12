@@ -19,7 +19,12 @@ import { fetchComfy } from "./comfy";
 import { buildComfyPrompt } from "./jobs";
 import { withGpuSubmissionLease } from "./gpu-lease";
 import { selectWorker, WorkerRoutingError } from "../lib/worker-routing";
-import { MODELARK_OUTPUT_SUBFOLDER, modelArkOutputUrl } from "../lib/modelark";
+import {
+  MODELARK_IMAGE_OUTPUT_SUBFOLDER,
+  MODELARK_OUTPUT_SUBFOLDER,
+  modelArkImageOutputUrl,
+  modelArkOutputUrl,
+} from "../lib/modelark";
 import { getAuthenticatedUserId } from "../lib/access-control";
 
 const router: IRouter = Router();
@@ -42,8 +47,10 @@ function formatChild(job: typeof jobsTable.$inferSelect, outputs: typeof outputs
       filename: output.filename,
       subfolder: output.subfolder,
       outputType: output.outputType,
-    comfyUrl: output.subfolder === MODELARK_OUTPUT_SUBFOLDER
-      ? modelArkOutputUrl(output.filename)
+      comfyUrl: output.subfolder === MODELARK_OUTPUT_SUBFOLDER
+       ? modelArkOutputUrl(output.filename)
+       : output.subfolder === MODELARK_IMAGE_OUTPUT_SUBFOLDER
+         ? modelArkImageOutputUrl(output.filename)
       : `/api/comfy/view?filename=${encodeURIComponent(output.filename)}&subfolder=${encodeURIComponent(output.subfolder)}&type=output&jobId=${output.jobId}`,
       thumbnailUrl: null,
       createdAt: output.createdAt,

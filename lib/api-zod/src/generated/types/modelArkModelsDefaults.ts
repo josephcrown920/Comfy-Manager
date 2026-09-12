@@ -5,15 +5,12 @@
  * ComfyUI Studio API — proxy and orchestration layer for a ComfyUI server
  * OpenAPI spec version: 0.1.0
  */
-import type { ModelArkModel } from './modelArkModel';
 
-export interface ModelArkStatus {
-  configured: boolean;
+export type ModelArkModelsDefaults = {
   /** @nullable */
-  model: string | null;
+  text: string | null;
   /** @nullable */
-  textModel: string | null;
+  image: string | null;
   /** @nullable */
-  imageModel: string | null;
-  models: ModelArkModel[];
-}
+  video: string | null;
+};

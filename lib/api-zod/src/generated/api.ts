@@ -102,7 +102,36 @@ export const GetComfyReadinessResponse = zod.object({
  */
 export const GetModelArkStatusResponse = zod.object({
   "configured": zod.boolean(),
-  "model": zod.string().nullable()
+  "model": zod.string().nullable(),
+  "textModel": zod.string().nullable(),
+  "imageModel": zod.string().nullable(),
+  "models": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "capability": zod.enum(['text', 'image', 'video']),
+  "description": zod.string(),
+  "hosted": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary List the ModelArk models supported by Studio
+ */
+export const GetModelArkModelsResponse = zod.object({
+  "configured": zod.boolean(),
+  "models": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "capability": zod.enum(['text', 'image', 'video']),
+  "description": zod.string(),
+  "hosted": zod.boolean()
+})),
+  "defaults": zod.object({
+  "text": zod.string().nullable(),
+  "image": zod.string().nullable(),
+  "video": zod.string().nullable()
+})
 })
 
 
@@ -889,6 +918,8 @@ export const assistantChatBodyMessagesMax = 40;
 
 export const assistantChatBodyWorkflowJsonMax = 100000;
 
+export const assistantChatBodyModelMax = 120;
+
 
 
 export const AssistantChatBody = zod.object({
@@ -896,7 +927,8 @@ export const AssistantChatBody = zod.object({
   "role": zod.enum(['user', 'assistant']),
   "content": zod.string().max(assistantChatBodyMessagesItemContentMax)
 })).max(assistantChatBodyMessagesMax),
-  "workflowJson": zod.string().max(assistantChatBodyWorkflowJsonMax).optional().describe('Optional workflow JSON the user is currently editing, for context')
+  "workflowJson": zod.string().max(assistantChatBodyWorkflowJsonMax).optional().describe('Optional workflow JSON the user is currently editing, for context'),
+  "model": zod.string().max(assistantChatBodyModelMax).optional().describe('Optional hosted text model ID. studio-openai keeps the existing assistant provider.')
 })
 
 export const AssistantChatResponse = zod.object({

@@ -113,6 +113,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/ModelArkStatus"
 
+  /modelark/models:
+    get:
+      operationId: getModelArkModels
+      tags: [modelark]
+      summary: List the ModelArk models supported by Studio
+      responses:
+        "200":
+          description: ModelArk model catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelArkModels"
+
   /comfy/models:
     get:
       operationId: getComfyModels
@@ -746,6 +759,10 @@ components:
           type: string
           maxLength: 100000
           description: Optional workflow JSON the user is currently editing, for context
+        model:
+          type: string
+          maxLength: 120
+          description: Optional hosted text model ID. studio-openai keeps the existing assistant provider.
 
     AssistantChatResponse:
       type: object
@@ -916,12 +933,57 @@ components:
 
     ModelArkStatus:
       type: object
-      required: [configured, model]
+      required: [configured, model, textModel, imageModel, models]
       properties:
         configured:
           type: boolean
         model:
           type: ["string", "null"]
+        textModel:
+          type: ["string", "null"]
+        imageModel:
+          type: ["string", "null"]
+        models:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelArkModel"
+
+    ModelArkModels:
+      type: object
+      required: [configured, models, defaults]
+      properties:
+        configured:
+          type: boolean
+        models:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelArkModel"
+        defaults:
+          type: object
+          required: [text, image, video]
+          properties:
+            text:
+              type: ["string", "null"]
+            image:
+              type: ["string", "null"]
+            video:
+              type: ["string", "null"]
+
+    ModelArkModel:
+      type: object
+      required: [id, name, capability, description, hosted]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        capability:
+          type: string
+          enum: [text, image, video]
+        description:
+          type: string
+        hosted:
+          type: boolean
 
     ComfyModels:
       type: object

@@ -6,14 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ModelArkModel } from './modelArkModel';
+import type { ModelArkModelsDefaults } from './modelArkModelsDefaults';
 
-export interface ModelArkStatus {
+export interface ModelArkModels {
   configured: boolean;
-  /** @nullable */
-  model: string | null;
-  /** @nullable */
-  textModel: string | null;
-  /** @nullable */
-  imageModel: string | null;
   models: ModelArkModel[];
+  defaults: ModelArkModelsDefaults;
 }

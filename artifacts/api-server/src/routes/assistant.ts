@@ -9,6 +9,10 @@ import {
   MAX_ASSISTANT_REQUESTS_PER_DAY,
   reserveAssistantRequest,
 } from "../lib/resource-quotas";
+import {
+  createModelArkTextCompletion,
+  MODELARK_MODELS,
+} from "../lib/modelark";
 
 const router: IRouter = Router();
 
@@ -173,7 +177,7 @@ router.post("/assistant/chat", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { messages, workflowJson } = parsed.data;
+  const { messages, workflowJson, model } = parsed.data;
   if (
     messages.length === 0 ||
     messages.length > MAX_MESSAGES ||
@@ -181,6 +185,10 @@ router.post("/assistant/chat", async (req, res): Promise<void> => {
     (workflowJson && workflowJson.length > MAX_WORKFLOW_CHARS)
   ) {
     res.status(400).json({ error: "Message too long or too many messages." });
+    return;
+  }
+  if (model && model !== "studio-openai" && !MODELARK_MODELS.some((entry) => entry.id === model && entry.capability === "text")) {
+    res.status(400).json({ error: "That text model is not available in the hosted ModelArk catalog." });
     return;
   }
   const userId = res.locals.userId as string;
@@ -195,15 +203,26 @@ router.post("/assistant/chat", async (req, res): Promise<void> => {
       (workflowJson
         ? `\n\nThe user is currently editing this workflow JSON:\n\`\`\`json\n${workflowJson.slice(0, 8000)}\n\`\`\``
         : "");
-    const completion = await openai.chat.completions.create({
-      model: MODEL,
-      max_completion_tokens: 2048,
-      messages: [
-        { role: "system", content: system },
-        ...messages.map((m) => ({ role: m.role, content: m.content })),
-      ],
-    });
-    const reply = completion.choices[0]?.message?.content ?? "";
+    const modelArkModel = model && model !== "studio-openai" ? model : null;
+    const reply = modelArkModel
+      ? await createModelArkTextCompletion({
+          model: modelArkModel,
+          maxTokens: 2048,
+          messages: [
+            { role: "system", content: system },
+            ...messages.map((m) => ({ role: m.role, content: m.content })),
+          ],
+        })
+      : (
+          await openai.chat.completions.create({
+            model: MODEL,
+            max_completion_tokens: 2048,
+            messages: [
+              { role: "system", content: system },
+              ...messages.map((m) => ({ role: m.role, content: m.content })),
+            ],
+          })
+        ).choices[0]?.message?.content ?? "";
     res.json({ reply });
   } catch (err) {
     console.error("assistant chat failed:", err);

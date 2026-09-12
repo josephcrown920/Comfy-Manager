@@ -27,6 +27,11 @@ export interface AssistantChatBody {
      * @maxLength 100000
      */
   workflowJson?: string;
+  /**
+     * Optional hosted text model ID. studio-openai keeps the existing assistant provider.
+     * @maxLength 120
+     */
+  model?: string;
 }
 
 export interface AssistantChatResponse {
@@ -154,10 +159,47 @@ export interface ComfyReadiness {
   workers: ComfyReadinessWorkersItem[];
 }
 
+export type ModelArkModelCapability = typeof ModelArkModelCapability[keyof typeof ModelArkModelCapability];
+
+
+export const ModelArkModelCapability = {
+  text: 'text',
+  image: 'image',
+  video: 'video',
+} as const;
+
+export interface ModelArkModel {
+  id: string;
+  name: string;
+  capability: ModelArkModelCapability;
+  description: string;
+  hosted: boolean;
+}
+
 export interface ModelArkStatus {
   configured: boolean;
   /** @nullable */
   model: string | null;
+  /** @nullable */
+  textModel: string | null;
+  /** @nullable */
+  imageModel: string | null;
+  models: ModelArkModel[];
+}
+
+export type ModelArkModelsDefaults = {
+  /** @nullable */
+  text: string | null;
+  /** @nullable */
+  image: string | null;
+  /** @nullable */
+  video: string | null;
+};
+
+export interface ModelArkModels {
+  configured: boolean;
+  models: ModelArkModel[];
+  defaults: ModelArkModelsDefaults;
 }
 
 export interface ComfyModels {

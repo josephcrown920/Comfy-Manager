@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-// AssistantChatBody is exported from generated/api.ts as the runtime Zod schema.
+export * from './assistantChatBody';
 export * from './assistantChatMessage';
 export * from './assistantChatMessageRole';
-// AssistantChatResponse is exported from generated/api.ts as the runtime Zod schema.
+export * from './assistantChatResponse';
 export * from './batch';
 export * from './batchBatchType';
 export * from './batchInput';
@@ -39,6 +39,10 @@ export * from './listJobsParams';
 export * from './listJobsStatus';
 export * from './listOutputsParams';
 export * from './listOutputsType';
+export * from './modelArkModel';
+export * from './modelArkModelCapability';
+export * from './modelArkModels';
+export * from './modelArkModelsDefaults';
 export * from './modelArkStatus';
 export * from './modelAssignments';
 export * from './modelAssignmentsInput';
@@ -56,7 +60,7 @@ export * from './settingsInput';
 export * from './settingsInputRoutingMode';
 export * from './settingsRoutingMode';
 export * from './uploadedFile';
-// UploadFileBody is exported from generated/api.ts as the runtime Zod schema.
+export * from './uploadFileBody';
 export * from './uploadFileParams';
 export * from './validateNodesInput';
 export * from './videoPlanBody';

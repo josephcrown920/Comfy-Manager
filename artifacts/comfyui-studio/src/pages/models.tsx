@@ -3,6 +3,7 @@ import {
   useGetModelAssignments,
   useUpdateModelAssignments,
   useGetComfyModels,
+  useGetModelArkModels,
   useListWorkflows,
 } from "@workspace/api-client-react";
 import {
@@ -194,6 +195,8 @@ export default function Models() {
     useGetModelAssignments();
   const { data: models, isLoading: modelsLoading, refetch: refetchModels, isFetching: modelsFetching } =
     useGetComfyModels();
+  const { data: modelArkCatalog, isLoading: modelArkLoading, refetch: refetchModelArk, isFetching: modelArkFetching } =
+    useGetModelArkModels();
   const { data: workflows, isLoading: workflowsLoading } = useListWorkflows();
   const updateAssignments = useUpdateModelAssignments();
 
@@ -302,6 +305,67 @@ export default function Models() {
             </>
           )}
         </div>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between gap-4 px-1">
+            <div>
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-5 w-5 text-[#B7F54A]" />
+                <h2 className="text-xl font-bold text-white">Hosted ModelArk Catalog</h2>
+              </div>
+              <p className="mt-1 max-w-2xl text-sm text-[#BEB2CC]">
+                Hosted text, image, and video models. These do not require a connected ComfyUI GPU.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 bg-transparent border-[#2d2650] text-[#BEB2CC] hover:bg-[#2d2650] hover:text-white rounded-xl h-9"
+              onClick={() => refetchModelArk()}
+              disabled={modelArkFetching}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${modelArkFetching ? "animate-spin text-[#B7F54A]" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+
+          {modelArkLoading ? (
+            <Skeleton className="h-40 w-full rounded-2xl bg-[#171120] border border-[#2d2650]" />
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {(["text", "image", "video"] as const).map((capability) => {
+                const hostedModels = (modelArkCatalog?.models ?? []).filter((model) => model.capability === capability);
+                return (
+                  <div key={capability} className="rounded-2xl border border-[#2d2650] bg-[#171120] p-5">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-[#7b72a8]">{capability} models</p>
+                        <p className="mt-1 text-sm text-[#BEB2CC]">{hostedModels.length} hosted options</p>
+                      </div>
+                      <span className="rounded-lg border border-[#B7F54A]/30 bg-[#B7F54A]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#B7F54A]">
+                        API
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {hostedModels.map((model) => (
+                        <div key={model.id} className="rounded-xl border border-[#2d2650] bg-[#09080D] p-3">
+                          <p className="text-sm font-semibold text-white">{model.name}</p>
+                          <p className="mt-1 break-all font-mono text-[10px] text-[#A779F5]">{model.id}</p>
+                          <p className="mt-2 text-xs leading-relaxed text-[#BEB2CC]">{model.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <p className={`text-xs ${modelArkCatalog?.configured ? "text-[#B7F54A]" : "text-[#EF4444]"}`}>
+            {modelArkCatalog?.configured
+              ? "ModelArk credentials are configured for server-side requests."
+              : "ModelArk credentials are not configured. The catalog is visible, but hosted generation is unavailable."}
+          </p>
+        </section>
 
         {/* Global defaults */}
         <div className="space-y-4">

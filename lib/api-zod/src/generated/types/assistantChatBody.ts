@@ -15,4 +15,9 @@ export interface AssistantChatBody {
      * @maxLength 100000
      */
   workflowJson?: string;
+  /**
+     * Optional hosted text model ID. studio-openai keeps the existing assistant provider.
+     * @maxLength 120
+     */
+  model?: string;
 }
