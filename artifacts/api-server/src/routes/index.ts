@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import freeGpuRouter from "./free-gpu";
 import settingsRouter from "./settings";
 import comfyRouter from "./comfy";
 import workflowsRouter from "./workflows";
@@ -22,6 +23,8 @@ import { requireAdmin, getAuthenticatedUserId } from "../lib/access-control";
 
 const router: IRouter = Router();
 router.use(healthRouter);
+// Free-GPU catalog is public metadata; actual workers remain authenticated.
+router.use(freeGpuRouter);
 router.use(requireAuth);
 router.use(requireAdmin, settingsRouter);
 router.use(comfyRouter);
