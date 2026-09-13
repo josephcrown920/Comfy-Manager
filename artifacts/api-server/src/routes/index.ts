@@ -15,6 +15,7 @@ import modelarkRouter from "./modelark";
 import videoAgentRouter from "./video-agent";
 import grwmRouter from "./grwm";
 import runpodRouter from "./runpod";
+import vastRouter from "./vast";
 import { getComfyUrl } from "./settings";
 import { db, jobsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
@@ -40,6 +41,7 @@ router.use(modelarkRouter);
 router.use(videoAgentRouter);
 router.use(grwmRouter);
 router.use(runpodRouter);
+router.use(requireAdmin, vastRouter);
 
 router.get("/comfy/view", async (req, res): Promise<void> => {
   const { filename, subfolder, type, jobId } = req.query as Record<string, string>;

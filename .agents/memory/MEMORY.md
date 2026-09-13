@@ -4,3 +4,4 @@
 - [Codegen quirks](codegen-quirks.md) — every api-spec codegen run re-breaks the uploadFileBody barrel export; re-apply the exclusion comment after each run.
 - [Aurora architecture](aurora-architecture.md) — evolve ComfyUI Studio in place; API server becomes the provider-neutral orchestrator and ComfyUI remains the user-owned execution backend.
 - [Worker routing](worker-routing.md) — probe health, queue, and capabilities immediately before submission; persist the chosen endpoint for reconciliation and outputs.
+- [Vast autoscaling safeguards](vast-autoscaling.md) — keep automatic rentals admin-controlled, single-instance, price-capped, and idle-reaped; never validate by spending without explicit consent.
