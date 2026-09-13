@@ -16,6 +16,7 @@ import Launch from '@/pages/launch';
 import Guide from '@/pages/guide';
 import Batches from '@/pages/batches';
 import PerformAnywhere from '@/pages/perform-anywhere';
+import GpuHub from '@/pages/gpu-hub';
 
 import {
   Route,
@@ -42,6 +43,7 @@ function Router() {
           <Route path="/generate" component={Generate} />
           <Route path="/batches" component={Batches} />
           <Route path="/perform-anywhere" component={PerformAnywhere} />
+          <Route path="/gpu-hub" component={GpuHub} />
           <Route path="/assistant" component={Assistant} />
           <Route path="/jobs" component={Jobs} />
           <Route path="/gallery" component={Gallery} />
