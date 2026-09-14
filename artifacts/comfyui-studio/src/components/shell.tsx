@@ -1,5 +1,6 @@
 import * as React from "react"
 import { Link, useLocation } from "wouter"
+import { useQuery } from "@tanstack/react-query"
 import { LayoutDashboard, Settings2, Images, ListVideo, BrainCircuit, Rocket, Bot, Boxes, Menu, X, BookOpen, GitBranch, Aperture, Clapperboard, Cpu } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AccountControl } from "@/components/account-control"
@@ -17,6 +18,8 @@ const navItems = [
   { href: "/launch", label: "Launch GPU", icon: Rocket },
   { href: "/guide", label: "Guide", icon: BookOpen },
 ]
+
+const adminNavItem = { href: "/admin", label: "Admin Studio", icon: Settings2 }
 
 function AuroraWordmark({ collapsed = false }: { collapsed?: boolean }) {
   return (
@@ -36,6 +39,16 @@ function AuroraWordmark({ collapsed = false }: { collapsed?: boolean }) {
 export function Shell({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation()
   const [mobileOpen, setMobileOpen] = React.useState(false)
+  const { data: isAdmin } = useQuery({
+    queryKey: ["admin-access"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/content", { credentials: "include" })
+      return response.ok
+    },
+    retry: false,
+    staleTime: 60_000,
+  })
+  const visibleNavItems = isAdmin ? [...navItems, adminNavItem] : navItems
 
   React.useEffect(() => { setMobileOpen(false) }, [location])
 
@@ -59,7 +72,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <nav className="flex flex-col p-4 gap-2">
             <AccountControl onSettings={handleSettingsClick} />
             <div className="h-4" />
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href))
               return <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={cn("flex items-center gap-4 px-4 py-3.5 rounded-2xl text-base font-bold transition-all", isActive ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(183,245,74,0.2)]" : "text-muted-foreground hover:text-foreground hover:bg-card")}><item.icon className="h-5 w-5" />{item.label}</Link>
             })}
@@ -71,7 +84,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="h-28 flex items-center px-8"><Link href="/" className="flex items-center"><AuroraWordmark /></Link></div>
         <div className="px-6 pb-6"><Link href="/generate"><button className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-[0_0_20px_rgba(183,245,74,0.15)] hover:shadow-[0_0_30px_rgba(183,245,74,0.3)] hover:-translate-y-0.5 transition-all duration-300"><Aperture className="h-4 w-4" />Run Workflow</button></Link></div>
         <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto py-2">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href))
             return <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group relative", isActive ? "bg-card text-foreground border border-border shadow-md" : "text-muted-foreground hover:text-foreground hover:bg-card/50 border border-transparent")}><item.icon className={cn("h-4 w-4 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />{item.label}{isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full" />}</Link>
           })}

@@ -17,6 +17,7 @@ import Guide from '@/pages/guide';
 import Batches from '@/pages/batches';
 import PerformAnywhere from '@/pages/perform-anywhere';
 import GpuHub from '@/pages/gpu-hub';
+import Admin from '@/pages/admin';
 
 import {
   Route,
@@ -51,6 +52,7 @@ function Router() {
           <Route path="/launch" component={Launch} />
           <Route path="/guide" component={Guide} />
           <Route path="/settings" component={Settings} />
+          <Route path="/admin" component={Admin} />
           <Route component={NotFound} />
             </Switch>
           </Shell>
