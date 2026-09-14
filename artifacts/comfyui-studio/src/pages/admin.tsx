@@ -100,11 +100,11 @@ export default function Admin() {
     [content],
   );
 
-  if (contentQuery.isLoading || !content) {
-    return <div className="flex min-h-[50vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-3 h-5 w-5 animate-spin" />Loading admin studio</div>;
-  }
   if (contentQuery.error) {
     return <div className="mx-auto max-w-xl rounded-3xl border border-destructive/40 bg-destructive/10 p-8"><AlertCircle className="mb-4 h-8 w-8 text-destructive" /><h1 className="text-2xl font-bold">Admin access required</h1><p className="mt-2 text-muted-foreground">{(contentQuery.error as Error).message}</p></div>;
+  }
+  if (contentQuery.isLoading || !content) {
+    return <div className="flex min-h-[50vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-3 h-5 w-5 animate-spin" />Loading admin studio</div>;
   }
 
   const updateContent = (update: Partial<ContentState>) => setDraft({ ...content, ...update });
@@ -173,6 +173,23 @@ export default function Admin() {
       toast({ title: "Upload failed", description: error instanceof Error ? error.message : "Try again.", variant: "destructive" });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const deleteMedia = async (asset: MediaAsset) => {
+    if (!window.confirm(`Delete ${asset.name}?`)) return;
+    try {
+      const response = await fetch(`/api/admin/content/media/${asset.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const body = await response.json() as { error?: string } | ContentState;
+      if (!response.ok) throw new Error("error" in body && body.error ? body.error : "Could not delete media.");
+      setDraft(body as ContentState);
+      await queryClient.invalidateQueries({ queryKey: contentKey });
+      toast({ title: "Media deleted" });
+    } catch (error) {
+      toast({ title: "Delete failed", description: error instanceof Error ? error.message : "Remove the media from its slots first.", variant: "destructive" });
     }
   };
 
@@ -253,7 +270,7 @@ export default function Admin() {
               const existing = content.catalog.find((entry) => entry.kind === "workflow" && entry.sourceWorkflowId === workflow.id);
               const entry = existing ?? { id: workflow.id, kind: "workflow" as const, sourceWorkflowId: workflow.id, title: workflow.name, description: workflow.description, category: workflow.category, mediaId: null, visible: true, featured: false, order: 0 };
               return <div key={workflow.id} className="grid gap-4 rounded-3xl border border-border bg-card p-5 md:grid-cols-[1fr_1fr_180px]">
-                <div className="space-y-3"><div className="flex items-center gap-3"><p className="font-bold">{workflow.name}</p><span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{workflow.category}</span></div><Input value={entry.title} onChange={(event) => updateCatalog({ ...entry, title: event.target.value })} aria-label={`${workflow.name} display title`} /><Textarea value={entry.description} onChange={(event) => updateCatalog({ ...entry, description: event.target.value })} aria-label={`${workflow.name} description`} /></div>
+                <div className="space-y-3"><div className="flex items-center gap-3"><p className="font-bold">{workflow.name}</p><span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{workflow.category}</span></div><Input value={entry.title} onChange={(event) => updateCatalog({ ...entry, title: event.target.value })} aria-label={`${workflow.name} display title`} /><Input value={entry.category} onChange={(event) => updateCatalog({ ...entry, category: event.target.value })} aria-label={`${workflow.name} category`} /><Textarea value={entry.description} onChange={(event) => updateCatalog({ ...entry, description: event.target.value })} aria-label={`${workflow.name} description`} /></div>
                 <div className="flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-background">{entry.mediaId && content.media.find((item) => item.id === entry.mediaId) ? (() => { const asset = content.media.find((item) => item.id === entry.mediaId)!; return asset.kind === "video" ? <video src={mediaUrl(asset)} className="h-full w-full object-cover" muted loop autoPlay playsInline /> : <img src={mediaUrl(asset)} alt={asset.altText} className="h-full w-full object-cover" />; })() : <span className="text-xs text-muted-foreground">No demonstration media</span>}</div>
                 <div className="space-y-3"><select value={entry.mediaId ?? ""} onChange={(event) => updateCatalog({ ...entry, mediaId: event.target.value || null })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground" aria-label={`${workflow.name} media`}><option value="">Media</option>{content.media.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={entry.visible} onChange={(event) => updateCatalog({ ...entry, visible: event.target.checked })} /> Visible in app</label><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={entry.featured} onChange={(event) => updateCatalog({ ...entry, featured: event.target.checked })} /> Featured</label></div>
               </div>;
@@ -272,7 +289,7 @@ export default function Admin() {
             <Button onClick={addTemplate} disabled={!newTemplate.sourceWorkflowId || !newTemplate.title.trim()}><Check className="mr-2 h-4 w-4" />Add template</Button>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            {templateEntries.map((entry) => <div key={entry.id} className="space-y-4 rounded-3xl border border-border bg-card p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-bold">{entry.title}</p><p className="mt-1 text-xs text-muted-foreground">Runs {workflows.find((workflow) => workflow.id === entry.sourceWorkflowId)?.name ?? entry.sourceWorkflowId}</p></div><button type="button" onClick={() => removeCatalog(entry.id)} className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Remove ${entry.title}`}><Trash2 className="h-4 w-4" /></button></div><Input value={entry.title} onChange={(event) => updateCatalog({ ...entry, title: event.target.value })} aria-label={`${entry.title} title`} /><Textarea value={entry.description} onChange={(event) => updateCatalog({ ...entry, description: event.target.value })} aria-label={`${entry.title} description`} /><div className="grid gap-3 sm:grid-cols-2"><select value={entry.mediaId ?? ""} onChange={(event) => updateCatalog({ ...entry, mediaId: event.target.value || null })} className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground" aria-label={`${entry.title} media`}><option value="">Media</option>{content.media.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={entry.visible} onChange={(event) => updateCatalog({ ...entry, visible: event.target.checked })} /> Visible</label></div></div>)}
+            {templateEntries.map((entry) => <div key={entry.id} className="space-y-4 rounded-3xl border border-border bg-card p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-bold">{entry.title}</p><p className="mt-1 text-xs text-muted-foreground">Runs {workflows.find((workflow) => workflow.id === entry.sourceWorkflowId)?.name ?? entry.sourceWorkflowId}</p></div><button type="button" onClick={() => removeCatalog(entry.id)} className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Remove ${entry.title}`}><Trash2 className="h-4 w-4" /></button></div><Input value={entry.title} onChange={(event) => updateCatalog({ ...entry, title: event.target.value })} aria-label={`${entry.title} title`} /><Input value={entry.category} onChange={(event) => updateCatalog({ ...entry, category: event.target.value })} aria-label={`${entry.title} collection`} /><Textarea value={entry.description} onChange={(event) => updateCatalog({ ...entry, description: event.target.value })} aria-label={`${entry.title} description`} /><div className="grid gap-3 sm:grid-cols-2"><select value={entry.mediaId ?? ""} onChange={(event) => updateCatalog({ ...entry, mediaId: event.target.value || null })} className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground" aria-label={`${entry.title} media`}><option value="">Media</option>{content.media.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={entry.visible} onChange={(event) => updateCatalog({ ...entry, visible: event.target.checked })} /> Visible</label></div></div>)}
             {templateEntries.length === 0 && <div className="rounded-3xl border border-dashed border-border p-12 text-center text-muted-foreground md:col-span-2">Add your first template card above.</div>}
           </div>
         </section>
@@ -282,7 +299,7 @@ export default function Admin() {
         <section className="space-y-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-2xl font-bold">Media library</h2><p className="mt-1 text-sm text-muted-foreground">Upload actual product demonstrations. Images and videos stay in App Storage; only metadata is kept in the database.</p></div><label className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground hover:brightness-110">{uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}{uploading ? "Uploading…" : "Upload media"}<input type="file" className="sr-only" accept="image/*,video/*" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); event.currentTarget.value = ""; }} /></label></div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {content.media.map((asset) => <div key={asset.id} className="overflow-hidden rounded-3xl border border-border bg-card"><div className="aspect-video bg-background">{asset.kind === "video" ? <video src={mediaUrl(asset)} className="h-full w-full object-cover" muted loop autoPlay playsInline controls={false} /> : <img src={mediaUrl(asset)} alt={asset.altText} className="h-full w-full object-cover" />}</div><div className="flex items-center gap-3 p-4"><div className="rounded-xl bg-secondary p-2">{asset.kind === "video" ? <Video className="h-4 w-4 text-primary" /> : <ImagePlus className="h-4 w-4 text-primary" />}</div><div className="min-w-0"><p className="truncate text-sm font-bold">{asset.name}</p><p className="text-xs text-muted-foreground">{Math.round(asset.size / 1024)} KB</p></div></div></div>)}
+            {content.media.map((asset) => <div key={asset.id} className="overflow-hidden rounded-3xl border border-border bg-card"><div className="aspect-video bg-background">{asset.kind === "video" ? <video src={mediaUrl(asset)} className="h-full w-full object-cover" muted loop autoPlay playsInline controls={false} /> : <img src={mediaUrl(asset)} alt={asset.altText} className="h-full w-full object-cover" />}</div><div className="flex items-center gap-3 p-4"><div className="rounded-xl bg-secondary p-2">{asset.kind === "video" ? <Video className="h-4 w-4 text-primary" /> : <ImagePlus className="h-4 w-4 text-primary" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{asset.name}</p><p className="text-xs text-muted-foreground">{Math.round(asset.size / 1024)} KB</p></div><button type="button" onClick={() => void deleteMedia(asset)} className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Delete ${asset.name}`}><Trash2 className="h-4 w-4" /></button></div></div>)}
             {content.media.length === 0 && <div className="rounded-3xl border border-dashed border-border p-12 text-center text-muted-foreground sm:col-span-2 lg:col-span-3">Your library is empty. Upload a product image or short demonstration video.</div>}
           </div>
         </section>

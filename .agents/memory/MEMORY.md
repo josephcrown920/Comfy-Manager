@@ -5,3 +5,4 @@
 - [Aurora architecture](aurora-architecture.md) — evolve ComfyUI Studio in place; API server becomes the provider-neutral orchestrator and ComfyUI remains the user-owned execution backend.
 - [Worker routing](worker-routing.md) — probe health, queue, and capabilities immediately before submission; persist the chosen endpoint for reconciliation and outputs.
 - [Vast autoscaling safeguards](vast-autoscaling.md) — keep automatic rentals admin-controlled, single-instance, price-capped, and idle-reaped; never validate by spending without explicit consent.
+- [Admin content model](admin-content.md) — persist presentation metadata in settings, keep bytes in App Storage, and keep executable workflows code-defined.

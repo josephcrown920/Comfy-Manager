@@ -1,12 +1,30 @@
 import { useGetComfyStatus, useGetJobStats, getGetComfyStatusQueryKey, useGetRecentOutputs, getGetRecentOutputsQueryKey, getGetJobStatsQueryKey } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { useAuth } from "@clerk/react";
+import { useQuery } from "@tanstack/react-query";
 import { Activity, CheckCircle2, Play, AlertCircle, Video, Server, ArrowRight, Images } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import latentsyncThumbnail from "@/assets/thumbnails/latentsync.jpg";
 import animatediffThumbnail from "@/assets/thumbnails/animatediff.jpg";
 import reelLoopThumbnail from "@/assets/thumbnails/reel-loop.jpg";
 import mimicmotionThumbnail from "@/assets/thumbnails/mimicmotion.jpg";
+
+type LandingContent = {
+  slots: Array<{
+    id: string;
+    title: string;
+    description: string;
+    mediaId: string | null;
+    ctaLabel: string;
+    ctaHref: string;
+  }>;
+  media: Array<{
+    id: string;
+    kind: "image" | "video";
+    url: string;
+    altText: string;
+  }>;
+};
 
 export default function Dashboard() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -20,6 +38,16 @@ export default function Dashboard() {
   const { data: recentOutputs, isLoading: isOutputsLoading } = useGetRecentOutputs({
     query: { queryKey: getGetRecentOutputsQueryKey(), enabled: !!isSignedIn }
   });
+  const { data: landingContent } = useQuery<LandingContent>({
+    queryKey: ["landing-content"],
+    queryFn: async () => {
+      const response = await fetch("/api/content/landing");
+      if (!response.ok) throw new Error("Could not load landing content");
+      return response.json() as Promise<LandingContent>;
+    },
+    staleTime: 60_000,
+  });
+  const landingMedia = new Map((landingContent?.media ?? []).map((asset) => [asset.id, asset]));
 
   return (
     <div className="space-y-16 animate-in fade-in duration-700 ease-out">
@@ -71,6 +99,51 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {landingContent?.slots.length ? (
+        <section className="space-y-8">
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-primary">Studio stories</p>
+            <h2 className="text-2xl font-bold tracking-tight md:text-3xl">See Aurora in motion</h2>
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {landingContent.slots.map((slot) => {
+              const asset = slot.mediaId ? landingMedia.get(slot.mediaId) : undefined;
+              return (
+                <article key={slot.id} className="overflow-hidden rounded-[2rem] border border-border bg-card shadow-xl">
+                  <div className="aspect-[16/9] bg-background">
+                    {asset?.kind === "video" ? (
+                      <video
+                        src={asset.url}
+                        className="h-full w-full object-cover"
+                        muted
+                        loop
+                        autoPlay
+                        playsInline
+                        preload="none"
+                        aria-label={asset.altText}
+                      />
+                    ) : asset ? (
+                      <img src={asset.url} alt={asset.altText} className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Add a visual in Admin Studio</div>
+                    )}
+                  </div>
+                  <div className="space-y-3 p-6 md:p-8">
+                    <h3 className="text-xl font-bold tracking-tight">{slot.title}</h3>
+                    <p className="max-w-xl text-sm leading-6 text-muted-foreground">{slot.description}</p>
+                    {slot.ctaHref && (
+                      <Link href={slot.ctaHref} className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:brightness-110">
+                        {slot.ctaLabel || "Explore"} <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       {/* Featured Workflows */}
       <div className="space-y-8">
