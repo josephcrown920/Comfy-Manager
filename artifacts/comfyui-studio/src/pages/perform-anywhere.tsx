@@ -32,10 +32,11 @@ import {
   useListBatches,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { FileUpload } from "@/components/ui/file-upload";
+import { FileUpload, uploadFile } from "@/components/ui/file-upload";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ShotBoard } from "@/components/shot-board";
 import { useToast } from "@/hooks/use-toast";
 import cinematicPortraitThumbnail from "@/assets/thumbnails/cinematic-portrait.jpg";
 import mimicmotionThumbnail from "@/assets/thumbnails/mimicmotion.jpg";
@@ -184,6 +185,7 @@ export default function PerformAnywhere() {
   const [performanceVideo, setPerformanceVideo] = useState("");
   const [motionProvider, setMotionProvider] = useState<MotionProvider>("seedance");
   const [preset, setPreset] = useState<PresetId>("perform-anywhere");
+  const [boardUploadPending, setBoardUploadPending] = useState(false);
   const [activeBatchId, setActiveBatchId] = useState<number | null>(null);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
 
@@ -191,6 +193,20 @@ export default function PerformAnywhere() {
   const activeReferenceSlots = REFERENCE_SLOTS
     .filter((slot) => activePreset.keys.includes(slot.key))
     .map((slot) => preset === "luxury-interior" ? { ...slot, ...LUXURY_SLOT_OVERRIDES[slot.key] } : slot);
+  const boardReferenceSlots = activeReferenceSlots.map((slot) => ({
+    ...slot,
+    preview: slot.key === "identity"
+      ? performerThumbnail
+      : slot.key === "outfit"
+        ? stylingThumbnail
+        : slot.key === "location"
+          ? (preset === "luxury-interior" ? vehicleThumbnail : cityThumbnail)
+          : slot.key === "pose"
+            ? mimicmotionThumbnail
+            : vehicleThumbnail,
+    previewAlt: `${slot.label} board preview`,
+    value: references[slot.key],
+  }));
   
   const batches = batchesQuery.data ?? [];
   const activeBatch = useMemo(() => {
@@ -260,6 +276,72 @@ export default function PerformAnywhere() {
 
   const updateReference = (key: ReferenceKey, filename: string) => {
     setReferences((current) => ({ ...current, [key]: filename }));
+  };
+
+  const handleBoardFiles = async (files: File[]) => {
+    const imageFiles = files.filter((file) => (
+      file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|avif)$/i.test(file.name)
+    ));
+    if (imageFiles.length === 0) {
+      toast({
+        title: "Add image references",
+        description: "The Shot Board accepts image files for the identity, outfit, location, pose, and prop roles.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const emptyKeys = activePreset.keys.filter((key) => !references[key]);
+    if (emptyKeys.length === 0) {
+      toast({
+        title: "The Shot Board is full",
+        description: "Use the individual reference cards below to replace a specific asset.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const oversized = imageFiles.filter((file) => file.size > 20 * 1024 * 1024);
+    if (oversized.length > 0) {
+      toast({
+        title: "Some images are too large",
+        description: "Each Shot Board image must be 20 MB or smaller.",
+        variant: "destructive",
+      });
+    }
+
+    const filesToUpload = imageFiles
+      .filter((file) => file.size <= 20 * 1024 * 1024)
+      .slice(0, emptyKeys.length);
+    if (filesToUpload.length === 0) return;
+
+    setBoardUploadPending(true);
+    try {
+      const uploaded: Array<{ key: ReferenceKey; filename: string }> = [];
+      for (const [index, file] of filesToUpload.entries()) {
+        const filename = await uploadFile(file, () => undefined, "image/*");
+        uploaded.push({ key: emptyKeys[index]!, filename });
+      }
+      setReferences((current) => {
+        const next = { ...current };
+        uploaded.forEach(({ key, filename }) => {
+          next[key] = filename;
+        });
+        return next;
+      });
+      toast({
+        title: "References attached to the Shot Board",
+        description: `${uploaded.length} image${uploaded.length === 1 ? "" : "s"} added in board order.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Could not attach the references",
+        description: error instanceof Error ? error.message : "Try the individual upload cards below.",
+        variant: "destructive",
+      });
+    } finally {
+      setBoardUploadPending(false);
+    }
   };
 
   const selectPreset = (nextPreset: PresetId) => {
@@ -414,7 +496,7 @@ export default function PerformAnywhere() {
               <div className="space-y-4">
                 <div className="flex items-center gap-3 bg-[#171120] rounded-xl p-3 border border-[#A779F5]/20">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#09080D] text-xs font-bold text-[#A779F5]">1</span>
-                  <span className="text-sm font-semibold text-white">Moodboard</span>
+                   <span className="text-sm font-semibold text-white">Shot Board</span>
                 </div>
                 <div className="pl-4 border-l-2 border-[#A779F5]/20 ml-3 h-4"></div>
                 <div className="flex items-center gap-3 bg-[#B7F54A]/10 rounded-xl p-3 border border-[#B7F54A]/30">
@@ -478,15 +560,23 @@ export default function PerformAnywhere() {
                 <div>
                   <div className="flex items-center gap-3 text-sm font-bold uppercase tracking-widest text-[#B7F54A] mb-2">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#B7F54A] text-[#09080D]">2</span>
-                    Build the moodboard
+                   Build the shot board
                   </div>
                   <h2 className="text-2xl font-bold text-white mb-2">{activePreset.keys.length === 5 ? "Five anchors. One world." : "Three anchors. One interior."}</h2>
-                  <p className="max-w-2xl text-sm text-[#BEB2CC]">Give the scene enough visual evidence to stay recognizably yours from every angle.</p>
+                   <p className="max-w-2xl text-sm text-[#BEB2CC]">Attach the full reference room once, then fine-tune any role before rendering the angle audition.</p>
                 </div>
                 <div data-testid="text-reference-count" className="rounded-full border border-[#B7F54A]/30 bg-[#B7F54A]/10 px-4 py-2 font-mono text-sm font-bold text-[#B7F54A]">
                   {activePreset.keys.filter((key) => Boolean(references[key])).length} / {activePreset.keys.length} uploaded
                 </div>
               </div>
+              <ShotBoard
+                presetLabel={activePreset.label}
+                slots={boardReferenceSlots}
+                uploadPending={boardUploadPending}
+                canRender={canStart && !createBatch.isPending}
+                onRender={startAngles}
+                onFilesSelected={(files) => { void handleBoardFiles(files); }}
+              />
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {activeReferenceSlots.map((slot) => (
                   <ReferenceCard key={slot.key} slot={slot} value={references[slot.key]} onUploaded={(filename) => updateReference(slot.key, filename)} />
@@ -520,7 +610,7 @@ export default function PerformAnywhere() {
                   <p className="max-w-xl text-sm leading-relaxed text-[#BEB2CC]">We will create exactly five children with the camera treatments below. They share your {activePreset.keys.length} references, scene, and visual direction.</p>
                 </div>
                 <Button data-testid="button-start-angles" onClick={startAngles} disabled={createBatch.isPending} className="shrink-0 rounded-xl bg-[#B7F54A] py-6 px-8 font-bold text-[#09080D] hover:bg-[#A3E030] shadow-[0_0_20px_rgba(183,245,74,0.3)] transition-all text-base">
-                  {createBatch.isPending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Building angles</> : <><Sparkles className="mr-2 h-5 w-5" />Build five angles</>}
+                  {createBatch.isPending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Rendering shot list</> : <><Sparkles className="mr-2 h-5 w-5" />Render shot list once</>}
                 </Button>
               </div>
             </section>
