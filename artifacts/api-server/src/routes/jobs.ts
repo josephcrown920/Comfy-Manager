@@ -1269,10 +1269,85 @@ function buildImg2VidPrompt(params: Record<string, unknown>): Record<string, unk
 }
 
 /**
- * Text to Video — generic KSampler-based txt2vid graph.
+ * Text to Video — AnimateDiff text-to-video graph.
+ * Produces a latent batch, samples it with AnimateDiff, and combines the
+ * decoded frames into an MP4 instead of saving a single still image.
  */
 function buildTxt2VidPrompt(params: Record<string, unknown>): Record<string, unknown> {
-  return buildGenericPrompt("video-generation-txt2vid", params);
+  const prompt = String(params.prompt ?? "").trim() || "cinematic motion, natural movement, detailed scene";
+  const negativePrompt = String(params.negative_prompt ?? "").trim() || "blurry, low quality, watermark, distorted motion";
+  const width = Math.min(Math.max(Number(params.width ?? 512), 256), 1024);
+  const height = Math.min(Math.max(Number(params.height ?? 512), 256), 1024);
+  const numFrames = Math.min(Math.max(Number(params.num_frames ?? 24), 8), 64);
+  const steps = Math.min(Math.max(Number(params.steps ?? 25), 10), 50);
+  const fps = Math.min(Math.max(Number(params.fps ?? 8), 4), 24);
+
+  return {
+    "1": {
+      class_type: "CheckpointLoaderSimple",
+      inputs: { ckpt_name: String(params.checkpoint ?? "v1-5-pruned-emaonly.safetensors") },
+    },
+    "2": {
+      class_type: "ADE_LoadAnimateDiffModel",
+      inputs: { model_name: String(params.motion_model ?? "mm_sd_v15_v2.ckpt") },
+    },
+    "3": {
+      class_type: "ADE_StandardStaticContextOptions",
+      inputs: {
+        context_length: Math.min(numFrames, 16),
+        context_stride: 1,
+        context_overlap: Math.min(4, Math.max(0, numFrames - 1)),
+        closed_loop: false,
+      },
+    },
+    "4": {
+      class_type: "ADE_UseEvolvedSampling",
+      inputs: { model: ["1", 0], m_models: ["2", 0], context_options: ["3", 0] },
+    },
+    "5": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: prompt, clip: ["1", 1] },
+    },
+    "6": {
+      class_type: "CLIPTextEncode",
+      inputs: { text: negativePrompt, clip: ["1", 1] },
+    },
+    "7": {
+      class_type: "EmptyLatentImage",
+      inputs: { width, height, batch_size: numFrames },
+    },
+    "8": {
+      class_type: "KSampler",
+      inputs: {
+        seed: Number.isFinite(Number(params.seed)) ? Number(params.seed) : Math.floor(Math.random() * 1e9),
+        steps,
+        cfg: 7,
+        sampler_name: "euler",
+        scheduler: "normal",
+        denoise: 1,
+        model: ["4", 0],
+        positive: ["5", 0],
+        negative: ["6", 0],
+        latent_image: ["7", 0],
+      },
+    },
+    "9": {
+      class_type: "VAEDecode",
+      inputs: { samples: ["8", 0], vae: ["1", 2] },
+    },
+    "10": {
+      class_type: "VHS_VideoCombine",
+      inputs: {
+        images: ["9", 0],
+        frame_rate: fps,
+        loop_count: 0,
+        filename_prefix: "text-to-video",
+        format: "video/h264-mp4",
+        pingpong: false,
+        save_output: true,
+      },
+    },
+  };
 }
 
 /**
@@ -1342,9 +1417,9 @@ function buildGenericPrompt(workflowId: string, params: Record<string, unknown>)
 function buildMotionControlPrompt(params: Record<string, unknown>): Record<string, unknown> {
   const sourceImage = String(params.source_image ?? "");
   const motionPreset = String(params.motion_preset ?? "zoom-in");
-  const motionStrength = Number(params.motion_strength ?? 50) / 100;
-  const numFrames = Number(params.num_frames ?? 16);
-  const prompt = String(params.prompt ?? `${motionPreset} camera motion`);
+  const motionStrength = Math.min(Math.max(Number(params.motion_strength ?? 50) / 100, 0.1), 0.95);
+  const numFrames = Math.min(Math.max(Number(params.num_frames ?? 16), 8), 64);
+  const prompt = String(params.prompt ?? "").trim() || `${motionPreset} camera motion, coherent natural movement`;
   const aspect = String(params.aspect_ratio ?? "16:9");
   const dimensions: Record<string, { width: number; height: number }> = {
     "16:9": { width: 512, height: 288 },
@@ -1352,14 +1427,6 @@ function buildMotionControlPrompt(params: Record<string, unknown>): Record<strin
     "1:1": { width: 512, height: 512 },
   };
   const frame = dimensions[aspect] ?? dimensions["16:9"]!;
-  const colorGrade = String(params.color_grade ?? "teal-orange");
-  const colorGrades: Record<string, { temperature: number; saturation: number; contrast: number }> = {
-    "teal-orange": { temperature: -12, saturation: -8, contrast: 14 },
-    "warm-vintage": { temperature: 18, saturation: -15, contrast: 6 },
-    "cold-thriller": { temperature: -25, saturation: -20, contrast: 18 },
-  };
-  const grade = colorGrades[colorGrade] ?? colorGrades["teal-orange"]!;
-  const captionTreatment = String(params.caption_treatment ?? "none");
   const seed = Number.isFinite(Number(params.seed)) ? Number(params.seed) : Math.floor(Math.random() * 1e9);
 
   return {
@@ -1389,7 +1456,12 @@ function buildMotionControlPrompt(params: Record<string, unknown>): Record<strin
     },
     "5": {
       class_type: "ADE_StandardStaticContextOptions",
-      inputs: { context_length: numFrames, context_stride: 1, context_overlap: 4, closed_loop: false },
+      inputs: {
+        context_length: Math.min(numFrames, 16),
+        context_stride: 1,
+        context_overlap: Math.min(4, Math.max(0, numFrames - 1)),
+        closed_loop: false,
+      },
     },
     "6": {
       class_type: "CLIPTextEncode",
@@ -1403,6 +1475,10 @@ function buildMotionControlPrompt(params: Record<string, unknown>): Record<strin
       class_type: "VAEEncode",
       inputs: { pixels: ["1b", 0], vae: ["2", 2] },
     },
+    "8b": {
+      class_type: "RepeatLatentBatch",
+      inputs: { samples: ["8", 0], amount: numFrames },
+    },
     "9": {
       class_type: "KSampler",
       inputs: {
@@ -1415,29 +1491,17 @@ function buildMotionControlPrompt(params: Record<string, unknown>): Record<strin
         model: ["4", 0],
         positive: ["6", 0],
         negative: ["7", 0],
-        latent_image: ["8", 0],
+        latent_image: ["8b", 0],
       },
     },
     "10": {
       class_type: "VAEDecode",
       inputs: { samples: ["9", 0], vae: ["2", 2] },
     },
-    "10b": {
-      class_type: "ColorCorrect",
-      inputs: {
-        image: ["10", 0],
-        temperature: grade.temperature,
-        hue: 0,
-        brightness: 0,
-        contrast: grade.contrast,
-        saturation: grade.saturation,
-        gamma: captionTreatment === "safe-lower-third" ? 1.03 : 1.0,
-      },
-    },
     "11": {
       class_type: "VHS_VideoCombine",
       inputs: {
-        images: ["10b", 0],
+        images: ["10", 0],
         frame_rate: 8,
         loop_count: 0,
         filename_prefix: `motion-control-${motionPreset}`,
@@ -1477,6 +1541,7 @@ function buildPerformAnywhereAnglePrompt(params: Record<string, unknown>): Recor
     scenePrompt,
     style,
     `camera treatment: ${camera}`,
+    "the outfit reference is a wardrobe sheet; use every garment, accessory, color, and material shown across the sheet without reproducing the sheet layout",
     "preserve the same performer identity, facial structure, outfit, environment, and prop",
     "professional music-video still, ARRI Alexa 35, Cooke anamorphic lens, cinematic color science, realistic optical depth",
     "high-fidelity skin texture, natural highlights, accurate anatomy, no text or logos",
@@ -1501,7 +1566,7 @@ function buildPerformAnywhereAnglePrompt(params: Record<string, unknown>): Recor
       inputs: { clip_name: String(params.clip_vision_model ?? "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors") },
     },
     "9": { class_type: "CLIPVisionEncode", inputs: { clip: ["8", 0], image: ["1", 0], crop: "center" } },
-    "10": { class_type: "CLIPVisionEncode", inputs: { clip: ["8", 0], image: ["2", 0], crop: "center" } },
+    "10": { class_type: "CLIPVisionEncode", inputs: { clip: ["8", 0], image: ["2", 0], crop: "none" } },
     "11": { class_type: "CLIPVisionEncode", inputs: { clip: ["8", 0], image: ["3", 0], crop: "center" } },
     "12": { class_type: "CLIPVisionEncode", inputs: { clip: ["8", 0], image: ["4", 0], crop: "center" } },
     "13": { class_type: "CLIPVisionEncode", inputs: { clip: ["8", 0], image: ["5", 0], crop: "center" } },

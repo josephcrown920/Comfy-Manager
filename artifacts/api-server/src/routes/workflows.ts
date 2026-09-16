@@ -242,7 +242,7 @@ const WORKFLOWS = [
         defaultValue: "24",
         options: null,
         min: 8,
-        max: 80,
+        max: 64,
         accept: null,
       },
       {
@@ -334,9 +334,9 @@ const WORKFLOWS = [
       },
       {
         key: "outfit_image",
-        label: "Outfit Reference",
+        label: "Outfit Sheet",
         type: "file",
-        description: "The clothing you want the scene to carry over",
+        description: "Upload one sheet containing all garments, accessories, colors, and materials to carry over",
         required: true,
         defaultValue: null,
         options: null,

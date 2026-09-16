@@ -37,6 +37,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import cinematicPortraitThumbnail from "@/assets/thumbnails/cinematic-portrait.jpg";
+import mimicmotionThumbnail from "@/assets/thumbnails/mimicmotion.jpg";
+import reelLoopThumbnail from "@/assets/thumbnails/reel-loop.jpg";
+import performerThumbnail from "@/assets/thumbnails/perform-anywhere-performer.jpeg";
+import stylingThumbnail from "@/assets/thumbnails/perform-anywhere-style.png";
+import vehicleThumbnail from "@/assets/thumbnails/perform-anywhere-vehicle.jpeg";
+import cityThumbnail from "@/assets/thumbnails/perform-anywhere-city.jpeg";
 
 const CAMERA_TREATMENTS = [
   { id: "wide-shot", label: "Wide shot", index: "01", copy: "Establish the world around the performance.", icon: MoveUpRight },
@@ -50,26 +57,35 @@ type ReferenceKey = "identity" | "outfit" | "location" | "pose" | "prop";
 type PresetId = "perform-anywhere" | "luxury-interior";
 type MotionProvider = "seedance" | "mimicmotion";
 
-const REFERENCE_SLOTS: Array<{ key: ReferenceKey; label: string; eyebrow: string; description: string }> = [
+const REFERENCE_SLOTS: Array<{ key: ReferenceKey; label: string; eyebrow: string; description: string; preview?: string; previewAlt?: string }> = [
   { key: "identity", label: "Identity / face", eyebrow: "01", description: "A clear face and shoulders. This anchors who is on camera." },
-  { key: "outfit", label: "Outfit", eyebrow: "02", description: "Texture, silhouette, and styling cues to carry into the scene." },
+  {
+    key: "outfit",
+    label: "Outfit sheet",
+    eyebrow: "02",
+    description: "One collage is enough. Include every garment, accessory, and styling reference in the same sheet.",
+    preview: stylingThumbnail,
+    previewAlt: "Outfit sheet with jewelry, jacket, sneakers, and stacked jeans",
+  },
   { key: "location", label: "Location", eyebrow: "03", description: "The world, architecture, or atmosphere behind the shot." },
   { key: "pose", label: "Pose", eyebrow: "04", description: "A body position or gesture that sets the performance energy." },
   { key: "prop", label: "Prop / car", eyebrow: "05", description: "The hero object that makes the frame yours." },
 ];
 
-const PRESETS: Array<{ id: PresetId; label: string; description: string; keys: ReferenceKey[] }> = [
+const PRESETS: Array<{ id: PresetId; label: string; description: string; keys: ReferenceKey[]; thumbnail: string }> = [
   {
     id: "perform-anywhere",
     label: "Perform Anywhere",
     description: "Five anchors for a flexible music-video world.",
     keys: ["identity", "outfit", "location", "pose", "prop"],
+    thumbnail: performerThumbnail,
   },
   {
     id: "luxury-interior",
     label: "Luxury Vehicle Interior",
     description: "Identity, vehicle interior, and seated composition.",
     keys: ["identity", "location", "pose"],
+    thumbnail: vehicleThumbnail,
   },
 ];
 
@@ -103,6 +119,11 @@ function ReferenceCard({
 }) {
   return (
     <div data-testid={`card-reference-${slot.key}`} className="group relative overflow-hidden rounded-3xl border border-[#A779F5]/30 bg-[#171120] p-4 transition-all hover:border-[#B7F54A] shadow-xl">
+      {slot.preview && (
+        <div className="mb-4 overflow-hidden rounded-2xl border border-[#A779F5]/20 bg-[#09080D]">
+          <img src={slot.preview} alt={slot.previewAlt ?? `${slot.label} preview`} className="aspect-[16/10] w-full object-contain" />
+        </div>
+      )}
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <p className="font-mono text-xs font-bold tracking-widest text-[#B7F54A]">{slot.eyebrow}</p>
@@ -374,7 +395,18 @@ export default function PerformAnywhere() {
                 Build a consistent cinematic scene from your references, audition five camera treatments, then carry the strongest still into motion with your original performance.
               </p>
             </div>
-            <div className="rounded-3xl border border-[#A779F5]/30 bg-[#09080D]/50 p-6 backdrop-blur-md shadow-xl">
+            <div className="overflow-hidden rounded-3xl border border-[#A779F5]/30 bg-[#09080D]/50 backdrop-blur-md shadow-xl">
+              <div className="grid h-36 grid-cols-3" aria-label="Perform Anywhere workflow preview">
+                {[performerThumbnail, stylingThumbnail, cityThumbnail].map((thumbnail, index) => (
+                  <img
+                    key={thumbnail}
+                    src={thumbnail}
+                    alt={index === 0 ? "Cinematic reference still" : index === 1 ? "Generated camera angle" : "Motion transfer result"}
+                    className="h-full w-full object-cover"
+                  />
+                ))}
+              </div>
+              <div className="p-6">
               <div className="flex items-center justify-between gap-3 mb-6">
                 <p className="text-xs font-bold uppercase tracking-widest text-[#BEB2CC]">Workflow</p>
                 <Sparkles className="h-5 w-5 text-[#B7F54A]" />
@@ -394,6 +426,7 @@ export default function PerformAnywhere() {
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#09080D] text-xs font-bold text-[#A779F5]">3</span>
                   <span className="text-sm font-semibold text-white">Motion</span>
                 </div>
+              </div>
               </div>
             </div>
           </div>
@@ -421,6 +454,12 @@ export default function PerformAnywhere() {
                       onClick={() => selectPreset(option.id)}
                       className={`rounded-2xl border p-6 text-left transition-all ${selected ? "border-[#B7F54A] bg-[#B7F54A]/10 shadow-[0_0_20px_rgba(183,245,74,.15)]" : "border-[#A779F5]/30 bg-[#09080D] hover:border-[#A779F5]/70"}`}
                     >
+                      <img
+                        src={option.thumbnail}
+                        alt={`${option.label} visual example`}
+                        className="mb-5 aspect-video w-full rounded-xl object-cover"
+                        loading="lazy"
+                      />
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className={`text-lg font-bold mb-2 ${selected ? "text-[#B7F54A]" : "text-white"}`}>{option.label}</p>
@@ -618,7 +657,15 @@ export default function PerformAnywhere() {
 
                 <div data-testid="upload-performance-video" className="mt-8">
                   <div className="bg-[#09080D] rounded-2xl border border-[#A779F5]/30 p-2">
-                    <FileUpload accept="video/*" label="Performance video" description="A clean 3–30 second phone performance works best." onFileSelect={setPerformanceVideo} previouslyUploadedName={performanceVideo || undefined} />
+                    <FileUpload
+                      accept="video/*"
+                      label="Phone performance video"
+                      description="A clean 3–30 second phone performance works best. Keep the performer and full movement visible."
+                      onFileSelect={setPerformanceVideo}
+                      previouslyUploadedName={performanceVideo || undefined}
+                      preview
+                      previewPoster={performerThumbnail}
+                    />
                   </div>
                 </div>
 
