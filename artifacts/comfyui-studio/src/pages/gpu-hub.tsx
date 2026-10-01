@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { Cloud, Cpu, DollarSign, ExternalLink, Gauge, HardDrive, Power, Settings2, Sparkles, Zap } from "lucide-react";
+import { Cloud, Cpu, ExternalLink, Gauge, HardDrive, Settings2, Sparkles } from "lucide-react";
 import { useGetSettings, useUpdateSettings, getGetSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -18,41 +18,12 @@ type FreeGpuProvider = {
   notes: string[];
 };
 
-type VastStatus = {
-  configured: boolean;
-  config: {
-    enabled: boolean;
-    maxHourlyRate: number;
-    minGpuRamGb: number;
-    minReliability: number;
-    idleMinutes: number;
-    diskGb: number;
-    startupTimeoutMinutes: number;
-    templateHashId: string;
-  };
-  state: {
-    instanceId: number | null;
-    status: string;
-    gpuName: string | null;
-    hourlyRate: number | null;
-    startedAt: string | null;
-    idleSince: string | null;
-    lastError: string | null;
-  };
-};
-
 export default function GpuHub() {
   const { data: settings } = useGetSettings();
   const updateSettings = useUpdateSettings();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [providers, setProviders] = useState<FreeGpuProvider[]>([]);
-  const [vast, setVast] = useState<VastStatus | null>(null);
-  const [vastAccessError, setVastAccessError] = useState<string | null>(null);
-  const [savingVast, setSavingVast] = useState(false);
-  const [maxHourlyRate, setMaxHourlyRate] = useState("0.35");
-  const [idleMinutes, setIdleMinutes] = useState("10");
-  const [minGpuRamGb, setMinGpuRamGb] = useState("16");
 
   useEffect(() => {
     fetch("/api/free-gpus")
@@ -60,67 +31,6 @@ export default function GpuHub() {
       .then((data) => setProviders(data.providers ?? []))
       .catch(() => setProviders([]));
   }, []);
-
-  const loadVast = () => {
-    fetch("/api/gpu/vast/autoscaler")
-      .then((r) => r.ok ? r.json() : Promise.reject(new Error("Could not load Vast autoscaler")))
-      .then((data: VastStatus) => {
-        setVast(data);
-        setVastAccessError(null);
-        setMaxHourlyRate(String(data.config.maxHourlyRate));
-        setIdleMinutes(String(data.config.idleMinutes));
-        setMinGpuRamGb(String(data.config.minGpuRamGb));
-      })
-      .catch((error) => {
-        setVast(null);
-        setVastAccessError(error instanceof Error ? error.message : "Sign in with an administrator account to manage Vast autoscaling.");
-      });
-  };
-
-  useEffect(() => {
-    loadVast();
-    const timer = window.setInterval(loadVast, 10_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const saveVast = async (enabled = vast?.config.enabled ?? false) => {
-    setSavingVast(true);
-    try {
-      const response = await fetch("/api/gpu/vast/autoscaler", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          enabled,
-          maxHourlyRate: Number(maxHourlyRate),
-          idleMinutes: Number(idleMinutes),
-          minGpuRamGb: Number(minGpuRamGb),
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Could not save autoscaler");
-      setVast(data);
-      toast({ title: enabled ? "Vast autoscaling enabled" : "Vast autoscaling disabled", description: enabled ? "Aurora will rent a GPU only when no healthy worker is available." : "No new Vast workers will be created." });
-    } catch (error) {
-      toast({ title: "Could not save autoscaler", description: error instanceof Error ? error.message : "Try again.", variant: "destructive" });
-    } finally {
-      setSavingVast(false);
-    }
-  };
-
-  const controlVast = async (action: "start" | "stop") => {
-    setSavingVast(true);
-    try {
-      const response = await fetch(`/api/gpu/vast/autoscaler/${action}`, { method: "POST" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? `Could not ${action} worker`);
-      setVast(data);
-      toast({ title: action === "start" ? "Vast worker is ready" : "Vast worker stopped", description: action === "start" ? "Aurora can now route ComfyUI jobs to it." : "Billing for the destroyed instance has stopped." });
-    } catch (error) {
-      toast({ title: `Could not ${action} Vast worker`, description: error instanceof Error ? error.message : "Try again.", variant: "destructive" });
-    } finally {
-      setSavingVast(false);
-    }
-  };
 
   const selectWorker = (id: number, label: string, url: string) => {
     updateSettings.mutate({ data: { comfyUrl: url, routingMode: "manual", selectedGpuId: id } }, {
@@ -151,49 +61,6 @@ export default function GpuHub() {
           </div>
         }
       />
-
-      <section className="overflow-hidden rounded-3xl border border-[#A779F5]/30 bg-[#171120]">
-        <div className="grid min-h-44 grid-cols-3 gap-3 border-b border-[#2d2650] bg-[#09080D] p-5 sm:p-7">
-          <div className="flex flex-col justify-between rounded-2xl border border-[#2d2650] bg-[#171120] p-4">
-            <Zap className="h-6 w-6 text-[#B7F54A]" />
-            <div><p className="text-2xl font-bold text-white">{vast?.state.gpuName ?? "On demand"}</p><p className="text-xs text-[#7b72a8]">Cheapest compatible GPU</p></div>
-          </div>
-          <div className="flex flex-col justify-between rounded-2xl border border-[#2d2650] bg-[#171120] p-4">
-            <DollarSign className="h-6 w-6 text-[#A779F5]" />
-            <div><p className="text-2xl font-bold text-white">{vast?.state.hourlyRate == null ? `≤ $${maxHourlyRate}` : `$${vast.state.hourlyRate.toFixed(3)}`}</p><p className="text-xs text-[#7b72a8]">Hourly ceiling</p></div>
-          </div>
-          <div className="flex flex-col justify-between rounded-2xl border border-[#2d2650] bg-[#171120] p-4">
-            <Power className={`h-6 w-6 ${vast?.state.status === "running" ? "text-[#B7F54A]" : "text-[#7b72a8]"}`} />
-            <div><p className="text-2xl font-bold capitalize text-white">{vast?.state.status ?? "Unavailable"}</p><p className="text-xs text-[#7b72a8]">Instance lifecycle</p></div>
-          </div>
-        </div>
-        <div className="p-6 sm:p-7">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-white">Vast.ai automatic GPU</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#BEB2CC]">When no healthy worker is available, Aurora searches verified Vast offers, rents the cheapest GPU under your ceiling, waits for ComfyUI, routes the job, and destroys the instance after it stays idle.</p>
-            </div>
-            <span className={`w-fit rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${vast?.config.enabled ? "border-[#B7F54A]/30 bg-[#B7F54A]/10 text-[#B7F54A]" : "border-[#2d2650] text-[#7b72a8]"}`}>{vast?.config.enabled ? "Automatic" : "Disabled"}</span>
-          </div>
-
-          {vastAccessError && <p className="mt-5 rounded-xl border border-[#2d2650] bg-[#09080D] p-3 text-sm text-[#BEB2CC]">{vastAccessError}</p>}
-          {vast && !vast.configured && <p className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">The server does not have a Vast.ai API key configured.</p>}
-          {vast?.state.lastError && <p className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{vast.state.lastError}</p>}
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <label className="text-xs font-bold uppercase tracking-wider text-[#7b72a8]">Maximum $/hour<input value={maxHourlyRate} onChange={(e) => setMaxHourlyRate(e.target.value)} type="number" min="0.05" max="5" step="0.01" className="mt-2 w-full rounded-xl border border-[#2d2650] bg-[#09080D] px-3 py-2.5 text-sm text-white outline-none focus:border-[#A779F5]" /></label>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#7b72a8]">Minimum VRAM<input value={minGpuRamGb} onChange={(e) => setMinGpuRamGb(e.target.value)} type="number" min="8" max="96" step="1" className="mt-2 w-full rounded-xl border border-[#2d2650] bg-[#09080D] px-3 py-2.5 text-sm text-white outline-none focus:border-[#A779F5]" /></label>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#7b72a8]">Stop after idle minutes<input value={idleMinutes} onChange={(e) => setIdleMinutes(e.target.value)} type="number" min="2" max="60" step="1" className="mt-2 w-full rounded-xl border border-[#2d2650] bg-[#09080D] px-3 py-2.5 text-sm text-white outline-none focus:border-[#A779F5]" /></label>
-          </div>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button disabled={savingVast || !vast?.configured} onClick={() => saveVast(!vast?.config.enabled)} className={vast?.config.enabled ? "bg-[#2d2650] text-white hover:bg-[#4a4269]" : "bg-[#B7F54A] text-black hover:bg-[#c9ff6b]"}>{vast?.config.enabled ? "Disable autoscaling" : "Enable autoscaling"}</Button>
-            <Button disabled={savingVast || !vast?.config.enabled || vast?.state.status === "running"} onClick={() => controlVast("start")} variant="outline" className="border-[#2d2650] bg-transparent text-white">Start worker now</Button>
-            <Button disabled={savingVast || !vast?.state.instanceId} onClick={() => controlVast("stop")} variant="outline" className="border-red-500/30 bg-transparent text-red-300 hover:bg-red-500/10">Stop and destroy</Button>
-          </div>
-          <p className="mt-4 text-xs text-[#7b72a8]">Only administrators can change these controls. Enabling autoscaling authorizes Aurora to spend from your Vast.ai balance up to the hourly ceiling shown above.</p>
-        </div>
-      </section>
 
       <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {providers.map((provider) => (

@@ -1,6 +1,5 @@
 import * as React from "react"
 import { Link, useLocation } from "wouter"
-import { useQuery } from "@tanstack/react-query"
 import { LayoutDashboard, Settings2, Images, ListVideo, BrainCircuit, Rocket, Bot, Boxes, Menu, X, BookOpen, GitBranch, Aperture, Clapperboard, Cpu } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AccountControl } from "@/components/account-control"

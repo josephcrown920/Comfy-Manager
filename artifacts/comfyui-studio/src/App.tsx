@@ -17,7 +17,6 @@ import Guide from '@/pages/guide';
 import Batches from '@/pages/batches';
 import PerformAnywhere from '@/pages/perform-anywhere';
 import GpuHub from '@/pages/gpu-hub';
-import Admin from '@/pages/admin';
 
 import {
   Route,

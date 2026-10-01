@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { createSeedanceTask, getSeedanceTask, MODELARK_DEFAULT_MODEL } from "../lib/modelark";
 import { buildVideoExecutionContract } from "../lib/byteplus-agent/workflow-registry";
 import { generateModePlan, routeProvider, type Provider, type VideoMode } from "../lib/byteplus-agent/production";
-import { resolvePresetForMode } from "../lib/byteplus-agent/presets";
+import { resolvePreset } from "../lib/byteplus-agent/presets";
 
 const router: IRouter = Router();
 
@@ -22,7 +22,7 @@ router.post("/video-agent/plan", async (req, res): Promise<void> => {
   }
 
   const mode = parseMode(req.body?.mode);
-  const preset = resolvePresetForMode(String(req.body?.preset || ""), mode);
+  const preset = resolvePreset(req.body?.preset, mode);
   const execution = buildVideoExecutionContract({ preset, mode });
   const plan = generateModePlan(mode, instruction);
   const provider = routeProvider(mode, new Set<Provider>(["modelark"]), "seedance");
@@ -44,7 +44,7 @@ router.post("/video-agent/start", async (req, res): Promise<void> => {
   }
 
   const mode = parseMode(req.body?.mode);
-  const preset = resolvePresetForMode(String(req.body?.preset || ""), mode);
+  const preset = resolvePreset(req.body?.preset, mode);
   const execution = buildVideoExecutionContract({ preset, mode });
 
   try {

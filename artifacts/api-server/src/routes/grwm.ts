@@ -161,7 +161,7 @@ router.get("/grwm/status/:taskId", async (req, res): Promise<void> => {
   if (!taskId || !/^[a-zA-Z0-9._:-]{1,200}$/.test(taskId)) { res.status(400).json({ error: "Invalid ModelArk task ID." }); return; }
   try {
     const response = await modelArk(`/contents/generations/tasks/${encodeURIComponent(taskId)}`);
-    const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+    const payload = await response.json().catch(() => ({}));
     if (!response.ok) { res.status(502).json({ error: "Could not read the GRWM task status." }); return; }
     res.json({ workflowId: "get-ready-with-me", taskId, ...payload });
   } catch (error) {

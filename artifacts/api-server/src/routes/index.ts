@@ -27,7 +27,6 @@ import { requireAdmin, getAuthenticatedUserId } from "../lib/access-control";
 const router: IRouter = Router();
 router.use(healthRouter);
 router.use(freeGpuRouter);
-router.use(adminContentRouter);
 router.use(requireAuth);
 router.use(requireAdmin, settingsRouter);
 router.use(comfyRouter);
