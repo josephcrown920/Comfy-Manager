@@ -4,6 +4,7 @@ import {
   GetWorkflowResponse,
   GetWorkflowParams,
 } from "@workspace/api-zod";
+import { getAdminContent, type CatalogEntry } from "../lib/admin-content";
 
 const router: IRouter = Router();
 
@@ -241,7 +242,7 @@ const WORKFLOWS = [
         defaultValue: "24",
         options: null,
         min: 8,
-        max: 80,
+        max: 64,
         accept: null,
       },
       {
@@ -333,9 +334,9 @@ const WORKFLOWS = [
       },
       {
         key: "outfit_image",
-        label: "Outfit Reference",
+        label: "Outfit Sheet",
         type: "file",
-        description: "The clothing you want the scene to carry over",
+        description: "Upload one sheet containing all garments, accessories, colors, and materials to carry over",
         required: true,
         defaultValue: null,
         options: null,
@@ -1183,7 +1184,26 @@ const WORKFLOWS = [
 ];
 
 router.get("/workflows", async (_req, res): Promise<void> => {
-  res.json(ListWorkflowsResponse.parse(WORKFLOWS));
+  const content = await getAdminContent();
+  const overrides = new Map<string, CatalogEntry>(
+    content.catalog
+      .filter((entry) => entry.kind === "workflow")
+      .map((entry) => [entry.sourceWorkflowId, entry]),
+  );
+  const workflows = WORKFLOWS
+    .map((workflow) => {
+      const override = overrides.get(workflow.id);
+      if (!override) return workflow;
+      if (!override.visible) return null;
+      return {
+        ...workflow,
+        name: override.title,
+        description: override.description,
+        category: override.category,
+      };
+    })
+    .filter((workflow): workflow is NonNullable<typeof workflow> => Boolean(workflow));
+  res.json(ListWorkflowsResponse.parse(workflows));
 });
 
 router.get("/workflows/:id", async (req, res): Promise<void> => {
@@ -1193,13 +1213,26 @@ router.get("/workflows/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const content = await getAdminContent();
+  const override = content.catalog.find(
+    (entry) => entry.kind === "workflow" && entry.sourceWorkflowId === params.data.id,
+  );
+  if (override && !override.visible) {
+    res.status(404).json({ error: "Workflow not found" });
+    return;
+  }
   const workflow = WORKFLOWS.find((w) => w.id === params.data.id);
   if (!workflow) {
     res.status(404).json({ error: "Workflow not found" });
     return;
   }
 
-  res.json(GetWorkflowResponse.parse(workflow));
+  res.json(GetWorkflowResponse.parse(override ? {
+    ...workflow,
+    name: override.title,
+    description: override.description,
+    category: override.category,
+  } : workflow));
 });
 
 export { WORKFLOWS };

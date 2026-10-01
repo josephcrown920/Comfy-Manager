@@ -60,6 +60,9 @@ import reelLoopThumbnail from "@/assets/thumbnails/reel-loop.jpg";
 import productSwapThumbnail from "@/assets/thumbnails/product-swap.jpg";
 import talkingAvatarThumbnail from "@/assets/thumbnails/talking-avatar.jpg";
 import blogHeroThumbnail from "@/assets/thumbnails/blog-hero.jpg";
+import performerThumbnail from "@/assets/thumbnails/perform-anywhere-performer.jpeg";
+import vehicleThumbnail from "@/assets/thumbnails/perform-anywhere-vehicle.jpeg";
+import cityThumbnail from "@/assets/thumbnails/perform-anywhere-city.jpeg";
 
 const seedanceReferenceThumbnail = "https://ark-doc.tos-ap-southeast-1.bytepluses.com/doc_image/r2v_tea_pic2.jpg";
 
@@ -394,9 +397,9 @@ const DB_WORKFLOW_THUMBNAILS: Record<string, string> = {
   "seedance-vertical-social": reelLoopThumbnail,
   "seedance-product-reveal": productSwapThumbnail,
   "modelark-seedance-reference-video": seedanceReferenceThumbnail,
-  "perform-anywhere-seedance": mimicmotionThumbnail,
-  "perform-anywhere-angles": cinematicPortraitThumbnail,
-  "perform-anywhere-motion": mimicmotionThumbnail,
+  "perform-anywhere-seedance": cityThumbnail,
+  "perform-anywhere-angles": performerThumbnail,
+  "perform-anywhere-motion": vehicleThumbnail,
   "video-generation-txt2vid": animatediffThumbnail,
   "img2vid-stable-video": svdThumbnail,
   "custom-workflow": sdxlThumbnail,
@@ -786,7 +789,7 @@ export function WorkflowForm({ workflowId, onBack }: { workflowId: string, onBac
         <div className="bg-[#171120] border border-[#A779F5]/30 rounded-3xl shadow-2xl overflow-hidden">
           {thumbnail && (
             <div className="h-64 w-full relative">
-              <img src={thumbnail} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src={thumbnail} alt={`${workflow.name} workflow preview`} className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#171120] to-transparent" />
             </div>
           )}

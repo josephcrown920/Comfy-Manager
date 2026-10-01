@@ -20,6 +20,8 @@ interface FileUploadProps {
   label?: string;
   description?: string;
   previouslyUploadedName?: string;
+  preview?: boolean;
+  previewPoster?: string;
 }
 
 function fileSizeLimit(file: File): { bytes: number; label: string } {
@@ -61,12 +63,16 @@ export function FileUpload({
   label,
   description,
   previouslyUploadedName,
+  preview = false,
+  previewPoster,
 }: FileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [uploadedName, setUploadedName] = useState<string>(previouslyUploadedName ?? "");
   const [isPreviouslyUploaded, setIsPreviouslyUploaded] = useState(Boolean(previouslyUploadedName));
+  const [previewUrl, setPreviewUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlRef = useRef("");
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -75,6 +81,12 @@ export function FileUpload({
     setUploadedName(previouslyUploadedName ?? "");
     setIsPreviouslyUploaded(true);
   }, [previouslyUploadedName]);
+
+  React.useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    };
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,6 +107,11 @@ export function FileUpload({
     setProgress(0);
     setUploadedName("");
     setIsPreviouslyUploaded(false);
+    if (preview) {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = URL.createObjectURL(file);
+      setPreviewUrl(previewUrlRef.current);
+    }
 
     try {
       const comfyName = await uploadFile(file, (pct) => setProgress(pct), accept);
@@ -109,6 +126,11 @@ export function FileUpload({
       });
       // Reset the input so the user can retry the same file
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = "";
+        setPreviewUrl("");
+      }
     } finally {
       setIsUploading(false);
     }
@@ -118,6 +140,20 @@ export function FileUpload({
     <div className="flex flex-col gap-2">
       {label && <Label>{label}</Label>}
       <div className="flex flex-col gap-2">
+        {preview && previewUrl && (
+          <div className="overflow-hidden rounded-xl border border-border bg-background">
+            <video
+              src={previewUrl}
+              poster={previewPoster}
+              controls
+              muted
+              playsInline
+              preload="metadata"
+              className="max-h-56 w-full object-cover"
+              aria-label={`${label ?? "Uploaded"} preview`}
+            />
+          </div>
+        )}
         <Input
           type="file"
           className="hidden"

@@ -51,6 +51,7 @@ function Router() {
           <Route path="/launch" component={Launch} />
           <Route path="/guide" component={Guide} />
           <Route path="/settings" component={Settings} />
+          <Route path="/admin" component={Admin} />
           <Route component={NotFound} />
             </Switch>
           </Shell>

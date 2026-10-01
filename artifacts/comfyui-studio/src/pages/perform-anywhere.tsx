@@ -32,11 +32,19 @@ import {
   useListBatches,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { FileUpload } from "@/components/ui/file-upload";
+import { FileUpload, uploadFile } from "@/components/ui/file-upload";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ShotBoard } from "@/components/shot-board";
 import { useToast } from "@/hooks/use-toast";
+import cinematicPortraitThumbnail from "@/assets/thumbnails/cinematic-portrait.jpg";
+import mimicmotionThumbnail from "@/assets/thumbnails/mimicmotion.jpg";
+import reelLoopThumbnail from "@/assets/thumbnails/reel-loop.jpg";
+import performerThumbnail from "@/assets/thumbnails/perform-anywhere-performer.jpeg";
+import stylingThumbnail from "@/assets/thumbnails/perform-anywhere-style.png";
+import vehicleThumbnail from "@/assets/thumbnails/perform-anywhere-vehicle.jpeg";
+import cityThumbnail from "@/assets/thumbnails/perform-anywhere-city.jpeg";
 
 const CAMERA_TREATMENTS = [
   { id: "wide-shot", label: "Wide shot", index: "01", copy: "Establish the world around the performance.", icon: MoveUpRight },
@@ -50,26 +58,35 @@ type ReferenceKey = "identity" | "outfit" | "location" | "pose" | "prop";
 type PresetId = "perform-anywhere" | "luxury-interior";
 type MotionProvider = "seedance" | "mimicmotion";
 
-const REFERENCE_SLOTS: Array<{ key: ReferenceKey; label: string; eyebrow: string; description: string }> = [
+const REFERENCE_SLOTS: Array<{ key: ReferenceKey; label: string; eyebrow: string; description: string; preview?: string; previewAlt?: string }> = [
   { key: "identity", label: "Identity / face", eyebrow: "01", description: "A clear face and shoulders. This anchors who is on camera." },
-  { key: "outfit", label: "Outfit", eyebrow: "02", description: "Texture, silhouette, and styling cues to carry into the scene." },
+  {
+    key: "outfit",
+    label: "Outfit sheet",
+    eyebrow: "02",
+    description: "One collage is enough. Include every garment, accessory, and styling reference in the same sheet.",
+    preview: stylingThumbnail,
+    previewAlt: "Outfit sheet with jewelry, jacket, sneakers, and stacked jeans",
+  },
   { key: "location", label: "Location", eyebrow: "03", description: "The world, architecture, or atmosphere behind the shot." },
   { key: "pose", label: "Pose", eyebrow: "04", description: "A body position or gesture that sets the performance energy." },
   { key: "prop", label: "Prop / car", eyebrow: "05", description: "The hero object that makes the frame yours." },
 ];
 
-const PRESETS: Array<{ id: PresetId; label: string; description: string; keys: ReferenceKey[] }> = [
+const PRESETS: Array<{ id: PresetId; label: string; description: string; keys: ReferenceKey[]; thumbnail: string }> = [
   {
     id: "perform-anywhere",
     label: "Perform Anywhere",
     description: "Five anchors for a flexible music-video world.",
     keys: ["identity", "outfit", "location", "pose", "prop"],
+    thumbnail: performerThumbnail,
   },
   {
     id: "luxury-interior",
     label: "Luxury Vehicle Interior",
     description: "Identity, vehicle interior, and seated composition.",
     keys: ["identity", "location", "pose"],
+    thumbnail: vehicleThumbnail,
   },
 ];
 
@@ -103,6 +120,11 @@ function ReferenceCard({
 }) {
   return (
     <div data-testid={`card-reference-${slot.key}`} className="group relative overflow-hidden rounded-3xl border border-[#A779F5]/30 bg-[#171120] p-4 transition-all hover:border-[#B7F54A] shadow-xl">
+      {slot.preview && (
+        <div className="mb-4 overflow-hidden rounded-2xl border border-[#A779F5]/20 bg-[#09080D]">
+          <img src={slot.preview} alt={slot.previewAlt ?? `${slot.label} preview`} className="aspect-[16/10] w-full object-contain" />
+        </div>
+      )}
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <p className="font-mono text-xs font-bold tracking-widest text-[#B7F54A]">{slot.eyebrow}</p>
@@ -163,6 +185,7 @@ export default function PerformAnywhere() {
   const [performanceVideo, setPerformanceVideo] = useState("");
   const [motionProvider, setMotionProvider] = useState<MotionProvider>("seedance");
   const [preset, setPreset] = useState<PresetId>("perform-anywhere");
+  const [boardUploadPending, setBoardUploadPending] = useState(false);
   const [activeBatchId, setActiveBatchId] = useState<number | null>(null);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
 
@@ -170,6 +193,20 @@ export default function PerformAnywhere() {
   const activeReferenceSlots = REFERENCE_SLOTS
     .filter((slot) => activePreset.keys.includes(slot.key))
     .map((slot) => preset === "luxury-interior" ? { ...slot, ...LUXURY_SLOT_OVERRIDES[slot.key] } : slot);
+  const boardReferenceSlots = activeReferenceSlots.map((slot) => ({
+    ...slot,
+    preview: slot.key === "identity"
+      ? performerThumbnail
+      : slot.key === "outfit"
+        ? stylingThumbnail
+        : slot.key === "location"
+          ? (preset === "luxury-interior" ? vehicleThumbnail : cityThumbnail)
+          : slot.key === "pose"
+            ? mimicmotionThumbnail
+            : vehicleThumbnail,
+    previewAlt: `${slot.label} board preview`,
+    value: references[slot.key],
+  }));
   
   const batches = batchesQuery.data ?? [];
   const activeBatch = useMemo(() => {
@@ -239,6 +276,72 @@ export default function PerformAnywhere() {
 
   const updateReference = (key: ReferenceKey, filename: string) => {
     setReferences((current) => ({ ...current, [key]: filename }));
+  };
+
+  const handleBoardFiles = async (files: File[]) => {
+    const imageFiles = files.filter((file) => (
+      file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|avif)$/i.test(file.name)
+    ));
+    if (imageFiles.length === 0) {
+      toast({
+        title: "Add image references",
+        description: "The Shot Board accepts image files for the identity, outfit, location, pose, and prop roles.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const emptyKeys = activePreset.keys.filter((key) => !references[key]);
+    if (emptyKeys.length === 0) {
+      toast({
+        title: "The Shot Board is full",
+        description: "Use the individual reference cards below to replace a specific asset.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const oversized = imageFiles.filter((file) => file.size > 20 * 1024 * 1024);
+    if (oversized.length > 0) {
+      toast({
+        title: "Some images are too large",
+        description: "Each Shot Board image must be 20 MB or smaller.",
+        variant: "destructive",
+      });
+    }
+
+    const filesToUpload = imageFiles
+      .filter((file) => file.size <= 20 * 1024 * 1024)
+      .slice(0, emptyKeys.length);
+    if (filesToUpload.length === 0) return;
+
+    setBoardUploadPending(true);
+    try {
+      const uploaded: Array<{ key: ReferenceKey; filename: string }> = [];
+      for (const [index, file] of filesToUpload.entries()) {
+        const filename = await uploadFile(file, () => undefined, "image/*");
+        uploaded.push({ key: emptyKeys[index]!, filename });
+      }
+      setReferences((current) => {
+        const next = { ...current };
+        uploaded.forEach(({ key, filename }) => {
+          next[key] = filename;
+        });
+        return next;
+      });
+      toast({
+        title: "References attached to the Shot Board",
+        description: `${uploaded.length} image${uploaded.length === 1 ? "" : "s"} added in board order.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Could not attach the references",
+        description: error instanceof Error ? error.message : "Try the individual upload cards below.",
+        variant: "destructive",
+      });
+    } finally {
+      setBoardUploadPending(false);
+    }
   };
 
   const selectPreset = (nextPreset: PresetId) => {
@@ -374,7 +477,18 @@ export default function PerformAnywhere() {
                 Build a consistent cinematic scene from your references, audition five camera treatments, then carry the strongest still into motion with your original performance.
               </p>
             </div>
-            <div className="rounded-3xl border border-[#A779F5]/30 bg-[#09080D]/50 p-6 backdrop-blur-md shadow-xl">
+            <div className="overflow-hidden rounded-3xl border border-[#A779F5]/30 bg-[#09080D]/50 backdrop-blur-md shadow-xl">
+              <div className="grid h-36 grid-cols-3" aria-label="Perform Anywhere workflow preview">
+                {[performerThumbnail, stylingThumbnail, cityThumbnail].map((thumbnail, index) => (
+                  <img
+                    key={thumbnail}
+                    src={thumbnail}
+                    alt={index === 0 ? "Cinematic reference still" : index === 1 ? "Generated camera angle" : "Motion transfer result"}
+                    className="h-full w-full object-cover"
+                  />
+                ))}
+              </div>
+              <div className="p-6">
               <div className="flex items-center justify-between gap-3 mb-6">
                 <p className="text-xs font-bold uppercase tracking-widest text-[#BEB2CC]">Workflow</p>
                 <Sparkles className="h-5 w-5 text-[#B7F54A]" />
@@ -382,7 +496,7 @@ export default function PerformAnywhere() {
               <div className="space-y-4">
                 <div className="flex items-center gap-3 bg-[#171120] rounded-xl p-3 border border-[#A779F5]/20">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#09080D] text-xs font-bold text-[#A779F5]">1</span>
-                  <span className="text-sm font-semibold text-white">Moodboard</span>
+                   <span className="text-sm font-semibold text-white">Shot Board</span>
                 </div>
                 <div className="pl-4 border-l-2 border-[#A779F5]/20 ml-3 h-4"></div>
                 <div className="flex items-center gap-3 bg-[#B7F54A]/10 rounded-xl p-3 border border-[#B7F54A]/30">
@@ -394,6 +508,7 @@ export default function PerformAnywhere() {
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#09080D] text-xs font-bold text-[#A779F5]">3</span>
                   <span className="text-sm font-semibold text-white">Motion</span>
                 </div>
+              </div>
               </div>
             </div>
           </div>
@@ -421,6 +536,12 @@ export default function PerformAnywhere() {
                       onClick={() => selectPreset(option.id)}
                       className={`rounded-2xl border p-6 text-left transition-all ${selected ? "border-[#B7F54A] bg-[#B7F54A]/10 shadow-[0_0_20px_rgba(183,245,74,.15)]" : "border-[#A779F5]/30 bg-[#09080D] hover:border-[#A779F5]/70"}`}
                     >
+                      <img
+                        src={option.thumbnail}
+                        alt={`${option.label} visual example`}
+                        className="mb-5 aspect-video w-full rounded-xl object-cover"
+                        loading="lazy"
+                      />
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className={`text-lg font-bold mb-2 ${selected ? "text-[#B7F54A]" : "text-white"}`}>{option.label}</p>
@@ -439,15 +560,23 @@ export default function PerformAnywhere() {
                 <div>
                   <div className="flex items-center gap-3 text-sm font-bold uppercase tracking-widest text-[#B7F54A] mb-2">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#B7F54A] text-[#09080D]">2</span>
-                    Build the moodboard
+                   Build the shot board
                   </div>
                   <h2 className="text-2xl font-bold text-white mb-2">{activePreset.keys.length === 5 ? "Five anchors. One world." : "Three anchors. One interior."}</h2>
-                  <p className="max-w-2xl text-sm text-[#BEB2CC]">Give the scene enough visual evidence to stay recognizably yours from every angle.</p>
+                   <p className="max-w-2xl text-sm text-[#BEB2CC]">Attach the full reference room once, then fine-tune any role before rendering the angle audition.</p>
                 </div>
                 <div data-testid="text-reference-count" className="rounded-full border border-[#B7F54A]/30 bg-[#B7F54A]/10 px-4 py-2 font-mono text-sm font-bold text-[#B7F54A]">
                   {activePreset.keys.filter((key) => Boolean(references[key])).length} / {activePreset.keys.length} uploaded
                 </div>
               </div>
+              <ShotBoard
+                presetLabel={activePreset.label}
+                slots={boardReferenceSlots}
+                uploadPending={boardUploadPending}
+                canRender={canStart && !createBatch.isPending}
+                onRender={startAngles}
+                onFilesSelected={(files) => { void handleBoardFiles(files); }}
+              />
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {activeReferenceSlots.map((slot) => (
                   <ReferenceCard key={slot.key} slot={slot} value={references[slot.key]} onUploaded={(filename) => updateReference(slot.key, filename)} />
@@ -481,7 +610,7 @@ export default function PerformAnywhere() {
                   <p className="max-w-xl text-sm leading-relaxed text-[#BEB2CC]">We will create exactly five children with the camera treatments below. They share your {activePreset.keys.length} references, scene, and visual direction.</p>
                 </div>
                 <Button data-testid="button-start-angles" onClick={startAngles} disabled={createBatch.isPending} className="shrink-0 rounded-xl bg-[#B7F54A] py-6 px-8 font-bold text-[#09080D] hover:bg-[#A3E030] shadow-[0_0_20px_rgba(183,245,74,0.3)] transition-all text-base">
-                  {createBatch.isPending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Building angles</> : <><Sparkles className="mr-2 h-5 w-5" />Build five angles</>}
+                  {createBatch.isPending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Rendering shot list</> : <><Sparkles className="mr-2 h-5 w-5" />Render shot list once</>}
                 </Button>
               </div>
             </section>
@@ -618,7 +747,15 @@ export default function PerformAnywhere() {
 
                 <div data-testid="upload-performance-video" className="mt-8">
                   <div className="bg-[#09080D] rounded-2xl border border-[#A779F5]/30 p-2">
-                    <FileUpload accept="video/*" label="Performance video" description="A clean 3–30 second phone performance works best." onFileSelect={setPerformanceVideo} previouslyUploadedName={performanceVideo || undefined} />
+                    <FileUpload
+                      accept="video/*"
+                      label="Phone performance video"
+                      description="A clean 3–30 second phone performance works best. Keep the performer and full movement visible."
+                      onFileSelect={setPerformanceVideo}
+                      previouslyUploadedName={performanceVideo || undefined}
+                      preview
+                      previewPoster={performerThumbnail}
+                    />
                   </div>
                 </div>
 

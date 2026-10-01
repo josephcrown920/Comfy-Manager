@@ -8,6 +8,7 @@ import { logger } from "./lib/logger";
 import { getComfyUrl } from "./routes/settings";
 import { parseComfyTarget } from "./routes/comfy";
 import { startProgressTracker } from "./lib/progress-tracker";
+import { startVastAutoscalerMonitor } from "./lib/vast-autoscaler";
 import { db, jobsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 
@@ -134,4 +135,5 @@ server.listen(port, (err?: Error) => {
 
   // Persist incremental job progress to the DB so the UI survives reloads
   startProgressTracker();
+  startVastAutoscalerMonitor();
 });

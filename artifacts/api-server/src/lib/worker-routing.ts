@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db, jobsTable } from "@workspace/db";
 import { fetchComfy } from "../routes/comfy";
 import { getComfyUrl, getConfiguredWorkers, getRoutingSettings, type ComfyWorker } from "../routes/settings";
+import { getOrCreateVastWorker } from "./vast-autoscaler";
 
 export type WorkerProbe = {
   worker: ComfyWorker;
@@ -91,20 +92,39 @@ export async function selectWorker(
   const effectiveWorkerId = requestedWorkerId ?? (
     routing.routingMode === "manual" ? routing.selectedGpuId : null
   );
-  const workers = await getConfiguredWorkers();
+  let workers = await getConfiguredWorkers();
   const candidates = effectiveWorkerId == null
     ? workers
     : workers.filter((worker) => worker.id === effectiveWorkerId);
   const availableCandidates = candidates.filter((worker) => !excludedWorkerIds.has(worker.id));
 
-  if (!availableCandidates.length) {
+  if (!availableCandidates.length && effectiveWorkerId == null) {
+    const vastWorker = await getOrCreateVastWorker();
+    if (vastWorker) workers = [vastWorker];
+  }
+  const resolvedCandidates = effectiveWorkerId == null
+    ? workers
+    : workers.filter((worker) => worker.id === effectiveWorkerId);
+  const resolvedAvailableCandidates = resolvedCandidates.filter((worker) => !excludedWorkerIds.has(worker.id));
+
+  if (!resolvedAvailableCandidates.length) {
     throw new WorkerRoutingError("The selected GPU is no longer saved. Choose another GPU in Settings.", 409);
   }
 
-  const probes = await Promise.all(availableCandidates.map((worker) => probeWorker(worker, requiredNodes)));
+  let probes = await Promise.all(resolvedAvailableCandidates.map((worker) => probeWorker(worker, requiredNodes)));
   const healthy = probes.filter((probe) => probe.reachable && probe.missingNodes.length === 0);
 
   if (!healthy.length) {
+    if (effectiveWorkerId == null && !workers.some((worker) => worker.id < 0)) {
+      const vastWorker = await getOrCreateVastWorker();
+      if (vastWorker) {
+        const vastProbe = await probeWorker(vastWorker, requiredNodes);
+        probes = [...probes, vastProbe];
+        if (vastProbe.reachable && vastProbe.missingNodes.length === 0) {
+          return vastProbe;
+        }
+      }
+    }
     const incompatible = probes.find((probe) => probe.reachable && probe.missingNodes.length > 0);
     if (incompatible) {
       throw new WorkerRoutingError(
