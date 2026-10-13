@@ -30,6 +30,58 @@ tags:
     description: AI chat assistant and video agent
 
 paths:
+  /environments:
+    get:
+      operationId: listEnvironments
+      tags: [Workflows]
+      responses:
+        "200":
+          description: Available visual environment presets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EnvironmentPreset"
+  /environments/{id}/attach:
+    post:
+      operationId: attachEnvironment
+      tags: [Workflows]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Preset copied into the current user's ComfyUI inputs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name, subfolder, type]
+                properties:
+                  name:
+                    type: string
+                  subfolder:
+                    type: string
+                  type:
+                    type: string
+  /motion/providers:
+    get:
+      operationId: getMotionProviders
+      tags: [Workflows]
+      security: [{ clerkSession: [] }]
+      responses:
+        "200":
+          description: Motion provider availability and supported inputs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MotionProviderStatus"
   /workflow-apps:
     get:
       operationId: listWorkflowApps
@@ -831,6 +883,44 @@ components:
       schema:
         type: number
   schemas:
+    EnvironmentPreset:
+      type: object
+      required: [id, name, category, description, imageUrl, scenePrompt, source]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+          enum: [studio, outdoor, sport, interior]
+        description:
+          type: string
+        imageUrl:
+          type: string
+        scenePrompt:
+          type: string
+        source:
+          type: string
+          enum: [extracted, generated]
+    MotionProviderStatus:
+      type: object
+      required: [id, name, ready, message, inputKind, directDepth]
+      properties:
+        id:
+          type: string
+          enum: [seedance, mimicmotion, kling, omnihuman]
+        name:
+          type: string
+        ready:
+          type: boolean
+        message:
+          type: string
+        inputKind:
+          type: string
+          enum: [video, audio]
+        directDepth:
+          type: boolean
     WorkflowAppInput:
       type: object
       required: [name, workflowId, description, presetParams, exposedKeys, isPublished, allowEmbed]
@@ -1350,6 +1440,14 @@ components:
           type: string
         propAsset:
           type: string
+        depthAsset:
+          type: string
+          maxLength: 255
+          description: Optional uploaded depth map used as SDXL ControlNet guidance for all five angles
+        depthStrength:
+          type: number
+          minimum: 0
+          maximum: 1
         cameraTreatments:
           type: array
           items:

@@ -21,6 +21,8 @@ import { selectWorker, WorkerRoutingError } from "../lib/worker-routing";
 import { getModelAssignments } from "./model-assignments";
 import { withGpuSubmissionLease } from "./gpu-lease";
 import { reconcileJob } from "../lib/job-reconciliation";
+import { isFalMotion, startFalMotion, falOutputUrl, FAL_OUTPUT_SUBFOLDER, MotionInputError, MotionQuotaError } from "../lib/fal-motion";
+import { requireOwnedInput } from "../lib/perform-media";
 import {
   createSeedanceTask,
   createSeedreamImage,
@@ -121,7 +123,9 @@ function buildJobOutput(job: typeof jobsTable.$inferSelect, outputs: typeof outp
       filename: o.filename,
       subfolder: o.subfolder,
       outputType: o.outputType,
-        comfyUrl: o.subfolder === MODELARK_OUTPUT_SUBFOLDER
+        comfyUrl: o.subfolder === FAL_OUTPUT_SUBFOLDER
+          ? falOutputUrl(o.jobId)
+          : o.subfolder === MODELARK_OUTPUT_SUBFOLDER
           ? modelArkOutputUrl(o.filename)
           : o.subfolder === MODELARK_IMAGE_OUTPUT_SUBFOLDER
             ? modelArkImageOutputUrl(o.filename)
@@ -222,6 +226,26 @@ router.post("/jobs", async (req, res): Promise<void> => {
 
   const { workflowId, params, workerId } = parsed.data;
 
+  if (workflowId.startsWith("perform-anywhere-")) {
+    try {
+      const p = params as Record<string, unknown>;
+      for (const key of ["source_image", "identity_image", "outfit_image", "location_image", "pose_image", "prop_image", "depth_image"]) {
+        if (p[key]) await requireOwnedInput(p[key], userId, "image");
+      }
+      if (p.source_video || p.performance_video) await requireOwnedInput(p.source_video || p.performance_video, userId, "video");
+      if (p.audio_file) await requireOwnedInput(p.audio_file, userId, "audio");
+    } catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : "Invalid uploaded media." }); return; }
+  }
+  if (isFalMotion(workflowId)) {
+    try {
+      const job = await startFalMotion(userId, workflowId, params as Record<string, unknown>);
+      res.status(201).json(CreateJobResponse.parse(buildJobOutput(job, [])));
+    } catch (e) {
+      res.status(e instanceof MotionInputError || e instanceof MotionQuotaError ? e.statusCode : 502)
+        .json({ error: e instanceof Error ? e.message : "Could not submit hosted motion." });
+    }
+    return;
+  }
   if (isModelArkWorkflow(workflowId) && workflowId !== MODELARK_IMAGE_WORKFLOW_ID) {
     let reservedJob: typeof jobsTable.$inferSelect | null = null;
     try {
@@ -549,6 +573,10 @@ router.delete("/jobs/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  if (isFalMotion(job.workflowId) && ["pending", "running"].includes(job.status)) {
+    res.status(409).json({ error: "A hosted render is active. Wait for it to finish before deleting; deleting a job does not cancel provider charges." });
+    return;
+  }
   await db.delete(outputsTable).where(eq(outputsTable.jobId, job.id));
   await db.delete(jobsTable).where(eq(jobsTable.id, job.id));
 
@@ -1547,7 +1575,7 @@ function buildPerformAnywhereAnglePrompt(params: Record<string, unknown>): Recor
     "high-fidelity skin texture, natural highlights, accurate anatomy, no text or logos",
   ].join(", ");
 
-  return {
+  const graph: Record<string, { class_type: string; inputs: Record<string, unknown> }> = {
     "1": { class_type: "LoadImage", inputs: { image: identity, upload: "image" } },
     "2": { class_type: "LoadImage", inputs: { image: outfit, upload: "image" } },
     "3": { class_type: "LoadImage", inputs: { image: location, upload: "image" } },
@@ -1575,9 +1603,10 @@ function buildPerformAnywhereAnglePrompt(params: Record<string, unknown>): Recor
       inputs: {
         model: ["6", 0],
         ipadapter: ["7", 0],
-        image: ["9", 0],
+        image: ["1", 0],
+        clip_vision: ["8", 0],
         weight: 0.9,
-        weight_type: "strong",
+        weight_type: "linear",
         combine_embeds: "concat",
         start_at: 0,
         end_at: 1,
@@ -1589,7 +1618,8 @@ function buildPerformAnywhereAnglePrompt(params: Record<string, unknown>): Recor
       inputs: {
         model: ["14", 0],
         ipadapter: ["7", 0],
-        image: ["10", 0],
+        image: ["2", 0],
+        clip_vision: ["8", 0],
         weight: 0.55,
         weight_type: "style transfer",
         combine_embeds: "concat",
@@ -1603,7 +1633,8 @@ function buildPerformAnywhereAnglePrompt(params: Record<string, unknown>): Recor
       inputs: {
         model: ["15", 0],
         ipadapter: ["7", 0],
-        image: ["11", 0],
+        image: ["3", 0],
+        clip_vision: ["8", 0],
         weight: 0.55,
         weight_type: "style transfer",
         combine_embeds: "concat",
@@ -1617,7 +1648,8 @@ function buildPerformAnywhereAnglePrompt(params: Record<string, unknown>): Recor
       inputs: {
         model: ["16", 0],
         ipadapter: ["7", 0],
-        image: ["12", 0],
+        image: ["4", 0],
+        clip_vision: ["8", 0],
         weight: 0.45,
         weight_type: "composition",
         combine_embeds: "concat",
@@ -1631,7 +1663,8 @@ function buildPerformAnywhereAnglePrompt(params: Record<string, unknown>): Recor
       inputs: {
         model: ["17", 0],
         ipadapter: ["7", 0],
-        image: ["13", 0],
+        image: ["5", 0],
+        clip_vision: ["8", 0],
         weight: 0.4,
         weight_type: "style transfer",
         combine_embeds: "concat",
@@ -1670,6 +1703,19 @@ function buildPerformAnywhereAnglePrompt(params: Record<string, unknown>): Recor
       inputs: { images: ["23", 0], filename_prefix: `perform-anywhere-${camera.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}` },
     },
   };
+  if (typeof params.depth_image === "string" && params.depth_image) {
+    const strength = Number(params.depth_strength ?? 0.7);
+    if (!Number.isFinite(strength) || strength < 0 || strength > 1) throw new Error("Depth strength must be between 0 and 1.");
+    graph["25"] = { class_type: "LoadImage", inputs: { image: params.depth_image, upload: "image" } };
+    graph["26"] = { class_type: "ControlNetLoader", inputs: { control_net_name: process.env.PERFORM_DEPTH_CONTROLNET_MODEL || "diffusers_xl_depth_full.safetensors" } };
+    graph["27"] = { class_type: "ControlNetApplyAdvanced", inputs: {
+      positive: ["19", 0], negative: ["20", 0], control_net: ["26", 0], image: ["25", 0],
+      strength, start_percent: 0, end_percent: 1, vae: ["6", 2],
+    } };
+    graph["22"]!.inputs.positive = ["27", 0];
+    graph["22"]!.inputs.negative = ["27", 1];
+  }
+  return graph;
 }
 
 /**

@@ -2,6 +2,7 @@ import { db, jobsTable, outputsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { fetchComfy } from "../routes/comfy";
 import { getComfyUrl } from "../routes/settings";
+import { isFalMotion, reconcileFalMotion } from "./fal-motion";
 import {
   getSeedanceTask,
   isModelArkWorkflow,
@@ -50,6 +51,14 @@ export async function reconcileJob(jobId: number): Promise<void> {
 
   if (!job?.comfyPromptId || job.status !== "running") return;
 
+  if (isFalMotion(job.workflowId) && job.comfyPromptId.startsWith("fal:")) {
+    try { await reconcileFalMotion(job); }
+    catch {
+      // A status/storage outage must not make a paid job look retryable.
+      // Keep the original request ID so the next refresh can recover its output.
+    }
+    return;
+  }
   if (isModelArkWorkflow(job.workflowId) && job.comfyPromptId.startsWith("modelark:")) {
     const taskId = job.comfyPromptId.slice("modelark:".length);
     try {

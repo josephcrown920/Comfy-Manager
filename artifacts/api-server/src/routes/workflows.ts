@@ -1183,6 +1183,21 @@ const WORKFLOWS = [
   },
 ];
 
+const performReference = WORKFLOWS.find((w) => w.id === "perform-anywhere-seedance")!;
+for (const [id, name, description, mediaKey, mediaLabel, mediaAccept] of [
+  ["perform-anywhere-kling", "Perform Anywhere — Kling Motion Control", "Animate a selected shot using a performance-video reference through Kling 2.6 on fal.ai. Optional depth guides the preceding angle-generation stage, not this hosted endpoint.", "source_video", "Performance video (up to 30 seconds)", "video/*"],
+  ["perform-anywhere-omnihuman", "Perform Anywhere — OmniHuman 1.5", "Animate a selected still with an audio performance through OmniHuman 1.5 on fal.ai. Requires audio, not a performance video. Optional depth guides the preceding angle-generation stage.", "audio_file", "Performance audio (under 60 seconds)", "audio/*"],
+]) {
+  WORKFLOWS.push({
+    ...performReference, id: id!, name: name!, description: description!,
+    params: [
+      { key: "source_image", label: "Selected still", required: true, type: "file", accept: "image/*", description: "The generated still selected for animation", defaultValue: null, options: null, min: null, max: null },
+      { key: mediaKey!, label: mediaLabel!, required: true, type: "file", accept: mediaAccept!, description: "Your performance reference", defaultValue: null, options: null, min: null, max: null },
+      { ...performReference.params.find((p) => p.key === "motion_context")!, key: "motion_context", label: "Motion direction", required: false, type: "textarea", defaultValue: "", description: "Performance direction for the hosted provider", min: null, max: null, accept: null, options: null },
+    ],
+  });
+}
+
 router.get("/workflows", async (_req, res): Promise<void> => {
   const content = await getAdminContent();
   const overrides = new Map<string, CatalogEntry>(

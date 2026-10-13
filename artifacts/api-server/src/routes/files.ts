@@ -1,5 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer, { MulterError } from "multer";
+import { randomUUID } from "node:crypto";
+import { recordInputOwner } from "../lib/perform-media";
 import { db, outputsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { getComfyUrl } from "./settings";
@@ -360,7 +362,7 @@ router.post(
           new Blob([new Uint8Array(req.file.buffer)], {
             type: req.file.mimetype,
           }),
-          req.file.originalname,
+          `${randomUUID()}-${req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-140)}`,
         );
         // Tell ComfyUI which subfolder to store the file in
         if (subfolder) {
@@ -391,6 +393,7 @@ router.post(
           type: string;
         };
 
+        await recordInputOwner(data.name, userId, data.subfolder ?? subfolder, req.file.mimetype, comfyUrl);
         res.json({
           name: data.name,
           subfolder: data.subfolder ?? subfolder,
@@ -465,7 +468,7 @@ router.post(
       formData.append(
         "image",
         new Blob([bytes], { type: contentType }),
-        filename,
+        `${randomUUID()}-${filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-140)}`,
       );
       formData.append("type", "input");
 
@@ -489,6 +492,7 @@ router.post(
         subfolder?: string;
         type?: string;
       };
+      await recordInputOwner(data.name, userId, data.subfolder ?? "", contentType, comfyUrl);
       res.json(
         ImportOutputResponse.parse({
           name: data.name,

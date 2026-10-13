@@ -22,6 +22,7 @@ import type {
 import type {
   AssistantChatBody,
   AssistantChatResponse,
+  AttachEnvironment200,
   Batch,
   BatchInput,
   ComfyModels,
@@ -31,6 +32,7 @@ import type {
   DeleteSavedGpu200,
   DeleteSavedWorkflow200,
   DeleteWorkflowApp200,
+  EnvironmentPreset,
   HealthStatus,
   ImportOutputInput,
   Job,
@@ -42,6 +44,7 @@ import type {
   ModelArkStatus,
   ModelAssignments,
   ModelAssignmentsInput,
+  MotionProviderStatus,
   NodeValidation,
   Output,
   SavedGpu,
@@ -87,6 +90,213 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListEnvironmentsUrl = () => {
+
+
+
+
+  return `/api/environments`
+}
+
+export const listEnvironments = async ( options?: Parameters<typeof customFetch>[1]): Promise<EnvironmentPreset[]> => {
+
+  return customFetch<EnvironmentPreset[]>(getListEnvironmentsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEnvironmentsQueryKey = () => {
+    return [
+    `/api/environments`
+    ] as const;
+    }
+
+
+export const getListEnvironmentsQueryOptions = <TData = Awaited<ReturnType<typeof listEnvironments>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEnvironments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEnvironmentsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEnvironments>>> = ({ signal }) => listEnvironments({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEnvironments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEnvironmentsQueryResult = NonNullable<Awaited<ReturnType<typeof listEnvironments>>>
+export type ListEnvironmentsQueryError = ErrorType<unknown>
+
+
+
+export function useListEnvironments<TData = Awaited<ReturnType<typeof listEnvironments>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEnvironments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEnvironmentsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAttachEnvironmentUrl = (id: string,) => {
+
+
+
+
+  return `/api/environments/${id}/attach`
+}
+
+export const attachEnvironment = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<AttachEnvironment200> => {
+
+  return customFetch<AttachEnvironment200>(getAttachEnvironmentUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAttachEnvironmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof attachEnvironment>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof attachEnvironment>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['attachEnvironment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof attachEnvironment>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  attachEnvironment(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AttachEnvironmentMutationResult = NonNullable<Awaited<ReturnType<typeof attachEnvironment>>>
+
+    export type AttachEnvironmentMutationError = ErrorType<unknown>
+
+    export const useAttachEnvironment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof attachEnvironment>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof attachEnvironment>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getAttachEnvironmentMutationOptions(options));
+    }
+
+export const getGetMotionProvidersUrl = () => {
+
+
+
+
+  return `/api/motion/providers`
+}
+
+export const getMotionProviders = async ( options?: Parameters<typeof customFetch>[1]): Promise<MotionProviderStatus[]> => {
+
+  return customFetch<MotionProviderStatus[]>(getGetMotionProvidersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMotionProvidersQueryKey = () => {
+    return [
+    `/api/motion/providers`
+    ] as const;
+    }
+
+
+export const getGetMotionProvidersQueryOptions = <TData = Awaited<ReturnType<typeof getMotionProviders>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMotionProviders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMotionProvidersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMotionProviders>>> = ({ signal }) => getMotionProviders({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMotionProviders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMotionProvidersQueryResult = NonNullable<Awaited<ReturnType<typeof getMotionProviders>>>
+export type GetMotionProvidersQueryError = ErrorType<unknown>
+
+
+
+export function useGetMotionProviders<TData = Awaited<ReturnType<typeof getMotionProviders>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMotionProviders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMotionProvidersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListWorkflowAppsUrl = () => {
 

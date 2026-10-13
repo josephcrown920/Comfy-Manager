@@ -8,6 +8,40 @@
 import * as zod from 'zod';
 
 
+export const ListEnvironmentsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "category": zod.enum(['studio', 'outdoor', 'sport', 'interior']),
+  "description": zod.string(),
+  "imageUrl": zod.string(),
+  "scenePrompt": zod.string(),
+  "source": zod.enum(['extracted', 'generated'])
+})
+export const ListEnvironmentsResponse = zod.array(ListEnvironmentsResponseItem)
+
+
+export const AttachEnvironmentParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AttachEnvironmentResponse = zod.object({
+  "name": zod.string(),
+  "subfolder": zod.string(),
+  "type": zod.string()
+})
+
+
+export const GetMotionProvidersResponseItem = zod.object({
+  "id": zod.enum(['seedance', 'mimicmotion', 'kling', 'omnihuman']),
+  "name": zod.string(),
+  "ready": zod.boolean(),
+  "message": zod.string(),
+  "inputKind": zod.enum(['video', 'audio']),
+  "directDepth": zod.boolean()
+})
+export const GetMotionProvidersResponse = zod.array(GetMotionProvidersResponseItem)
+
+
 export const listWorkflowAppsResponseOneNameMax = 100;
 
 export const listWorkflowAppsResponseOneDescriptionMax = 1000;
@@ -154,6 +188,11 @@ export const runWorkflowAppBatchBodyScenePromptMax = 1000;
 export const runWorkflowAppBatchBodyStyleAnchorMin = 2;
 export const runWorkflowAppBatchBodyStyleAnchorMax = 1000;
 
+export const runWorkflowAppBatchBodyDepthAssetMax = 255;
+
+export const runWorkflowAppBatchBodyDepthStrengthMin = 0;
+export const runWorkflowAppBatchBodyDepthStrengthMax = 1;
+
 export const runWorkflowAppBatchBodyDurationSecondsMax = 60;
 
 
@@ -170,6 +209,8 @@ export const RunWorkflowAppBatchBody = zod.object({
   "locationAsset": zod.string().optional(),
   "poseAsset": zod.string().optional(),
   "propAsset": zod.string().optional(),
+  "depthAsset": zod.string().max(runWorkflowAppBatchBodyDepthAssetMax).optional().describe('Optional uploaded depth map used as SDXL ControlNet guidance for all five angles'),
+  "depthStrength": zod.number().min(runWorkflowAppBatchBodyDepthStrengthMin).max(runWorkflowAppBatchBodyDepthStrengthMax).optional(),
   "cameraTreatments": zod.array(zod.string()).optional(),
   "aspectRatios": zod.array(zod.string()).optional(),
   "colorGrades": zod.array(zod.string()).optional(),
@@ -571,6 +612,11 @@ export const createBatchBodyScenePromptMax = 1000;
 export const createBatchBodyStyleAnchorMin = 2;
 export const createBatchBodyStyleAnchorMax = 1000;
 
+export const createBatchBodyDepthAssetMax = 255;
+
+export const createBatchBodyDepthStrengthMin = 0;
+export const createBatchBodyDepthStrengthMax = 1;
+
 export const createBatchBodyDurationSecondsMax = 60;
 
 
@@ -587,6 +633,8 @@ export const CreateBatchBody = zod.object({
   "locationAsset": zod.string().optional(),
   "poseAsset": zod.string().optional(),
   "propAsset": zod.string().optional(),
+  "depthAsset": zod.string().max(createBatchBodyDepthAssetMax).optional().describe('Optional uploaded depth map used as SDXL ControlNet guidance for all five angles'),
+  "depthStrength": zod.number().min(createBatchBodyDepthStrengthMin).max(createBatchBodyDepthStrengthMax).optional(),
   "cameraTreatments": zod.array(zod.string()).optional(),
   "aspectRatios": zod.array(zod.string()).optional(),
   "colorGrades": zod.array(zod.string()).optional(),

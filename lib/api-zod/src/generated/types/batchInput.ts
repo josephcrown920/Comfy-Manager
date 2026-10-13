@@ -37,6 +37,16 @@ export interface BatchInput {
   locationAsset?: string;
   poseAsset?: string;
   propAsset?: string;
+  /**
+     * Optional uploaded depth map used as SDXL ControlNet guidance for all five angles
+     * @maxLength 255
+     */
+  depthAsset?: string;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  depthStrength?: number;
   cameraTreatments?: string[];
   aspectRatios?: string[];
   colorGrades?: string[];

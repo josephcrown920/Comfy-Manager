@@ -2,6 +2,10 @@ import { z } from "zod";
 import { WORKFLOWS } from "../routes/workflows";
 
 export const COMPLETE_APP = "perform-anywhere-complete";
+export const MOTION_PROVIDERS = ["seedance", "mimicmotion", "kling", "omnihuman"] as const;
+export function allowedMotionProviders(params: Record<string, unknown>): string[] {
+  return String(params.motion_providers ?? MOTION_PROVIDERS.join(",")).split(",").filter((p) => MOTION_PROVIDERS.includes(p as typeof MOTION_PROVIDERS[number]));
+}
 export const appSchema = z.object({
   slug: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/).optional(),
   name: z.string().trim().min(1).max(100),
@@ -22,15 +26,18 @@ export function validateApp(input: AppInput): AppInput {
     throw new Error("Choose a supported single workflow or Complete Perform Anywhere.");
   }
   const allowed = input.workflowId === COMPLETE_APP
-    ? ["scene_description", "visual_direction", "motion_context", "preset", "motion_provider"]
+    ? ["scene_description", "visual_direction", "motion_context", "preset", "motion_provider", "motion_providers"]
     : workflow!.params.map((p) => p.key);
   if (Object.keys(input.presetParams).some((k) => !allowed.includes(k)) || input.exposedKeys.some((k) => !allowed.includes(k))) {
     throw new Error("The app contains fields not supported by its workflow.");
   }
   if (input.workflowId === COMPLETE_APP) {
-    if (input.exposedKeys.some((k) => ["preset", "motion_provider"].includes(k))) throw new Error("Preset and motion provider are fixed app settings.");
+    if (input.exposedKeys.some((k) => ["preset", "motion_provider", "motion_providers"].includes(k))) throw new Error("Allowed providers and starting provider are app settings.");
     if (input.presetParams.preset && !["perform-anywhere", "luxury-interior"].includes(String(input.presetParams.preset))) throw new Error("Invalid reference preset.");
-    if (input.presetParams.motion_provider && !["seedance", "mimicmotion"].includes(String(input.presetParams.motion_provider))) throw new Error("Invalid motion provider.");
+    const allowed = allowedMotionProviders(input.presetParams);
+    const raw = String(input.presetParams.motion_providers ?? MOTION_PROVIDERS.join(",")).split(",");
+    if (!allowed.length || allowed.length !== raw.length || new Set(allowed).size !== allowed.length) throw new Error("Choose a valid list of allowed motion providers.");
+    if (input.presetParams.motion_provider && !allowed.includes(String(input.presetParams.motion_provider))) throw new Error("Starting provider must be enabled.");
     for (const key of ["scene_description", "visual_direction", "motion_context"]) {
       if (!input.exposedKeys.includes(key) && !String(input.presetParams[key] ?? "").trim()) throw new Error(`Set a fixed value or expose ${key}.`);
     }

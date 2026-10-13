@@ -3,7 +3,7 @@ import { Router, type IRouter } from "express";
 import { eq, like, sql } from "drizzle-orm";
 import { db, settingsTable } from "@workspace/db";
 import { SaveWorkflowAppBody, RunWorkflowAppBody, RunWorkflowAppBatchBody } from "@workspace/api-zod";
-import { appSchema, validateApp, singleAppParams, COMPLETE_APP, type StoredApp } from "../lib/workflow-apps";
+import { appSchema, validateApp, singleAppParams, COMPLETE_APP, allowedMotionProviders, type StoredApp } from "../lib/workflow-apps";
 import { getAuthenticatedUserId } from "../lib/access-control";
 import jobsRouter from "./jobs";
 import batchesRouter from "./batches";
@@ -102,11 +102,14 @@ router.post("/workflow-apps/:slug/run", async (req, res, next): Promise<void> =>
   const parsed = RunWorkflowAppBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid generation inputs." }); return; }
   if (app.workflowId === COMPLETE_APP) {
-    const workflowId = app.presetParams.motion_provider === "mimicmotion" ? "perform-anywhere-motion" : "perform-anywhere-seedance";
     const p = parsed.data.params;
+    const provider = String(p.motion_provider ?? app.presetParams.motion_provider ?? "seedance");
+    if (!allowedMotionProviders(app.presetParams).includes(provider)) { res.status(400).json({ error: "This motion provider is not enabled in the app." }); return; }
+    const workflowId = provider === "mimicmotion" ? "perform-anywhere-motion" : `perform-anywhere-${provider}`;
     // Only the motion handoff inputs are forwarded; infrastructure and model settings stay code-defined.
     req.body = { workflowId, params: {
       source_image: p.source_image, source_video: p.source_video, performance_video: p.performance_video,
+      audio_file: p.audio_file, motion_provider: provider,
       motion_context: app.exposedKeys.includes("motion_context") ? p.motion_context : app.presetParams.motion_context,
       aspect_ratio: "16:9", ratio: "16:9", resolution: "720p", duration: 5, num_frames: 48,
     } };

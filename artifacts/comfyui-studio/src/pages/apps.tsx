@@ -34,6 +34,9 @@ import paCity from "@/assets/thumbnails/perform-anywhere-city.jpeg";
 export const APP_FORMAT = "aurora-studio/app";
 export const COMPLETE_ID = "perform-anywhere-complete";
 const COMPLETE_KEYS = ["scene_description", "visual_direction", "motion_context"];
+const PROVIDER_IDS = ["seedance", "mimicmotion", "kling", "omnihuman"] as const;
+const PROVIDER_NAMES: Record<string, string> = { seedance: "Seedance", mimicmotion: "MimicMotion", kling: "Kling", omnihuman: "OmniHuman" };
+const allowedFrom = (v: unknown): string[] => { const ids = String(v ?? "").split(",").map((s) => s.trim()).filter((s) => (PROVIDER_IDS as readonly string[]).includes(s)); return ids.length ? PROVIDER_IDS.filter((id) => ids.includes(id)) : [...PROVIDER_IDS]; };
 const HIDDEN = ["custom-workflow", "perform-anywhere-angles"];
 const MAX_IMPORT = 100 * 1024;
 
@@ -106,6 +109,15 @@ function Editor({ draft, onChange, onCancel, onSaved }: { draft: Draft; onChange
   const params: WorkflowParam[] = wf.data?.params ?? [];
   const d = draft;
   const fixedComplete = d.fixed as Record<string, string>;
+  const allowedProviders: string[] = allowedFrom(fixedComplete.motion_providers);
+  const defaultProvider = allowedProviders.includes(String(fixedComplete.motion_provider)) ? fixedComplete.motion_provider : allowedProviders[0];
+  const setAllowed = (id: string, on: boolean) => {
+    const next = PROVIDER_IDS.filter((x) => (x === id ? on : allowedProviders.includes(x)));
+    if (next.length === 0) { toast({ title: "Keep at least one provider", variant: "destructive" }); return; }
+    const f = { ...d.fixed, motion_providers: next.join(",") } as Record<string, unknown>;
+    if (!(next as string[]).includes(String(f.motion_provider))) f.motion_provider = next[0];
+    onChange({ ...d, fixed: f });
+  };
 
   const toggle = (k: string, on: boolean) => onChange({ ...d, exposed: on ? [...d.exposed, k] : d.exposed.filter((x) => x !== k) });
   const setFixed = (k: string, v: unknown) => { const f = { ...d.fixed }; if (v === undefined) delete f[k]; else f[k] = v; onChange({ ...d, fixed: f }); };
@@ -115,7 +127,7 @@ function Editor({ draft, onChange, onCancel, onSaved }: { draft: Draft; onChange
     if (!/^[a-z0-9][a-z0-9-]*$/.test(d.slug)) { toast({ title: "Link may use lowercase letters, numbers and dashes", variant: "destructive" }); return; }
     let presetParams: Record<string, unknown>; let exposedKeys: string[];
     if (complete) {
-      presetParams = { preset: fixedComplete.preset === "luxury-interior" ? "luxury-interior" : "perform-anywhere", motion_provider: fixedComplete.motion_provider === "mimicmotion" ? "mimicmotion" : "seedance" };
+      presetParams = { preset: fixedComplete.preset === "luxury-interior" ? "luxury-interior" : "perform-anywhere", motion_providers: allowedProviders.join(","), motion_provider: defaultProvider };
       for (const k of COMPLETE_KEYS) if (typeof d.fixed[k] === "string" && d.fixed[k]) presetParams[k] = d.fixed[k];
       exposedKeys = COMPLETE_KEYS.filter((k) => d.exposed.includes(k));
     } else {
@@ -163,8 +175,11 @@ function Editor({ draft, onChange, onCancel, onSaved }: { draft: Draft; onChange
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2"><Label>Style preset (fixed)</Label>
                     <Select value={fixedComplete.preset ?? "perform-anywhere"} onValueChange={(v) => setFixed("preset", v)}><SelectTrigger data-testid="select-preset"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="perform-anywhere">Perform Anywhere</SelectItem><SelectItem value="luxury-interior">Luxury interior</SelectItem></SelectContent></Select></div>
-                  <div className="space-y-2"><Label>Motion provider (fixed)</Label>
-                    <Select value={fixedComplete.motion_provider ?? "seedance"} onValueChange={(v) => setFixed("motion_provider", v)}><SelectTrigger data-testid="select-provider"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="seedance">Seedance</SelectItem><SelectItem value="mimicmotion">MimicMotion</SelectItem></SelectContent></Select></div>
+                  <div className="space-y-2"><Label>Starting provider</Label>
+                    <Select value={defaultProvider} onValueChange={(v) => setFixed("motion_provider", v)}><SelectTrigger data-testid="select-provider"><SelectValue /></SelectTrigger><SelectContent>{allowedProviders.map((id) => <SelectItem key={id} value={id}>{PROVIDER_NAMES[id]}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="space-y-2 sm:col-span-2"><Label>Providers visitors may use</Label>
+                    <div className="grid gap-2 sm:grid-cols-2">{PROVIDER_IDS.map((id) => <label key={id} className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm font-bold"><Checkbox checked={allowedProviders.includes(id)} onCheckedChange={(c) => setAllowed(id, c === true)} data-testid={`check-provider-${id}`} />{PROVIDER_NAMES[id]}</label>)}</div>
+                    <p className="text-xs text-muted-foreground">Visitors choose one or more of these. The server enforces the list. Depth map, audio and video files are always editable.</p></div>
                 </div>
               </>
             ) : wf.isLoading ? <Skeleton className="h-40 w-full" /> : wf.isError ? <ErrorBox message="Could not load workflow parameters." onRetry={() => wf.refetch()} /> : (

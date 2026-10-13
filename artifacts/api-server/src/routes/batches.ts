@@ -16,6 +16,7 @@ import {
 } from "@workspace/api-zod";
 import { getComfyUrl, getConfiguredWorkers, getRoutingSettings } from "./settings";
 import { fetchComfy } from "./comfy";
+import { requireOwnedInput } from "../lib/perform-media";
 import { buildComfyPrompt } from "./jobs";
 import { withGpuSubmissionLease } from "./gpu-lease";
 import { selectWorker, WorkerRoutingError } from "../lib/worker-routing";
@@ -143,6 +144,8 @@ function performAnywhereChildParams(input: ReturnType<typeof CreateBatchBody.par
     location_image: input.locationAsset || input.masterAsset,
     pose_image: input.poseAsset || input.masterAsset,
     prop_image: input.propAsset || input.masterAsset,
+    depth_image: input.depthAsset,
+    depth_strength: input.depthStrength ?? 0.7,
     scene_prompt: input.scenePrompt,
     style_anchor: input.styleAnchor,
     motion_context: input.captionTreatment || "a performer moving naturally inside the scene",
@@ -402,6 +405,11 @@ router.post("/batches", async (req, res): Promise<void> => {
       res.status(400).json({ error: `Perform Anywhere requires all five reference images: ${missing.join(", ")}.` });
       return;
     }
+    try {
+      for (const asset of [input.masterAsset, input.identityAnchor, input.outfitAsset, input.locationAsset, input.poseAsset, input.propAsset, input.depthAsset]) {
+        if (asset) await requireOwnedInput(asset, userId, "image");
+      }
+    } catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : "Invalid uploaded reference." }); return; }
   }
   const [batch] = await db.insert(batchesTable).values({
     ownerId: userId,

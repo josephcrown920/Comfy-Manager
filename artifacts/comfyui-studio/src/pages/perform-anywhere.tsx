@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import {
   ArrowRight,
@@ -22,26 +22,27 @@ import {
 } from "lucide-react";
 import {
   getListBatchesQueryKey,
-  getGetComfyReadinessQueryKey,
-  getGetModelArkStatusQueryKey,
+  getGetMotionProvidersQueryKey,
   useCreateBatch,
   useCreateJob,
-  useGetComfyReadiness,
-  useGetModelArkStatus,
+  useGetMotionProviders,
   useImportOutput,
   useListBatches,
   useRunWorkflowApp,
   useRunWorkflowAppBatch,
-  useGetJob,
   refreshJob,
   getGetJobQueryKey,
+  type Job,
   type WorkflowApp,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { FileUpload, uploadFile } from "@/components/ui/file-upload";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { EnvironmentPicker } from "@/components/environment-picker";
 import { ShotBoard } from "@/components/shot-board";
 import { useToast } from "@/hooks/use-toast";
 import cinematicPortraitThumbnail from "@/assets/thumbnails/cinematic-portrait.jpg";
@@ -62,7 +63,50 @@ const CAMERA_TREATMENTS = [
 
 type ReferenceKey = "identity" | "outfit" | "location" | "pose" | "prop";
 type PresetId = "perform-anywhere" | "luxury-interior";
-type MotionProvider = "seedance" | "mimicmotion";
+type ProviderId = "seedance" | "mimicmotion" | "kling" | "omnihuman";
+type TrackedJob = { id: number; provider: ProviderId; childId: number };
+type TrackedState = TrackedJob & { job?: Job; error: boolean };
+const PROVIDERS: Array<{ id: ProviderId; name: string; workflowId: string; kind: "video" | "audio"; charge: string }> = [
+  { id: "seedance", name: "Seedance", workflowId: "perform-anywhere-seedance", kind: "video", charge: "billed by BytePlus ModelArk" },
+  { id: "mimicmotion", name: "MimicMotion", workflowId: "perform-anywhere-motion", kind: "video", charge: "uses your connected GPU time" },
+  { id: "kling", name: "Kling", workflowId: "perform-anywhere-kling", kind: "video", charge: "billed by the Kling provider" },
+  { id: "omnihuman", name: "OmniHuman", workflowId: "perform-anywhere-omnihuman", kind: "audio", charge: "billed by the OmniHuman provider" },
+];
+
+function MotionResults({ items, errors, onRetry }: { items: TrackedState[]; errors: Partial<Record<ProviderId, string>>; onRetry: (index: number) => void }) {
+  const errorEntries = Object.entries(errors) as Array<[ProviderId, string]>;
+  if (items.length === 0 && errorEntries.length === 0) return null;
+  return (
+    <div className="mt-6 space-y-4" aria-live="polite" data-testid="panel-motion-results">
+      <h3 className="font-bold text-white">Your rendered shots</h3>
+      {errorEntries.map(([id, message]) => (
+        <p key={id} className="rounded-xl border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-white"><strong>{PROVIDERS.find((p) => p.id === id)?.name}:</strong> {message}</p>
+      ))}
+      {items.map((item, index) => {
+        const name = PROVIDERS.find((p) => p.id === item.provider)?.name ?? item.provider;
+        const status = item.job?.status;
+        const running = !status || status === "pending" || status === "running";
+        return (
+          <div key={item.id} data-testid={`result-${item.provider}-${item.id}`} className="space-y-2 rounded-xl border border-[#A779F5]/30 p-4">
+            <div className="flex items-center justify-between gap-2"><p className="text-sm font-bold text-white">{name}</p><span className="font-mono text-[11px] text-[#BEB2CC]">Job {item.id}</span></div>
+            {running && <p className="text-sm text-[#BEB2CC]"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />{status === "running" ? "Rendering" : "Queued"} · {item.job?.progress ?? 0}%</p>}
+            {item.error && <div><p className="text-sm text-[#EF4444]">Could not check this render.</p><Button size="sm" variant="outline" onClick={() => onRetry(index)}>Retry status</Button></div>}
+            {(status === "failed" || status === "cancelled") && <p className="text-sm text-[#EF4444]">{item.job?.errorMessage || `Render ${status}. You can submit this provider again.`}</p>}
+            {status !== "failed" && status !== "cancelled" && item.job?.errorMessage && <p role="alert" className="text-sm text-amber-300">{item.job.errorMessage}</p>}
+            {status === "completed" && !item.job?.outputs?.length && <p className="text-sm text-[#BEB2CC]">Completed without outputs. Check Jobs for details.</p>}
+            {item.job?.outputs?.map((output) => (
+              <div key={output.id} className="space-y-2">
+                {output.outputType === "video" ? <video src={output.comfyUrl} controls playsInline className="w-full rounded-lg" /> : output.outputType === "audio" ? <audio src={output.comfyUrl} controls /> : <img src={output.comfyUrl} alt={output.filename} className="w-full rounded-lg" />}
+                <a href={output.comfyUrl} download={output.filename} className="text-sm font-bold text-[#B7F54A]">Download {name} {output.filename}</a>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+      <Link href="/jobs" className="inline-block text-xs font-bold text-[#BEB2CC] underline">All jobs</Link>
+    </div>
+  );
+}
 
 const REFERENCE_SLOTS: Array<{ key: ReferenceKey; label: string; eyebrow: string; description: string; preview?: string; previewAlt?: string }> = [
   { key: "identity", label: "Identity / face", eyebrow: "01", description: "A clear face and shoulders. This anchors who is on camera." },
@@ -151,7 +195,6 @@ function ReferenceCard({
 }
 
 export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp } = {}) {
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isLoaded: isAuthLoaded, isSignedIn, userId } = useAuth();
@@ -176,19 +219,11 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
   };
   const editable = (key: string) => !appConfig || appConfig.exposedKeys.includes(key);
   
-  const modelArkStatusQuery = useGetModelArkStatus({
+  const providersQuery = useGetMotionProviders({
     query: {
-      queryKey: getGetModelArkStatusQueryKey(),
+      queryKey: getGetMotionProvidersQueryKey(),
       enabled: isAuthLoaded && Boolean(isSignedIn),
       refetchInterval: 30000,
-    },
-  });
-  
-  const comfyReadinessQuery = useGetComfyReadiness({
-    query: {
-      queryKey: getGetComfyReadinessQueryKey(),
-      enabled: isAuthLoaded && Boolean(isSignedIn),
-      refetchInterval: 15000,
     },
   });
   
@@ -206,33 +241,55 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
   const [visualDirection, setVisualDirection] = useState(String(appConfig?.presetParams.visual_direction ?? "35mm cinematic texture, deep indigo shadows, warm amber practicals, restrained film grain, confident editorial framing."));
   const [motionContext, setMotionContext] = useState(String(appConfig?.presetParams.motion_context ?? "a performer moving naturally inside the scene"));
   const [performanceVideo, setPerformanceVideo] = useState("");
-  const [motionProvider, setMotionProvider] = useState<MotionProvider>(appConfig?.presetParams.motion_provider === "mimicmotion" ? "mimicmotion" : "seedance");
+  const allowedProviders = useMemo<ProviderId[]>(() => {
+    if (!appConfig) return PROVIDERS.map((p) => p.id);
+    const ids = String(appConfig.presetParams.motion_providers ?? "").split(",").map((s) => s.trim()).filter((s): s is ProviderId => PROVIDERS.some((p) => p.id === s));
+    return ids.length ? ids : PROVIDERS.map((p) => p.id);
+  }, [appConfig]);
+  const [selected, setSelected] = useState<Set<ProviderId>>(() => {
+    const def = appConfig ? String(appConfig.presetParams.motion_provider ?? "seedance") : "seedance";
+    const first = (allowedProviders.find((id) => id === def) ?? allowedProviders[0]) as ProviderId;
+    return new Set([first]);
+  });
+  const [performanceAudio, setPerformanceAudio] = useState("");
+  const [depthAsset, setDepthAsset] = useState("");
+  const [depthStrength, setDepthStrength] = useState(0.7);
+  const [selectedEnvironment, setSelectedEnvironment] = useState<{ id: string; name: string } | null>(null);
+  const [envPending, setEnvPending] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [providerErrors, setProviderErrors] = useState<Partial<Record<ProviderId, string>>>({});
+  const [motionJobs, setMotionJobs] = useState<TrackedJob[]>([]);
+  const jobQueries = useQueries({
+    queries: motionJobs.map((j) => ({
+      queryKey: getGetJobQueryKey(j.id),
+      queryFn: () => refreshJob(j.id),
+      enabled: Boolean(isSignedIn),
+      refetchInterval: (query: { state: { data?: Job } }) => ["completed", "failed", "cancelled"].includes(query.state.data?.status ?? "") ? false : 5000,
+    })),
+  });
   const [preset, setPreset] = useState<PresetId>(appConfig?.presetParams.preset === "luxury-interior" ? "luxury-interior" : "perform-anywhere");
-  const [motionJobId, setMotionJobId] = useState<number | null>(null);
-  const motionJob = useGetJob(motionJobId ?? 0, { query: {
-    queryKey: getGetJobQueryKey(motionJobId ?? 0),
-    queryFn: () => refreshJob(motionJobId!),
-    enabled: Boolean(motionJobId && appConfig),
-    refetchInterval: (query) => ["completed", "failed", "cancelled"].includes(query.state.data?.status ?? "") ? false : 3000,
-  } });
   const [boardUploadPending, setBoardUploadPending] = useState(false);
   const [activeBatchId, setActiveBatchId] = useState<number | null>(null);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
+  useEffect(() => { setConsent(false); }, [selected, performanceVideo, performanceAudio, selectedChildId]);
 
-  const runStorageKey = appConfig && userId ? `aurora-complete-run:${userId}:${appConfig.slug}` : null;
+  const runStorageKey = userId ? (appConfig ? `aurora-complete-run:${userId}:${appConfig.slug}` : `aurora-perform-run:${userId}`) : null;
   useEffect(() => {
     if (!runStorageKey) return;
     try {
       const saved = JSON.parse(sessionStorage.getItem(runStorageKey) ?? "{}");
-      if (Number.isSafeInteger(saved.batch) && saved.batch > 0) setActiveBatchId(saved.batch);
-      if (Number.isSafeInteger(saved.motion) && saved.motion > 0) setMotionJobId(saved.motion);
+      if (appConfig && Number.isSafeInteger(saved.batch) && saved.batch > 0) setActiveBatchId(saved.batch);
       if (Number.isSafeInteger(saved.selection) && saved.selection > 0) setSelectedChildId(saved.selection);
+      if (Array.isArray(saved.jobs)) {
+        setMotionJobs(saved.jobs.filter((j: TrackedJob) => j && Number.isSafeInteger(j.id) && j.id > 0 && PROVIDERS.some((p) => p.id === j.provider)).map((j: TrackedJob) => ({ id: j.id, provider: j.provider, childId: Number(j.childId) || 0 })));
+      }
     } catch { /* Embedded browsers may block session storage. */ }
-  }, [runStorageKey]);
+  }, [runStorageKey, appConfig]);
   useEffect(() => {
-    if (!runStorageKey || (!activeBatchId && !motionJobId)) return;
-    try { sessionStorage.setItem(runStorageKey, JSON.stringify({ batch: activeBatchId, motion: motionJobId, selection: selectedChildId })); } catch { /* Optional reload recovery. */ }
-  }, [runStorageKey, activeBatchId, motionJobId, selectedChildId]);
+    if (!runStorageKey || (!activeBatchId && motionJobs.length === 0)) return;
+    try { sessionStorage.setItem(runStorageKey, JSON.stringify({ batch: activeBatchId, jobs: motionJobs, selection: selectedChildId })); } catch { /* Optional reload recovery. */ }
+  }, [runStorageKey, activeBatchId, motionJobs, selectedChildId]);
 
   const activePreset = PRESETS.find((item) => item.id === preset) ?? PRESETS[0];
   const activeReferenceSlots = REFERENCE_SLOTS
@@ -270,48 +327,17 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
   const allReferencesReady = activePreset.keys.every((key) => Boolean(references[key]));
   const canStart = allReferencesReady && sceneDescription.trim().length >= 2 && visualDirection.trim().length >= 2;
   
-  const selectedProviderReady = motionProvider === "seedance"
-    ? modelArkStatusQuery.data?.configured === true
-    : comfyReadinessQuery.data?.ready === true;
-    
-  const readinessLoading = !isAuthLoaded || !isSignedIn || (modelArkStatusQuery.isLoading || comfyReadinessQuery.isLoading);
-  const readinessError = modelArkStatusQuery.isError || comfyReadinessQuery.isError;
-  const canHandoff = Boolean(selectedOutput && performanceVideo && selectedProviderReady);
-
-  const providerStatus = (provider: MotionProvider) => {
-    if (!isAuthLoaded) return { label: "Checking readiness", tone: "text-[#BEB2CC]", dot: "bg-[#BEB2CC]/50" };
-    if (!isSignedIn) return { label: "Sign in required", tone: "text-[#BEB2CC]", dot: "bg-[#BEB2CC]/50" };
-    if (readinessLoading) return { label: "Checking readiness", tone: "text-[#BEB2CC]", dot: "bg-[#BEB2CC]/50" };
-    
-    if (provider === "seedance") {
-      if (modelArkStatusQuery.isError) return { label: "Could not check", tone: "text-[#EF4444]", dot: "bg-[#EF4444]" };
-      return modelArkStatusQuery.data?.configured
-        ? { label: "ModelArk configured", tone: "text-[#B7F54A]", dot: "bg-[#B7F54A]" }
-        : { label: "ModelArk not configured", tone: "text-[#EF4444]", dot: "bg-[#EF4444]" };
-    }
-    
-    if (comfyReadinessQuery.isError) return { label: "Could not check", tone: "text-[#EF4444]", dot: "bg-[#EF4444]" };
-    return comfyReadinessQuery.data?.ready
-      ? { label: "Compatible GPU connected", tone: "text-[#B7F54A]", dot: "bg-[#B7F54A]" }
-      : { label: "No compatible GPU", tone: "text-[#EF4444]", dot: "bg-[#EF4444]" };
-  };
-
-  const selectedProviderMessage = () => {
-    if (!isAuthLoaded) return "Checking your sign-in state before checking provider readiness.";
-    if (!isSignedIn) return "Sign in to check provider readiness before uploading or sending a performance.";
-    if (readinessLoading) return "Checking provider readiness before enabling the motion handoff.";
-    if (readinessError) return "Readiness could not be confirmed. Refresh the checks before sending a motion job.";
-    if (motionProvider === "seedance" && !modelArkStatusQuery.data?.configured) {
-      return "Seedance is unavailable until ModelArk is configured. Add the provider configuration in Replit Secrets, then refresh.";
-    }
-    if (motionProvider === "mimicmotion" && !comfyReadinessQuery.data?.ready) {
-      const missing = comfyReadinessQuery.data?.workers.find((worker) => worker.connected && worker.missingNodes?.length)?.missingNodes;
-      return missing?.length
-        ? `Your connected ComfyUI worker is missing ${missing.join(", ")}. Install the MimicMotion nodes, then check again.`
-        : "Connect a ComfyUI GPU with the MimicMotion nodes in Settings before sending this handoff.";
-    }
-    return "This provider is ready. Select a completed still and upload your performance video to continue.";
-  };
+  const providerMap = useMemo(() => new Map((providersQuery.data ?? []).map((p) => [p.id as ProviderId, p])), [providersQuery.data]);
+  const jobStates: TrackedState[] = motionJobs.map((j, i) => ({ ...j, job: jobQueries[i]?.data as Job | undefined, error: Boolean(jobQueries[i]?.isError) }));
+  const lockedProviders = new Set(jobStates.filter((j) => j.childId === selectedChildId && !["failed", "cancelled"].includes(j.job?.status ?? "")).map((j) => j.provider));
+  const targets = PROVIDERS.filter((p) => selected.has(p.id) && allowedProviders.includes(p.id) && !lockedProviders.has(p.id));
+  const unreadyTargets = targets.filter((p) => providerMap.get(p.id)?.ready !== true);
+  const needsVideo = targets.some((p) => p.kind === "video");
+  const needsAudio = targets.some((p) => p.kind === "audio");
+  const inputsOk = (!needsVideo || Boolean(performanceVideo)) && (!needsAudio || Boolean(performanceAudio));
+  const canHandoff = Boolean(selectedOutput && targets.length > 0 && unreadyTargets.length === 0 && inputsOk && consent);
+  const toggleProvider = (id: ProviderId, on: boolean) => setSelected((cur) => { const next = new Set(cur); if (on) next.add(id); else next.delete(id); return next; });
+  const selectAllReady = () => setSelected(new Set(PROVIDERS.filter((p) => allowedProviders.includes(p.id) && providerMap.get(p.id)?.ready === true).map((p) => p.id)));
 
   useEffect(() => {
     if (batchesQuery.data && selectedChildId && !completedChildren.some((child) => child.id === selectedChildId)) {
@@ -320,6 +346,7 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
   }, [completedChildren, selectedChildId, batchesQuery.data]);
 
   const updateReference = (key: ReferenceKey, filename: string) => {
+    if (key === "location") setSelectedEnvironment(null);
     setReferences((current) => ({ ...current, [key]: filename }));
   };
 
@@ -368,6 +395,7 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
         const filename = await uploadFile(file, () => undefined, "image/*");
         const key = emptyKeys[index]!;
         uploaded.push({ key, filename });
+        if (key === "location") setSelectedEnvironment(null);
         setReferences((current) => ({ ...current, [key]: filename }));
       }
       toast({
@@ -386,7 +414,8 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
   };
 
   const selectPreset = (nextPreset: PresetId) => {
-    if (appConfig || boardUploadPending) return;
+    if (appConfig || boardUploadPending || envPending) return;
+    setSelectedEnvironment(null);
     setPreset(nextPreset);
     setReferences({ identity: "", outfit: "", location: "", pose: "", prop: "" });
     setSelectedChildId(null);
@@ -402,6 +431,7 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
   };
 
   const startAngles = () => {
+    if (envPending) return;
     if (!canStart) {
       toast({
         title: "Complete the reference room",
@@ -424,6 +454,7 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
           propAsset: preset === "luxury-interior" ? references.location : references.prop,
           scenePrompt: sceneDescription.trim(),
           styleAnchor: visualDirection.trim(),
+          ...(depthAsset ? { depthAsset, depthStrength } : {}),
           cameraTreatments: CAMERA_TREATMENTS.map((camera) => camera.id),
           aspectRatios: ["16:9"],
           colorGrades: ["cinematic-neutral"],
@@ -443,60 +474,66 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
     );
   };
 
-  const submitMotion = () => {
-    if (!selectedOutput || !performanceVideo) {
-      toast({ title: "Choose a still and upload your performance", description: "Both pieces are needed for the motion handoff.", variant: "destructive" });
-      return;
-    }
-    if (!selectedProviderReady) {
+  const submitMotion = async () => {
+    const fail = (title: string, description: string) => toast({ title, description, variant: "destructive" });
+    if (submitting) return;
+    if (!selectedOutput || !selectedChild) return fail("Choose a still", "Select a finished angle first.");
+    if (targets.length === 0) return fail("Choose a provider", "Select at least one provider that has not already been submitted for this still.");
+    if (unreadyTargets.length) return fail("Provider not ready", unreadyTargets.map((p) => `${p.name}: ${providerMap.get(p.id)?.message ?? "readiness unknown"}`).join(" "));
+    if (needsVideo && !performanceVideo) return fail("Upload your performance video", "Video providers need the performance clip.");
+    if (needsAudio && !performanceAudio) return fail("Upload performance audio", "OmniHuman needs a separate audio file.");
+    if (!consent) return fail("Confirm charges", "Accept the cost and third-party upload notice first.");
+    setSubmitting(true);
+    setProviderErrors({});
+    const errors: Partial<Record<ProviderId, string>> = {};
+    let created = 0;
+    try {
+      let importedName: string;
+      try {
+        const imported = await importOutput.mutateAsync({ data: { filename: selectedOutput.filename, jobId: selectedChild.id, subfolder: selectedOutput.subfolder, type: "output" } });
+        importedName = imported.name;
+      } catch (error) {
+        return fail("Could not prepare the selected still", error instanceof Error ? error.message : "Try again.");
+      }
+      for (const p of targets) {
+        try {
+          const params: Record<string, unknown> = {
+            source_image: importedName,
+            selected_angle: selectedChild.batchIndex ?? 1,
+            motion_context: motionContext.trim(),
+            aspect_ratio: "16:9",
+            ratio: "16:9",
+            resolution: "720p",
+            duration: 5,
+            num_frames: 48,
+            scene_description: sceneDescription,
+            visual_direction: visualDirection,
+            motion_provider: p.id,
+          };
+          if (p.kind === "video") { params.source_video = performanceVideo; params.performance_video = performanceVideo; }
+          else params.audio_file = performanceAudio;
+          const data = { workflowId: p.workflowId, params };
+          const job = appConfig ? await appCreateJob.mutateAsync({ slug: appConfig.slug, data }) : await baseCreateJob.mutateAsync({ data });
+          setMotionJobs((cur) => [...cur, { id: job.id, provider: p.id, childId: selectedChild.id }]);
+          created += 1;
+        } catch (error) {
+          errors[p.id] = error instanceof Error ? error.message : "Could not queue this provider.";
+        }
+      }
+      setProviderErrors(errors);
+      setConsent(false);
+      const failed = Object.keys(errors).length;
       toast({
-        title: `${motionProvider === "seedance" ? "Seedance" : "MimicMotion"} is not ready`,
-        description: selectedProviderMessage(),
-        variant: "destructive",
+        title: failed ? `${created} queued, ${failed} failed` : `${created} motion job${created === 1 ? "" : "s"} queued`,
+        description: failed ? "Successful jobs are kept below. Failed providers show their error." : "Progress and results appear below.",
+        variant: failed ? "destructive" : undefined,
       });
-      return;
+    } finally {
+      setSubmitting(false);
     }
-    importOutput.mutate(
-      { data: { filename: selectedOutput.filename, jobId: selectedChild!.id, subfolder: selectedOutput.subfolder, type: "output" } },
-      {
-        onSuccess: (imported) => {
-          createJob.mutate(
-            {
-              data: {
-                workflowId: motionProvider === "seedance" ? "perform-anywhere-seedance" : "perform-anywhere-motion",
-                params: {
-                  source_image: imported.name,
-                  source_video: performanceVideo,
-                  performance_video: performanceVideo,
-                  selected_angle: selectedChild?.batchIndex ?? 1,
-                  motion_context: motionContext.trim(),
-                  aspect_ratio: "16:9",
-                  ratio: "16:9",
-                  resolution: "720p",
-                  duration: 5,
-                  num_frames: 48,
-                  scene_description: sceneDescription,
-                  visual_direction: visualDirection,
-                },
-              },
-            },
-            {
-              onSuccess: (job) => {
-                toast({ title: motionProvider === "seedance" ? "Seedance render is queued" : "Motion transfer is queued", description: "Your selected angle and performance are now becoming a shot." });
-                if (appConfig) setMotionJobId(job.id);
-                else setLocation("/jobs");
-              },
-              onError: (error: Error) => toast({ title: "Could not queue motion transfer", description: error.message, variant: "destructive" }),
-            },
-          );
-        },
-        onError: (error: Error) => toast({ title: "Could not prepare the selected still", description: error.message, variant: "destructive" }),
-      },
-    );
   };
 
-  const motionRunning = appConfig && motionJobId && (!motionJob.data || ["pending", "running"].includes(motionJob.data.status));
-  const busy = createBatch.isPending || importOutput.isPending || createJob.isPending || Boolean(motionRunning);
+  const busy = createBatch.isPending || submitting;
 
   return (
     <div className={`min-h-[100dvh] bg-[#09080D] text-white animate-in fade-in duration-300 pb-20 pt-8 ${appConfig ? "px-2 sm:px-4" : "px-4 sm:px-12"}`}>
@@ -618,10 +655,21 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
               <ShotBoard
                 presetLabel={activePreset.label}
                 slots={boardReferenceSlots}
-                uploadPending={boardUploadPending}
-                canRender={canStart && !createBatch.isPending}
+                uploadPending={boardUploadPending || envPending}
+                canRender={canStart && !createBatch.isPending && !envPending}
                 onRender={startAngles}
                 onFilesSelected={(files) => { void handleBoardFiles(files); }}
+              />
+              <EnvironmentPicker
+                enabled={isAuthLoaded && Boolean(isSignedIn)}
+                selected={selectedEnvironment}
+                onPendingChange={setEnvPending}
+                onClear={() => { setSelectedEnvironment(null); updateReference("location", ""); }}
+                onAttached={(env, filename) => {
+                  setSelectedEnvironment({ id: env.id, name: env.name });
+                  setReferences((current) => ({ ...current, location: filename }));
+                  if (editable("scene_description")) setSceneDescription(env.scenePrompt);
+                }}
               />
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {activeReferenceSlots.map((slot) => (
@@ -650,12 +698,26 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
                   <p className="text-xs text-[#BEB2CC]">Lens, light, color, and texture. The taste layer that keeps five angles together.</p>
                 </div>
               </div>
+              <div className="mt-8 rounded-2xl border border-[#A779F5]/30 bg-[#09080D] p-5" data-testid="section-depth-map">
+                <p className="font-mono text-xs font-bold uppercase tracking-widest text-[#B7F54A]">Optional depth map</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#BEB2CC]">Shared by all five angle stills as ControlNet guidance. The hosted motion providers do not receive the depth map directly; they animate the depth-guided still you select.</p>
+                <div className="mt-4 rounded-xl border border-[#A779F5]/20 p-2">
+                  <FileUpload accept="image/*" label="Depth map" description="A grayscale depth image. Leave empty to render without depth guidance." onFileSelect={setDepthAsset} previouslyUploadedName={depthAsset || undefined} />
+                </div>
+                {depthAsset && (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between text-sm font-bold text-white"><Label htmlFor="depth-strength">Depth strength</Label><span className="font-mono text-[#B7F54A]">{depthStrength.toFixed(2)}</span></div>
+                    <Slider id="depth-strength" data-testid="slider-depth-strength" min={0} max={1} step={0.05} value={[depthStrength]} onValueChange={([v]) => setDepthStrength(v ?? 0.7)} />
+                    <button type="button" onClick={() => setDepthAsset("")} className="text-xs font-bold text-[#EF4444]">Remove depth map</button>
+                  </div>
+                )}
+              </div>
               <div className="mt-8 flex flex-col justify-between gap-6 rounded-2xl border border-[#B7F54A]/30 bg-[#B7F54A]/5 p-6 sm:flex-row sm:items-center">
                 <div className="flex gap-4 items-start">
                   <LockKeyhole className="h-6 w-6 shrink-0 text-[#B7F54A]" />
                   <p className="max-w-xl text-sm leading-relaxed text-[#BEB2CC]">We will create exactly five children with the camera treatments below. They share your {activePreset.keys.length} references, scene, and visual direction.</p>
                 </div>
-                <Button data-testid="button-start-angles" onClick={startAngles} disabled={createBatch.isPending} className="max-w-full shrink-0 rounded-xl bg-[#B7F54A] py-6 px-3 sm:px-8 font-bold text-[#09080D] hover:bg-[#A3E030] shadow-[0_0_20px_rgba(183,245,74,0.3)] transition-all text-sm sm:text-base">
+                <Button data-testid="button-start-angles" onClick={startAngles} disabled={createBatch.isPending || envPending} className="max-w-full shrink-0 rounded-xl bg-[#B7F54A] py-6 px-3 sm:px-8 font-bold text-[#09080D] hover:bg-[#A3E030] shadow-[0_0_20px_rgba(183,245,74,0.3)] transition-all text-sm sm:text-base">
                   {createBatch.isPending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Rendering shot list</> : <><Sparkles className="mr-2 h-5 w-5" />Render shot list once</>}
                 </Button>
               </div>
@@ -738,58 +800,44 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
                 <p className="text-sm leading-relaxed text-[#BEB2CC]">Choose one finished still, then upload the original phone clip whose movement you want to transfer.</p>
                 
                 <div className="mt-8 space-y-3">
-                  <Label className="text-sm font-bold text-white">Motion provider</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      data-testid="button-motion-provider-seedance"
-                      disabled={Boolean(appConfig)}
-                      onClick={() => setMotionProvider("seedance")}
-                      className={`rounded-2xl border p-4 text-left transition-all ${motionProvider === "seedance" ? "border-[#B7F54A] bg-[#B7F54A]/10 shadow-[0_0_15px_rgba(183,245,74,.15)]" : "border-[#A779F5]/30 bg-[#09080D] hover:border-[#A779F5]/70"}`}
-                    >
-                      <div className="flex flex-col gap-2">
-                        <p className={`text-base font-bold ${motionProvider === "seedance" ? "text-[#B7F54A]" : "text-white"}`}>Seedance</p>
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${providerStatus("seedance").tone} bg-[#09080D] border border-current/20 w-fit`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${providerStatus("seedance").dot}`} />
-                          {providerStatus("seedance").label.split(" ")[0]}
-                        </span>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      data-testid="button-motion-provider-mimicmotion"
-                      disabled={Boolean(appConfig)}
-                      onClick={() => setMotionProvider("mimicmotion")}
-                      className={`rounded-2xl border p-4 text-left transition-all ${motionProvider === "mimicmotion" ? "border-[#B7F54A] bg-[#B7F54A]/10 shadow-[0_0_15px_rgba(183,245,74,.15)]" : "border-[#A779F5]/30 bg-[#09080D] hover:border-[#A779F5]/70"}`}
-                    >
-                      <div className="flex flex-col gap-2">
-                        <p className={`text-base font-bold ${motionProvider === "mimicmotion" ? "text-[#B7F54A]" : "text-white"}`}>MimicMotion</p>
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${providerStatus("mimicmotion").tone} bg-[#09080D] border border-current/20 w-fit`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${providerStatus("mimicmotion").dot}`} />
-                          {providerStatus("mimicmotion").label.split(" ")[0]}
-                        </span>
-                      </div>
-                    </button>
-                  </div>
-                  <div className={`mt-4 rounded-xl border p-4 ${selectedProviderReady ? "border-[#B7F54A]/30 bg-[#B7F54A]/10" : "border-[#EF4444]/30 bg-[#EF4444]/10"}`}>
-                    <div className="flex items-start gap-3">
-                      {selectedProviderReady
-                        ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#B7F54A]" />
-                        : <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-[#EF4444]" />}
-                      <p data-testid="text-provider-readiness" className={`text-sm leading-relaxed ${selectedProviderReady ? "text-[#B7F54A]" : "text-white"}`}>
-                        {selectedProviderMessage()}
-                      </p>
-                      {(readinessError || (!readinessLoading && !selectedProviderReady)) && (
-                        <div className="flex flex-col gap-2 ml-auto shrink-0">
-                        {motionProvider === "mimicmotion" && !readinessError && (
-                          <button type="button" onClick={() => setLocation("/settings")} className="rounded-lg px-3 py-1.5 text-xs font-bold bg-[#EF4444]/20 text-[#EF4444] hover:bg-[#EF4444]/30">Settings</button>
-                        )}
-                        <button type="button" aria-label="Refresh provider readiness" onClick={() => { void modelArkStatusQuery.refetch(); void comfyReadinessQuery.refetch(); }} className="rounded-lg p-2 bg-[#09080D] text-[#BEB2CC] hover:text-white border border-[#A779F5]/30">
-                          <RefreshCw className="h-4 w-4" />
-                        </button>
-                        </div>
-                      )}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Label className="text-sm font-bold text-white">Motion providers</Label>
+                    <div className="flex gap-2">
+                      <button type="button" data-testid="button-select-all-ready" onClick={selectAllReady} className="rounded-lg border border-[#A779F5]/30 bg-[#09080D] px-3 py-1.5 text-xs font-bold text-[#BEB2CC] hover:text-white">Select all ready</button>
+                      <button type="button" aria-label="Refresh provider readiness" onClick={() => { void providersQuery.refetch(); }} className="rounded-lg border border-[#A779F5]/30 bg-[#09080D] p-2 text-[#BEB2CC] hover:text-white"><RefreshCw className="h-4 w-4" /></button>
                     </div>
+                  </div>
+                  {providersQuery.isError && (
+                    <div className="flex items-center gap-3 rounded-xl border border-[#EF4444]/30 bg-[#EF4444]/10 p-3 text-sm text-white">
+                      <CircleAlert className="h-4 w-4 shrink-0 text-[#EF4444]" /><span className="flex-1">Provider readiness could not be checked.</span>
+                      <Button size="sm" variant="outline" onClick={() => providersQuery.refetch()}>Retry</Button>
+                    </div>
+                  )}
+                  <div className="space-y-3">
+                    {PROVIDERS.filter((p) => allowedProviders.includes(p.id)).map((p) => {
+                      const status = providerMap.get(p.id);
+                      const checked = selected.has(p.id);
+                      const locked = lockedProviders.has(p.id);
+                      const ready = status?.ready === true;
+                      const checking = !status && (providersQuery.isLoading || !isAuthLoaded);
+                      return (
+                        <label key={p.id} data-testid={`toggle-motion-provider-${p.id}`} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-all ${checked ? "border-[#B7F54A] bg-[#B7F54A]/10" : "border-[#A779F5]/30 bg-[#09080D] hover:border-[#A779F5]/70"} ${locked ? "opacity-70" : ""}`}>
+                          <Checkbox checked={checked} disabled={locked} onCheckedChange={(c) => toggleProvider(p.id, c === true)} className="mt-1 border-[#A779F5]" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className={`text-base font-bold ${checked ? "text-[#B7F54A]" : "text-white"}`}>{p.name}</p>
+                              <span className={`inline-flex items-center gap-1.5 rounded-md border border-[#A779F5]/20 bg-[#09080D] px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${ready ? "text-[#B7F54A]" : checking || !status ? "text-[#BEB2CC]" : "text-[#EF4444]"}`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${ready ? "bg-[#B7F54A]" : checking || !status ? "bg-[#BEB2CC]/50" : "bg-[#EF4444]"}`} />
+                                {checking ? "Checking" : !isSignedIn ? "Sign in required" : !status ? "Unknown" : ready ? "Ready" : "Not ready"}
+                              </span>
+                              <span className="font-mono text-[10px] uppercase text-[#BEB2CC]">{p.kind === "audio" ? "audio input" : "video input"}</span>
+                            </div>
+                            {status && <p className={`mt-1 text-xs leading-relaxed ${ready ? "text-[#BEB2CC]" : "text-white"}`}>{status.message}</p>}
+                            {locked && <p className="mt-1 text-xs font-bold text-[#B7F54A]">Already submitted for this still. Pick another still to rerun.</p>}
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -798,11 +846,22 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
                     <FileUpload
                       accept="video/*"
                       label="Phone performance video"
-                      description="A clean 3–30 second phone performance works best. Keep the performer and full movement visible."
+                      description="Required for Seedance, MimicMotion, and Kling. A clean 3-30 second phone performance works best."
                       onFileSelect={setPerformanceVideo}
                       previouslyUploadedName={performanceVideo || undefined}
                       preview
                       previewPoster={performerThumbnail}
+                    />
+                  </div>
+                </div>
+                <div data-testid="upload-performance-audio" className="mt-6">
+                  <div className="bg-[#09080D] rounded-2xl border border-[#A779F5]/30 p-2">
+                    <FileUpload
+                      accept="audio/*"
+                      label="Performance audio (OmniHuman)"
+                      description="OmniHuman is driven by a separate audio file. Your video is never used as audio."
+                      onFileSelect={setPerformanceAudio}
+                      previouslyUploadedName={performanceAudio || undefined}
                     />
                   </div>
                 </div>
@@ -826,25 +885,31 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
                   ) : <p className="text-sm leading-relaxed text-[#BEB2CC]">Select a completed camera treatment from the grid.</p>}
                 </div>
 
-                <Button data-testid="button-submit-motion" onClick={submitMotion} disabled={!canHandoff || busy || readinessLoading} className="mt-8 w-full rounded-xl bg-[#A779F5] py-7 text-base font-bold text-white hover:bg-[#8B5CF6] shadow-[0_0_20px_rgba(167,121,245,0.3)] transition-all disabled:opacity-50 disabled:bg-[#A779F5]/30">
-                  {importOutput.isPending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Preparing still</> : createJob.isPending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Queueing motion</> : <><Upload className="mr-2 h-5 w-5" />Send to Render</>}
+                <div className="mt-8 rounded-2xl border border-[#A779F5]/30 bg-[#09080D] p-4">
+                  <label className="flex items-start gap-3 text-xs leading-relaxed text-[#BEB2CC]">
+                    <Checkbox data-testid="check-motion-consent" checked={consent} onCheckedChange={(c) => setConsent(c === true)} className="mt-0.5 border-[#A779F5]" />
+                    <span>
+                      I agree to upload this still{needsVideo ? ", my performance video" : ""}{needsAudio ? ", my audio" : ""} to the selected third-party providers and to be charged by each of them.
+                      <strong className="mt-1 block text-white" data-testid="text-motion-cost">
+                        {targets.length === 0 ? "No providers selected." : `${targets.length} paid job${targets.length === 1 ? "" : "s"} will be submitted: ${targets.map((p) => `${p.name} (${p.charge})`).join("; ")}.`}
+                      </strong>
+                    </span>
+                  </label>
+                </div>
+
+                <Button data-testid="button-submit-motion" onClick={() => { void submitMotion(); }} disabled={!canHandoff || busy} className="mt-4 w-full rounded-xl bg-[#A779F5] py-7 text-base font-bold text-white hover:bg-[#8B5CF6] shadow-[0_0_20px_rgba(167,121,245,0.3)] transition-all disabled:opacity-50 disabled:bg-[#A779F5]/30">
+                  {importOutput.isPending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Preparing still</> : submitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Queueing motion</> : <><Upload className="mr-2 h-5 w-5" />{`Send ${targets.length || ""} job${targets.length === 1 ? "" : "s"} to render`}</>}
                 </Button>
-                
+
                 {!selectedOutput && <p className="mt-4 text-center text-xs font-semibold text-[#BEB2CC]">The handoff unlocks when a finished angle is selected.</p>}
-                {selectedOutput && performanceVideo && !selectedProviderReady && !readinessLoading && (
-                  <p className="mt-4 text-center text-xs font-semibold text-[#EF4444]">The handoff is paused until the selected provider is ready.</p>
+                {selectedOutput && unreadyTargets.length > 0 && (
+                  <p data-testid="text-unready-block" className="mt-4 text-center text-xs font-semibold text-[#EF4444]">Not ready: {unreadyTargets.map((p) => p.name).join(", ")}. Deselect them or fix readiness to continue.</p>
                 )}
-                {appConfig && motionJobId && <div className="mt-6 space-y-3 rounded-xl border border-[#A779F5]/30 p-4" aria-live="polite">
-                  <h3 className="font-bold">Your rendered shot</h3>
-                  {motionRunning && <p className="text-sm text-[#BEB2CC]"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />{motionJob.data?.status === "pending" ? "Queued" : "Rendering"} · {motionJob.data?.progress ?? 0}%</p>}
-                  {motionJob.isError && <div><p className="text-sm text-red-400">Could not check this render.</p><Button variant="outline" onClick={() => motionJob.refetch()}>Retry status</Button></div>}
-                  {["failed", "cancelled"].includes(motionJob.data?.status ?? "") && <p className="text-sm text-red-400">{motionJob.data?.errorMessage || `Render ${motionJob.data?.status}. You can submit again.`}</p>}
-                  {motionJob.data?.status === "completed" && !motionJob.data.outputs?.length && <p className="text-sm text-[#BEB2CC]">Completed without outputs. Check Jobs for details.</p>}
-                  {motionJob.data?.outputs?.map((output) => <div key={output.id} className="space-y-2">
-                    {output.outputType === "video" ? <video src={output.comfyUrl} controls playsInline className="w-full rounded-lg" /> : output.outputType === "audio" ? <audio src={output.comfyUrl} controls /> : <img src={output.comfyUrl} alt={output.filename} className="w-full rounded-lg" />}
-                    <a href={output.comfyUrl} download={output.filename} className="text-sm font-bold text-[#B7F54A]">Download {output.filename}</a>
-                  </div>)}
-                </div>}
+                {selectedOutput && targets.length > 0 && !inputsOk && (
+                  <p className="mt-4 text-center text-xs font-semibold text-[#EF4444]">{needsVideo && !performanceVideo ? "Upload the performance video. " : ""}{needsAudio && !performanceAudio ? "Upload the performance audio for OmniHuman." : ""}</p>
+                )}
+                {!isSignedIn && <p className="mt-4 text-center text-xs font-semibold text-[#BEB2CC]">Sign in to check provider readiness.</p>}
+                <MotionResults items={jobStates} errors={providerErrors} onRetry={(i) => { void jobQueries[i]?.refetch(); }} />
               </div>
             </section>
           </aside>

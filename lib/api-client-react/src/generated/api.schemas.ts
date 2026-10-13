@@ -5,6 +5,61 @@
  * ComfyUI Studio API — proxy and orchestration layer for a ComfyUI server
  * OpenAPI spec version: 0.1.0
  */
+export type EnvironmentPresetCategory = typeof EnvironmentPresetCategory[keyof typeof EnvironmentPresetCategory];
+
+
+export const EnvironmentPresetCategory = {
+  studio: 'studio',
+  outdoor: 'outdoor',
+  sport: 'sport',
+  interior: 'interior',
+} as const;
+
+export type EnvironmentPresetSource = typeof EnvironmentPresetSource[keyof typeof EnvironmentPresetSource];
+
+
+export const EnvironmentPresetSource = {
+  extracted: 'extracted',
+  generated: 'generated',
+} as const;
+
+export interface EnvironmentPreset {
+  id: string;
+  name: string;
+  category: EnvironmentPresetCategory;
+  description: string;
+  imageUrl: string;
+  scenePrompt: string;
+  source: EnvironmentPresetSource;
+}
+
+export type MotionProviderStatusId = typeof MotionProviderStatusId[keyof typeof MotionProviderStatusId];
+
+
+export const MotionProviderStatusId = {
+  seedance: 'seedance',
+  mimicmotion: 'mimicmotion',
+  kling: 'kling',
+  omnihuman: 'omnihuman',
+} as const;
+
+export type MotionProviderStatusInputKind = typeof MotionProviderStatusInputKind[keyof typeof MotionProviderStatusInputKind];
+
+
+export const MotionProviderStatusInputKind = {
+  video: 'video',
+  audio: 'audio',
+} as const;
+
+export interface MotionProviderStatus {
+  id: MotionProviderStatusId;
+  name: string;
+  ready: boolean;
+  message: string;
+  inputKind: MotionProviderStatusInputKind;
+  directDepth: boolean;
+}
+
 export type WorkflowAppInputPresetParams = { [key: string]: unknown };
 
 export interface WorkflowAppInput {
@@ -449,6 +504,16 @@ export interface BatchInput {
   locationAsset?: string;
   poseAsset?: string;
   propAsset?: string;
+  /**
+     * Optional uploaded depth map used as SDXL ControlNet guidance for all five angles
+     * @maxLength 255
+     */
+  depthAsset?: string;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  depthStrength?: number;
   cameraTreatments?: string[];
   aspectRatios?: string[];
   colorGrades?: string[];
@@ -560,6 +625,12 @@ export interface UploadedFile {
   subfolder: string;
   type: string;
 }
+
+export type AttachEnvironment200 = {
+  name: string;
+  subfolder: string;
+  type: string;
+};
 
 export type DeleteWorkflowApp200 = {
   success: boolean;

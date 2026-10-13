@@ -13,6 +13,7 @@ import {
   modelArkOutputUrl,
 } from "../lib/modelark";
 import { getAuthenticatedUserId } from "../lib/access-control";
+import { FAL_OUTPUT_SUBFOLDER, falOutputUrl } from "../lib/fal-motion";
 
 const router: IRouter = Router();
 
@@ -23,7 +24,9 @@ function formatOutput(o: typeof outputsTable.$inferSelect) {
     filename: o.filename,
     subfolder: o.subfolder,
     outputType: o.outputType,
-    comfyUrl: o.subfolder === MODELARK_OUTPUT_SUBFOLDER
+    comfyUrl: o.subfolder === FAL_OUTPUT_SUBFOLDER
+      ? falOutputUrl(o.jobId)
+      : o.subfolder === MODELARK_OUTPUT_SUBFOLDER
       ? modelArkOutputUrl(o.filename)
       : o.subfolder === MODELARK_IMAGE_OUTPUT_SUBFOLDER
         ? modelArkImageOutputUrl(o.filename)

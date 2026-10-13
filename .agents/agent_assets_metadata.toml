@@ -5,14 +5,14 @@ generated = []
 id = "1m6K5eWZUYPKlAN68K0Oi"
 uri = "file://generated-artifacts/perform-anywhere-workflows-and-app-guide.zip"
 type = "unspecified"
-title = "Perform Anywhere — Workflows & App Setup"
-description = "Five angle graphs, MimicMotion graph, Seedance input example, two importable Aurora app presets, and setup directions. GPU execution is not yet verified."
+title = "Updated Perform Anywhere workflows and app guide"
+description = "One four-provider Aurora app, standard and depth-guided five-angle graphs, hosted provider input examples, and setup directions. No paid execution was performed."
 logical_id = "e855e780-9b70-4a87-8c73-eaaaab75893e"
-content_hash = "sha256:300bdb1c06663c4b48546729924a9d594bbd2e380b1987919e85bd5ec862dfec"
-size = 16007
-mtime_ms = 1791933015591
-storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:41684e24-8f12-4d0c-9378-f59a478c53c0/e855e780-9b70-4a87-8c73-eaaaab75893e/5a780e39-8d9c-403c-ac65-3236266689b5"
-storage_version_token = "1791933022161397"
+content_hash = "sha256:1d22630017f83687c882747b2b1318c354076a2be0cf76a6f713f5fa762502d9"
+size = 26562
+mtime_ms = 1791935356891
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:41684e24-8f12-4d0c-9378-f59a478c53c0/e855e780-9b70-4a87-8c73-eaaaab75893e/f4c8c620-3828-4eba-b866-ec17490457c5"
+storage_version_token = "1791935828138531"
 content_type = "application/octet-stream"
 
 [[outputs]]
@@ -28,3 +28,17 @@ mtime_ms = 1791933015059
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:41684e24-8f12-4d0c-9378-f59a478c53c0/661277e8-a146-44c1-bc96-1b782b9421d7/2c2406fb-4c25-40d0-975e-48706b3ea8a5"
 storage_version_token = "1791933022789912"
 content_type = "text/html"
+
+[[outputs]]
+id = "lGN3C6lyBQaYre7Qsc_HL"
+uri = "file://generated-artifacts/environment-library-preview.jpg"
+type = "image"
+title = "21 selectable environment backgrounds"
+description = "Twelve studio colors, cleaned photo backgrounds, a luxury interior, and newly generated pool, basketball-court and stadium scenes."
+logical_id = "b9d27126-ab5d-45c8-834d-303e37c71178"
+content_hash = "sha256:02b3e17b3c16b981c9087c3a826d9536ca2ba16127c500c0e0d5c4b394f6c9c6"
+size = 206862
+mtime_ms = 1791935630551
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:41684e24-8f12-4d0c-9378-f59a478c53c0/b9d27126-ab5d-45c8-834d-303e37c71178/d8aba28d-cfa1-418b-a3cd-9bca00e46186"
+storage_version_token = "1791935827537507"
+content_type = "image/jpeg"
