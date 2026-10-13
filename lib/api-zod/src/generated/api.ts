@@ -8,6 +8,218 @@
 import * as zod from 'zod';
 
 
+export const listWorkflowAppsResponseOneNameMax = 100;
+
+export const listWorkflowAppsResponseOneDescriptionMax = 1000;
+
+
+
+export const ListWorkflowAppsResponseItem = zod.object({
+  "slug": zod.string(),
+  "name": zod.string().min(1).max(listWorkflowAppsResponseOneNameMax),
+  "description": zod.string().max(listWorkflowAppsResponseOneDescriptionMax),
+  "workflowId": zod.string(),
+  "presetParams": zod.record(zod.string(), zod.unknown()),
+  "exposedKeys": zod.array(zod.string()),
+  "isPublished": zod.boolean(),
+  "allowEmbed": zod.boolean()
+}).and(zod.object({
+  "slug": zod.string(),
+  "isOwner": zod.boolean()
+}))
+export const ListWorkflowAppsResponse = zod.array(ListWorkflowAppsResponseItem)
+
+
+export const saveWorkflowAppBodyNameMax = 100;
+
+export const saveWorkflowAppBodyDescriptionMax = 1000;
+
+
+
+export const SaveWorkflowAppBody = zod.object({
+  "slug": zod.string().optional(),
+  "name": zod.string().min(1).max(saveWorkflowAppBodyNameMax),
+  "description": zod.string().max(saveWorkflowAppBodyDescriptionMax),
+  "workflowId": zod.string(),
+  "presetParams": zod.record(zod.string(), zod.unknown()),
+  "exposedKeys": zod.array(zod.string()),
+  "isPublished": zod.boolean(),
+  "allowEmbed": zod.boolean()
+})
+
+export const saveWorkflowAppResponseOneNameMax = 100;
+
+export const saveWorkflowAppResponseOneDescriptionMax = 1000;
+
+
+
+export const SaveWorkflowAppResponse = zod.object({
+  "slug": zod.string(),
+  "name": zod.string().min(1).max(saveWorkflowAppResponseOneNameMax),
+  "description": zod.string().max(saveWorkflowAppResponseOneDescriptionMax),
+  "workflowId": zod.string(),
+  "presetParams": zod.record(zod.string(), zod.unknown()),
+  "exposedKeys": zod.array(zod.string()),
+  "isPublished": zod.boolean(),
+  "allowEmbed": zod.boolean()
+}).and(zod.object({
+  "slug": zod.string(),
+  "isOwner": zod.boolean()
+}))
+
+
+export const GetWorkflowAppParams = zod.object({
+  "slug": zod.coerce.string()
+})
+
+export const getWorkflowAppResponseOneNameMax = 100;
+
+export const getWorkflowAppResponseOneDescriptionMax = 1000;
+
+
+
+export const GetWorkflowAppResponse = zod.object({
+  "slug": zod.string(),
+  "name": zod.string().min(1).max(getWorkflowAppResponseOneNameMax),
+  "description": zod.string().max(getWorkflowAppResponseOneDescriptionMax),
+  "workflowId": zod.string(),
+  "presetParams": zod.record(zod.string(), zod.unknown()),
+  "exposedKeys": zod.array(zod.string()),
+  "isPublished": zod.boolean(),
+  "allowEmbed": zod.boolean()
+}).and(zod.object({
+  "slug": zod.string(),
+  "isOwner": zod.boolean()
+}))
+
+
+export const DeleteWorkflowAppParams = zod.object({
+  "slug": zod.coerce.string()
+})
+
+export const DeleteWorkflowAppResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+export const RunWorkflowAppParams = zod.object({
+  "slug": zod.coerce.string()
+})
+
+export const RunWorkflowAppBody = zod.object({
+  "workflowId": zod.string(),
+  "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullish().describe('Optional saved GPU id override. Omit to use Settings routing.')
+})
+
+export const RunWorkflowAppResponse = zod.object({
+  "id": zod.number(),
+  "workflowId": zod.string(),
+  "workflowName": zod.string(),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullable(),
+  "workerLabel": zod.string().nullable(),
+  "comfyPromptId": zod.string().nullish(),
+  "progress": zod.number().nullish().describe('0-100'),
+  "errorMessage": zod.string().nullish(),
+  "outputs": zod.array(zod.object({
+  "id": zod.number(),
+  "jobId": zod.number(),
+  "filename": zod.string(),
+  "subfolder": zod.string(),
+  "outputType": zod.enum(['image', 'video', 'audio']),
+  "comfyUrl": zod.string().describe('Proxied URL to fetch the file from ComfyUI'),
+  "thumbnailUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})).optional(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish(),
+  "batchId": zod.number().nullish(),
+  "batchIndex": zod.number().nullish()
+})
+
+
+export const RunWorkflowAppBatchParams = zod.object({
+  "slug": zod.coerce.string()
+})
+
+export const runWorkflowAppBatchBodyNameMax = 100;
+
+export const runWorkflowAppBatchBodyBatchSizeMax = 30;
+
+export const runWorkflowAppBatchBodyScenePromptMin = 2;
+export const runWorkflowAppBatchBodyScenePromptMax = 1000;
+
+export const runWorkflowAppBatchBodyStyleAnchorMin = 2;
+export const runWorkflowAppBatchBodyStyleAnchorMax = 1000;
+
+export const runWorkflowAppBatchBodyDurationSecondsMax = 60;
+
+
+
+export const RunWorkflowAppBatchBody = zod.object({
+  "name": zod.string().min(1).max(runWorkflowAppBatchBodyNameMax),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation', 'perform-anywhere-angles']),
+  "batchSize": zod.number().min(1).max(runWorkflowAppBatchBodyBatchSizeMax),
+  "masterAsset": zod.string().describe('Uploaded image for scenes or uploaded video for finished-video variations'),
+  "scenePrompt": zod.string().min(runWorkflowAppBatchBodyScenePromptMin).max(runWorkflowAppBatchBodyScenePromptMax),
+  "styleAnchor": zod.string().min(runWorkflowAppBatchBodyStyleAnchorMin).max(runWorkflowAppBatchBodyStyleAnchorMax),
+  "identityAnchor": zod.string().optional(),
+  "outfitAsset": zod.string().optional(),
+  "locationAsset": zod.string().optional(),
+  "poseAsset": zod.string().optional(),
+  "propAsset": zod.string().optional(),
+  "cameraTreatments": zod.array(zod.string()).optional(),
+  "aspectRatios": zod.array(zod.string()).optional(),
+  "colorGrades": zod.array(zod.string()).optional(),
+  "captionTreatment": zod.string().optional(),
+  "seedStrategy": zod.enum(['incremental', 'fixed', 'random']),
+  "baseSeed": zod.number().optional(),
+  "durationSeconds": zod.number().min(1).max(runWorkflowAppBatchBodyDurationSecondsMax).optional()
+})
+
+export const RunWorkflowAppBatchResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "batchType": zod.enum(['scene-variation', 'finished-video-variation', 'perform-anywhere-angles']),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "totalJobs": zod.number(),
+  "completedJobs": zod.number(),
+  "failedJobs": zod.number(),
+  "cancelledJobs": zod.number(),
+  "settings": zod.record(zod.string(), zod.unknown()),
+  "children": zod.array(zod.object({
+  "id": zod.number(),
+  "workflowId": zod.string(),
+  "workflowName": zod.string(),
+  "status": zod.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
+  "params": zod.record(zod.string(), zod.unknown()),
+  "workerId": zod.number().nullable(),
+  "workerLabel": zod.string().nullable(),
+  "comfyPromptId": zod.string().nullish(),
+  "progress": zod.number().nullish().describe('0-100'),
+  "errorMessage": zod.string().nullish(),
+  "outputs": zod.array(zod.object({
+  "id": zod.number(),
+  "jobId": zod.number(),
+  "filename": zod.string(),
+  "subfolder": zod.string(),
+  "outputType": zod.enum(['image', 'video', 'audio']),
+  "comfyUrl": zod.string().describe('Proxied URL to fetch the file from ComfyUI'),
+  "thumbnailUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})).optional(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish(),
+  "batchId": zod.number().nullish(),
+  "batchIndex": zod.number().nullish()
+})),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish()
+})
+
+
 /**
  * @summary Health check
  */

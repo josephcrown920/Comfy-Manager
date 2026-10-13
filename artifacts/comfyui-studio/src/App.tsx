@@ -17,6 +17,9 @@ import Guide from '@/pages/guide';
 import Batches from '@/pages/batches';
 import PerformAnywhere from '@/pages/perform-anywhere';
 import GpuHub from '@/pages/gpu-hub';
+import Admin from '@/pages/admin';
+import Apps from '@/pages/apps';
+import WorkflowAppPage from '@/pages/workflow-app';
 
 import {
   Route,
@@ -36,13 +39,19 @@ function Router() {
       <Switch>
         <Route path="/sign-in/*?" component={SignInPage} />
         <Route path="/sign-up/*?" component={SignUpPage} />
+        <Route path="/a/:slug">
+          {() => (new URLSearchParams(window.location.search).get('embed') === '1'
+            ? <main className="min-h-[100dvh] bg-background p-4 text-foreground"><WorkflowAppPage /></main>
+            : <Shell><WorkflowAppPage /></Shell>)}
+        </Route>
         <Route>
           <Shell>
             <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/generate" component={Generate} />
           <Route path="/batches" component={Batches} />
-          <Route path="/perform-anywhere" component={PerformAnywhere} />
+          <Route path="/perform-anywhere"><PerformAnywhere /></Route>
+          <Route path="/apps" component={Apps} />
           <Route path="/gpu-hub" component={GpuHub} />
           <Route path="/assistant" component={Assistant} />
           <Route path="/jobs" component={Jobs} />

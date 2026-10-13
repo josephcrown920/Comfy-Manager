@@ -6,3 +6,4 @@
 - [Worker routing](worker-routing.md) — probe health, queue, and capabilities immediately before submission; persist the chosen endpoint for reconciliation and outputs.
 - [Vast autoscaling safeguards](vast-autoscaling.md) — keep automatic rentals admin-controlled, single-instance, price-capped, and idle-reaped; never validate by spending without explicit consent.
 - [Admin content model](admin-content.md) — persist presentation metadata in settings, keep bytes in App Storage, and keep executable workflows code-defined.
+- [Workflow Apps scope](workflow-apps-scope.md) — shared apps require sign-in; port features into Aurora rather than replacing its auth or execution stack.

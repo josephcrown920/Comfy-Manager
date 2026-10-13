@@ -163,7 +163,10 @@ router.get("/grwm/status/:taskId", async (req, res): Promise<void> => {
     const response = await modelArk(`/contents/generations/tasks/${encodeURIComponent(taskId)}`);
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) { res.status(502).json({ error: "Could not read the GRWM task status." }); return; }
-    res.json({ workflowId: "get-ready-with-me", taskId, ...payload });
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      res.status(502).json({ error: "Invalid GRWM task status response." }); return;
+    }
+    res.json({ ...payload, workflowId: "get-ready-with-me", taskId });
   } catch (error) {
     res.status(502).json({ error: error instanceof Error ? error.message : "Could not read the GRWM task status." });
   }

@@ -1,6 +1,7 @@
 import * as React from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Link, useLocation } from "wouter"
-import { LayoutDashboard, Settings2, Images, ListVideo, BrainCircuit, Rocket, Bot, Boxes, Menu, X, BookOpen, GitBranch, Aperture, Clapperboard, Cpu } from "lucide-react"
+import { LayoutDashboard, Settings2, Images, ListVideo, BrainCircuit, Rocket, Bot, Boxes, Menu, X, BookOpen, GitBranch, Aperture, Clapperboard, Cpu, AppWindow } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AccountControl } from "@/components/account-control"
 
@@ -9,6 +10,7 @@ const navItems = [
   { href: "/generate", label: "Workflows", icon: Boxes },
   { href: "/batches", label: "Batch Studio", icon: GitBranch },
   { href: "/perform-anywhere", label: "Perform Anywhere", icon: Clapperboard },
+  { href: "/apps", label: "Workflow Apps", icon: AppWindow },
   { href: "/gpu-hub", label: "GPU Hub", icon: Cpu },
   { href: "/assistant", label: "Assistant", icon: Bot },
   { href: "/jobs", label: "Jobs", icon: ListVideo },
@@ -91,7 +93,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="p-6 mt-auto"><AccountControl onSettings={handleSettingsClick} /></div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto relative min-h-[100dvh] bg-background">
+      <main className="min-w-0 flex-1 overflow-y-auto relative min-h-[100dvh] bg-background">
         <span aria-hidden="true" className="aurora-ambient" />
         <div className="px-4 sm:px-6 md:px-12 py-8 md:py-12 max-w-[1600px] mx-auto min-h-full relative z-10">{children}</div>
       </main>

@@ -5,6 +5,29 @@
  * ComfyUI Studio API — proxy and orchestration layer for a ComfyUI server
  * OpenAPI spec version: 0.1.0
  */
+export type WorkflowAppInputPresetParams = { [key: string]: unknown };
+
+export interface WorkflowAppInput {
+  slug?: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /** @maxLength 1000 */
+  description: string;
+  workflowId: string;
+  presetParams: WorkflowAppInputPresetParams;
+  exposedKeys: string[];
+  isPublished: boolean;
+  allowEmbed: boolean;
+}
+
+export type WorkflowApp = WorkflowAppInput & {
+  slug: string;
+  isOwner: boolean;
+};
+
 export type AssistantChatMessageRole = typeof AssistantChatMessageRole[keyof typeof AssistantChatMessageRole];
 
 
@@ -537,6 +560,10 @@ export interface UploadedFile {
   subfolder: string;
   type: string;
 }
+
+export type DeleteWorkflowApp200 = {
+  success: boolean;
+};
 
 export type ListJobsParams = {
 status?: ListJobsStatus;

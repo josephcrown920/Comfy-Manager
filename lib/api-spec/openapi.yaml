@@ -30,6 +30,102 @@ tags:
     description: AI chat assistant and video agent
 
 paths:
+  /workflow-apps:
+    get:
+      operationId: listWorkflowApps
+      responses:
+        "200":
+          description: Apps owned by the signed-in user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkflowApp"
+    post:
+      operationId: saveWorkflowApp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowAppInput"
+      responses:
+        "200":
+          description: Saved app
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowApp"
+  /workflow-apps/{slug}:
+    parameters:
+      - name: slug
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getWorkflowApp
+      responses:
+        "200":
+          description: Published app or owner preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowApp"
+    delete:
+      operationId: deleteWorkflowApp
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+  /workflow-apps/{slug}/run:
+    parameters:
+      - name: slug
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: runWorkflowApp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobInput"
+      responses:
+        "201":
+          description: Generation owned by the signed-in runner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+  /workflow-apps/{slug}/batch:
+    parameters:
+      - name: slug
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: runWorkflowAppBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchInput"
+      responses:
+        "201":
+          description: Five-angle batch owned by the signed-in runner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Batch"
   /healthz:
     get:
       security: []
@@ -735,6 +831,30 @@ components:
       schema:
         type: number
   schemas:
+    WorkflowAppInput:
+      type: object
+      required: [name, workflowId, description, presetParams, exposedKeys, isPublished, allowEmbed]
+      properties:
+        slug: { type: string }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: string, maxLength: 1000 }
+        workflowId: { type: string }
+        presetParams:
+          type: object
+          additionalProperties: true
+        exposedKeys:
+          type: array
+          items: { type: string }
+        isPublished: { type: boolean }
+        allowEmbed: { type: boolean }
+    WorkflowApp:
+      allOf:
+        - $ref: "#/components/schemas/WorkflowAppInput"
+        - type: object
+          required: [slug, isOwner]
+          properties:
+            slug: { type: string }
+            isOwner: { type: boolean }
     AssistantChatMessage:
       type: object
       required: [role, content]

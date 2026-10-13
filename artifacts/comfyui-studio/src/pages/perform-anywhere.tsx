@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import {
@@ -30,6 +30,12 @@ import {
   useGetModelArkStatus,
   useImportOutput,
   useListBatches,
+  useRunWorkflowApp,
+  useRunWorkflowAppBatch,
+  useGetJob,
+  refreshJob,
+  getGetJobQueryKey,
+  type WorkflowApp,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { FileUpload, uploadFile } from "@/components/ui/file-upload";
@@ -144,14 +150,31 @@ function ReferenceCard({
   );
 }
 
-export default function PerformAnywhere() {
+export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp } = {}) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
-  const createBatch = useCreateBatch();
+  const { isLoaded: isAuthLoaded, isSignedIn, userId } = useAuth();
+  const baseCreateBatch = useCreateBatch();
+  const appCreateBatch = useRunWorkflowAppBatch();
+  const createBatch = {
+    isPending: baseCreateBatch.isPending || appCreateBatch.isPending,
+    mutate: (variables: Parameters<typeof baseCreateBatch.mutate>[0], options?: Parameters<typeof baseCreateBatch.mutate>[1]) => {
+      if (appConfig) appCreateBatch.mutate({ ...variables, slug: appConfig.slug }, options);
+      else baseCreateBatch.mutate(variables, options);
+    },
+  };
   const importOutput = useImportOutput();
-  const createJob = useCreateJob();
+  const baseCreateJob = useCreateJob();
+  const appCreateJob = useRunWorkflowApp();
+  const createJob = {
+    isPending: baseCreateJob.isPending || appCreateJob.isPending,
+    mutate: (variables: Parameters<typeof baseCreateJob.mutate>[0], options?: Parameters<typeof baseCreateJob.mutate>[1]) => {
+      if (appConfig) appCreateJob.mutate({ ...variables, slug: appConfig.slug }, options);
+      else baseCreateJob.mutate(variables, options);
+    },
+  };
+  const editable = (key: string) => !appConfig || appConfig.exposedKeys.includes(key);
   
   const modelArkStatusQuery = useGetModelArkStatus({
     query: {
@@ -179,15 +202,37 @@ export default function PerformAnywhere() {
   const [references, setReferences] = useState<Record<ReferenceKey, string>>({
     identity: "", outfit: "", location: "", pose: "", prop: "",
   });
-  const [sceneDescription, setSceneDescription] = useState("A midnight performance beneath sodium streetlights, rain caught in the air, the city stretching behind the performer.");
-  const [visualDirection, setVisualDirection] = useState("35mm cinematic texture, deep indigo shadows, warm amber practicals, restrained film grain, confident editorial framing.");
-  const [motionContext, setMotionContext] = useState("a performer moving naturally inside the scene");
+  const [sceneDescription, setSceneDescription] = useState(String(appConfig?.presetParams.scene_description ?? "A midnight performance beneath sodium streetlights, rain caught in the air, the city stretching behind the performer."));
+  const [visualDirection, setVisualDirection] = useState(String(appConfig?.presetParams.visual_direction ?? "35mm cinematic texture, deep indigo shadows, warm amber practicals, restrained film grain, confident editorial framing."));
+  const [motionContext, setMotionContext] = useState(String(appConfig?.presetParams.motion_context ?? "a performer moving naturally inside the scene"));
   const [performanceVideo, setPerformanceVideo] = useState("");
-  const [motionProvider, setMotionProvider] = useState<MotionProvider>("seedance");
-  const [preset, setPreset] = useState<PresetId>("perform-anywhere");
+  const [motionProvider, setMotionProvider] = useState<MotionProvider>(appConfig?.presetParams.motion_provider === "mimicmotion" ? "mimicmotion" : "seedance");
+  const [preset, setPreset] = useState<PresetId>(appConfig?.presetParams.preset === "luxury-interior" ? "luxury-interior" : "perform-anywhere");
+  const [motionJobId, setMotionJobId] = useState<number | null>(null);
+  const motionJob = useGetJob(motionJobId ?? 0, { query: {
+    queryKey: getGetJobQueryKey(motionJobId ?? 0),
+    queryFn: () => refreshJob(motionJobId!),
+    enabled: Boolean(motionJobId && appConfig),
+    refetchInterval: (query) => ["completed", "failed", "cancelled"].includes(query.state.data?.status ?? "") ? false : 3000,
+  } });
   const [boardUploadPending, setBoardUploadPending] = useState(false);
   const [activeBatchId, setActiveBatchId] = useState<number | null>(null);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
+
+  const runStorageKey = appConfig && userId ? `aurora-complete-run:${userId}:${appConfig.slug}` : null;
+  useEffect(() => {
+    if (!runStorageKey) return;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(runStorageKey) ?? "{}");
+      if (Number.isSafeInteger(saved.batch) && saved.batch > 0) setActiveBatchId(saved.batch);
+      if (Number.isSafeInteger(saved.motion) && saved.motion > 0) setMotionJobId(saved.motion);
+      if (Number.isSafeInteger(saved.selection) && saved.selection > 0) setSelectedChildId(saved.selection);
+    } catch { /* Embedded browsers may block session storage. */ }
+  }, [runStorageKey]);
+  useEffect(() => {
+    if (!runStorageKey || (!activeBatchId && !motionJobId)) return;
+    try { sessionStorage.setItem(runStorageKey, JSON.stringify({ batch: activeBatchId, motion: motionJobId, selection: selectedChildId })); } catch { /* Optional reload recovery. */ }
+  }, [runStorageKey, activeBatchId, motionJobId, selectedChildId]);
 
   const activePreset = PRESETS.find((item) => item.id === preset) ?? PRESETS[0];
   const activeReferenceSlots = REFERENCE_SLOTS
@@ -211,8 +256,8 @@ export default function PerformAnywhere() {
   const batches = batchesQuery.data ?? [];
   const activeBatch = useMemo(() => {
     if (activeBatchId !== null) return batches.find((batch) => batch.id === activeBatchId);
-    return batches.find((batch) => batch.batchType === "perform-anywhere-angles");
-  }, [activeBatchId, batches]);
+    return appConfig ? undefined : batches.find((batch) => batch.batchType === "perform-anywhere-angles");
+  }, [activeBatchId, batches, appConfig]);
 
   const completedChildren = useMemo(
     () => activeBatch?.children.filter((child) => child.status === "completed" && child.outputs?.length) ?? [],
@@ -269,16 +314,17 @@ export default function PerformAnywhere() {
   };
 
   useEffect(() => {
-    if (selectedChildId && !completedChildren.some((child) => child.id === selectedChildId)) {
+    if (batchesQuery.data && selectedChildId && !completedChildren.some((child) => child.id === selectedChildId)) {
       setSelectedChildId(null);
     }
-  }, [completedChildren, selectedChildId]);
+  }, [completedChildren, selectedChildId, batchesQuery.data]);
 
   const updateReference = (key: ReferenceKey, filename: string) => {
     setReferences((current) => ({ ...current, [key]: filename }));
   };
 
   const handleBoardFiles = async (files: File[]) => {
+    if (boardUploadPending || !isSignedIn) return;
     const imageFiles = files.filter((file) => (
       file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|avif)$/i.test(file.name)
     ));
@@ -320,15 +366,10 @@ export default function PerformAnywhere() {
       const uploaded: Array<{ key: ReferenceKey; filename: string }> = [];
       for (const [index, file] of filesToUpload.entries()) {
         const filename = await uploadFile(file, () => undefined, "image/*");
-        uploaded.push({ key: emptyKeys[index]!, filename });
+        const key = emptyKeys[index]!;
+        uploaded.push({ key, filename });
+        setReferences((current) => ({ ...current, [key]: filename }));
       }
-      setReferences((current) => {
-        const next = { ...current };
-        uploaded.forEach(({ key, filename }) => {
-          next[key] = filename;
-        });
-        return next;
-      });
       toast({
         title: "References attached to the Shot Board",
         description: `${uploaded.length} image${uploaded.length === 1 ? "" : "s"} added in board order.`,
@@ -345,6 +386,7 @@ export default function PerformAnywhere() {
   };
 
   const selectPreset = (nextPreset: PresetId) => {
+    if (appConfig || boardUploadPending) return;
     setPreset(nextPreset);
     setReferences({ identity: "", outfit: "", location: "", pose: "", prop: "" });
     setSelectedChildId(null);
@@ -439,9 +481,10 @@ export default function PerformAnywhere() {
               },
             },
             {
-              onSuccess: () => {
+              onSuccess: (job) => {
                 toast({ title: motionProvider === "seedance" ? "Seedance render is queued" : "Motion transfer is queued", description: "Your selected angle and performance are now becoming a shot." });
-                setLocation("/jobs");
+                if (appConfig) setMotionJobId(job.id);
+                else setLocation("/jobs");
               },
               onError: (error: Error) => toast({ title: "Could not queue motion transfer", description: error.message, variant: "destructive" }),
             },
@@ -452,10 +495,11 @@ export default function PerformAnywhere() {
     );
   };
 
-  const busy = createBatch.isPending || importOutput.isPending || createJob.isPending;
+  const motionRunning = appConfig && motionJobId && (!motionJob.data || ["pending", "running"].includes(motionJob.data.status));
+  const busy = createBatch.isPending || importOutput.isPending || createJob.isPending || Boolean(motionRunning);
 
   return (
-    <div className="min-h-[100dvh] bg-[#09080D] text-white animate-in fade-in duration-300 pb-20 px-6 sm:px-12 pt-8">
+    <div className={`min-h-[100dvh] bg-[#09080D] text-white animate-in fade-in duration-300 pb-20 pt-8 ${appConfig ? "px-2 sm:px-4" : "px-4 sm:px-12"}`}>
       <div className="max-w-[1440px] mx-auto space-y-12">
         <section className="relative overflow-hidden rounded-[28px] border border-[#A779F5]/30 bg-[#171120] px-8 py-12 lg:px-16 shadow-2xl">
           <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-[#B7F54A]/10 blur-[100px]" />
@@ -476,6 +520,7 @@ export default function PerformAnywhere() {
               <p data-testid="text-page-description" className="text-lg leading-relaxed text-[#BEB2CC] max-w-2xl">
                 Build a consistent cinematic scene from your references, audition five camera treatments, then carry the strongest still into motion with your original performance.
               </p>
+              {!appConfig && <Button asChild variant="outline" className="mt-5"><Link href="/apps?workflow=perform-anywhere-complete">Turn into an app <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>}
             </div>
             <div className="overflow-hidden rounded-3xl border border-[#A779F5]/30 bg-[#09080D]/50 backdrop-blur-md shadow-xl">
               <div className="grid h-36 grid-cols-3" aria-label="Perform Anywhere workflow preview">
@@ -514,7 +559,7 @@ export default function PerformAnywhere() {
           </div>
         </section>
 
-        <div className="grid gap-8 xl:grid-cols-[1fr_400px]">
+        <div className="grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1fr)_400px]">
           <main className="space-y-8">
             <section className="bg-[#171120] rounded-3xl p-6 sm:p-10 border border-[#A779F5]/20 shadow-xl">
               <div className="mb-8">
@@ -533,6 +578,7 @@ export default function PerformAnywhere() {
                       key={option.id}
                       type="button"
                       data-testid={`button-preset-${option.id}`}
+                      disabled={Boolean(appConfig) || boardUploadPending}
                       onClick={() => selectPreset(option.id)}
                       className={`rounded-2xl border p-6 text-left transition-all ${selected ? "border-[#B7F54A] bg-[#B7F54A]/10 shadow-[0_0_20px_rgba(183,245,74,.15)]" : "border-[#A779F5]/30 bg-[#09080D] hover:border-[#A779F5]/70"}`}
                     >
@@ -595,12 +641,12 @@ export default function PerformAnywhere() {
               <div className="grid gap-6 lg:grid-cols-2">
                 <div className="space-y-3">
                   <Label htmlFor="scene-description" className="text-sm font-bold text-white">Scene description</Label>
-                  <Textarea data-testid="input-scene-description" id="scene-description" value={sceneDescription} onChange={(event) => setSceneDescription(event.target.value)} className="min-h-[160px] resize-none border-[#A779F5]/30 bg-[#09080D] text-sm leading-relaxed text-white placeholder:text-[#BEB2CC]/50 focus-visible:ring-[#B7F54A] rounded-2xl p-4" placeholder="Describe the place, time, energy, and what the viewer should feel." />
+                  <Textarea readOnly={!editable("scene_description")} data-testid="input-scene-description" id="scene-description" value={sceneDescription} onChange={(event) => setSceneDescription(event.target.value)} className="min-h-[160px] resize-none border-[#A779F5]/30 bg-[#09080D] text-sm leading-relaxed text-white placeholder:text-[#BEB2CC]/50 focus-visible:ring-[#B7F54A] rounded-2xl p-4" placeholder="Describe the place, time, energy, and what the viewer should feel." />
                   <p className="text-xs text-[#BEB2CC]">Place and atmosphere. The generative scene prompt starts here.</p>
                 </div>
                 <div className="space-y-3">
                   <Label htmlFor="visual-direction" className="text-sm font-bold text-white">Visual direction</Label>
-                  <Textarea data-testid="input-visual-direction" id="visual-direction" value={visualDirection} onChange={(event) => setVisualDirection(event.target.value)} className="min-h-[160px] resize-none border-[#A779F5]/30 bg-[#09080D] text-sm leading-relaxed text-white placeholder:text-[#BEB2CC]/50 focus-visible:ring-[#B7F54A] rounded-2xl p-4" placeholder="Name the lens, light, grade, texture, and editorial references." />
+                  <Textarea readOnly={!editable("visual_direction")} data-testid="input-visual-direction" id="visual-direction" value={visualDirection} onChange={(event) => setVisualDirection(event.target.value)} className="min-h-[160px] resize-none border-[#A779F5]/30 bg-[#09080D] text-sm leading-relaxed text-white placeholder:text-[#BEB2CC]/50 focus-visible:ring-[#B7F54A] rounded-2xl p-4" placeholder="Name the lens, light, grade, texture, and editorial references." />
                   <p className="text-xs text-[#BEB2CC]">Lens, light, color, and texture. The taste layer that keeps five angles together.</p>
                 </div>
               </div>
@@ -609,7 +655,7 @@ export default function PerformAnywhere() {
                   <LockKeyhole className="h-6 w-6 shrink-0 text-[#B7F54A]" />
                   <p className="max-w-xl text-sm leading-relaxed text-[#BEB2CC]">We will create exactly five children with the camera treatments below. They share your {activePreset.keys.length} references, scene, and visual direction.</p>
                 </div>
-                <Button data-testid="button-start-angles" onClick={startAngles} disabled={createBatch.isPending} className="shrink-0 rounded-xl bg-[#B7F54A] py-6 px-8 font-bold text-[#09080D] hover:bg-[#A3E030] shadow-[0_0_20px_rgba(183,245,74,0.3)] transition-all text-base">
+                <Button data-testid="button-start-angles" onClick={startAngles} disabled={createBatch.isPending} className="max-w-full shrink-0 rounded-xl bg-[#B7F54A] py-6 px-3 sm:px-8 font-bold text-[#09080D] hover:bg-[#A3E030] shadow-[0_0_20px_rgba(183,245,74,0.3)] transition-all text-sm sm:text-base">
                   {createBatch.isPending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Rendering shot list</> : <><Sparkles className="mr-2 h-5 w-5" />Render shot list once</>}
                 </Button>
               </div>
@@ -697,6 +743,7 @@ export default function PerformAnywhere() {
                     <button
                       type="button"
                       data-testid="button-motion-provider-seedance"
+                      disabled={Boolean(appConfig)}
                       onClick={() => setMotionProvider("seedance")}
                       className={`rounded-2xl border p-4 text-left transition-all ${motionProvider === "seedance" ? "border-[#B7F54A] bg-[#B7F54A]/10 shadow-[0_0_15px_rgba(183,245,74,.15)]" : "border-[#A779F5]/30 bg-[#09080D] hover:border-[#A779F5]/70"}`}
                     >
@@ -711,6 +758,7 @@ export default function PerformAnywhere() {
                     <button
                       type="button"
                       data-testid="button-motion-provider-mimicmotion"
+                      disabled={Boolean(appConfig)}
                       onClick={() => setMotionProvider("mimicmotion")}
                       className={`rounded-2xl border p-4 text-left transition-all ${motionProvider === "mimicmotion" ? "border-[#B7F54A] bg-[#B7F54A]/10 shadow-[0_0_15px_rgba(183,245,74,.15)]" : "border-[#A779F5]/30 bg-[#09080D] hover:border-[#A779F5]/70"}`}
                     >
@@ -761,7 +809,7 @@ export default function PerformAnywhere() {
 
                 <div className="mt-8 space-y-3">
                   <Label htmlFor="motion-context" className="text-sm font-bold text-white">Motion context</Label>
-                  <Textarea data-testid="input-motion-context" id="motion-context" value={motionContext} onChange={(event) => setMotionContext(event.target.value)} className="min-h-[100px] resize-none border-[#A779F5]/30 bg-[#09080D] text-sm leading-relaxed text-white placeholder:text-[#BEB2CC]/50 focus-visible:ring-[#B7F54A] rounded-xl" placeholder="Describe the movement and the scene context so the transfer stays grounded." />
+                  <Textarea readOnly={!editable("motion_context")} data-testid="input-motion-context" id="motion-context" value={motionContext} onChange={(event) => setMotionContext(event.target.value)} className="min-h-[100px] resize-none border-[#A779F5]/30 bg-[#09080D] text-sm leading-relaxed text-white placeholder:text-[#BEB2CC]/50 focus-visible:ring-[#B7F54A] rounded-xl" placeholder="Describe the movement and the scene context so the transfer stays grounded." />
                 </div>
 
                 <div data-testid="status-selected-angle" className="mt-8 rounded-2xl border border-[#A779F5]/30 bg-[#09080D] p-5 relative overflow-hidden">
@@ -786,6 +834,17 @@ export default function PerformAnywhere() {
                 {selectedOutput && performanceVideo && !selectedProviderReady && !readinessLoading && (
                   <p className="mt-4 text-center text-xs font-semibold text-[#EF4444]">The handoff is paused until the selected provider is ready.</p>
                 )}
+                {appConfig && motionJobId && <div className="mt-6 space-y-3 rounded-xl border border-[#A779F5]/30 p-4" aria-live="polite">
+                  <h3 className="font-bold">Your rendered shot</h3>
+                  {motionRunning && <p className="text-sm text-[#BEB2CC]"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />{motionJob.data?.status === "pending" ? "Queued" : "Rendering"} · {motionJob.data?.progress ?? 0}%</p>}
+                  {motionJob.isError && <div><p className="text-sm text-red-400">Could not check this render.</p><Button variant="outline" onClick={() => motionJob.refetch()}>Retry status</Button></div>}
+                  {["failed", "cancelled"].includes(motionJob.data?.status ?? "") && <p className="text-sm text-red-400">{motionJob.data?.errorMessage || `Render ${motionJob.data?.status}. You can submit again.`}</p>}
+                  {motionJob.data?.status === "completed" && !motionJob.data.outputs?.length && <p className="text-sm text-[#BEB2CC]">Completed without outputs. Check Jobs for details.</p>}
+                  {motionJob.data?.outputs?.map((output) => <div key={output.id} className="space-y-2">
+                    {output.outputType === "video" ? <video src={output.comfyUrl} controls playsInline className="w-full rounded-lg" /> : output.outputType === "audio" ? <audio src={output.comfyUrl} controls /> : <img src={output.comfyUrl} alt={output.filename} className="w-full rounded-lg" />}
+                    <a href={output.comfyUrl} download={output.filename} className="text-sm font-bold text-[#B7F54A]">Download {output.filename}</a>
+                  </div>)}
+                </div>}
               </div>
             </section>
           </aside>
