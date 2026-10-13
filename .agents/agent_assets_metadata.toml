@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "1m6K5eWZUYPKlAN68K0Oi"
+uri = "file://generated-artifacts/perform-anywhere-workflows-and-app-guide.zip"
+type = "unspecified"
+title = "Perform Anywhere — Workflows & App Setup"
+description = "Five angle graphs, MimicMotion graph, Seedance input example, two importable Aurora app presets, and setup directions. GPU execution is not yet verified."
+logical_id = "e855e780-9b70-4a87-8c73-eaaaab75893e"
+content_hash = "sha256:300bdb1c06663c4b48546729924a9d594bbd2e380b1987919e85bd5ec862dfec"
+size = 16007
+mtime_ms = 1791933015591
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:41684e24-8f12-4d0c-9378-f59a478c53c0/e855e780-9b70-4a87-8c73-eaaaab75893e/5a780e39-8d9c-403c-ac65-3236266689b5"
+storage_version_token = "1791933022161397"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "18r4XrW-lVuHPJHErUWF0"
+uri = "file://generated-artifacts/perform-anywhere-export/SETUP-GUIDE.html"
+type = "html"
+title = "Perform Anywhere — Setup Guide"
+description = "How to import a preset into Workflow Apps, publish a signed-in app, and connect the required generation providers."
+logical_id = "661277e8-a146-44c1-bc96-1b782b9421d7"
+content_hash = "sha256:17328271f1d7e068eb6468f4379610b433115cd9aede13ad0eb54c84f4ee7143"
+size = 5211
+mtime_ms = 1791933015059
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:41684e24-8f12-4d0c-9378-f59a478c53c0/661277e8-a146-44c1-bc96-1b782b9421d7/2c2406fb-4c25-40d0-975e-48706b3ea8a5"
+storage_version_token = "1791933022789912"
+content_type = "text/html"
