@@ -5,14 +5,14 @@ generated = []
 id = "1m6K5eWZUYPKlAN68K0Oi"
 uri = "file://generated-artifacts/perform-anywhere-workflows-and-app-guide.zip"
 type = "unspecified"
-title = "Updated Perform Anywhere workflows and app guide"
-description = "One four-provider Aurora app, standard and depth-guided five-angle graphs, hosted provider input examples, and setup directions. No paid execution was performed."
+title = "Perform Anywhere workflows and setup guide"
+description = "Refreshed from the current merged app code. Includes 11 ComfyUI graphs (five standard angles, five depth-guided angles and MimicMotion), a four-provider app preset, three hosted-job examples, and setup directions."
 logical_id = "e855e780-9b70-4a87-8c73-eaaaab75893e"
 content_hash = "sha256:1d22630017f83687c882747b2b1318c354076a2be0cf76a6f713f5fa762502d9"
 size = 26562
 mtime_ms = 1791935356891
-storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:41684e24-8f12-4d0c-9378-f59a478c53c0/e855e780-9b70-4a87-8c73-eaaaab75893e/f4c8c620-3828-4eba-b866-ec17490457c5"
-storage_version_token = "1791935828138531"
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:41684e24-8f12-4d0c-9378-f59a478c53c0/e855e780-9b70-4a87-8c73-eaaaab75893e/d8cca1a9-a4cd-4ee0-be31-e12a7c0d5880"
+storage_version_token = "1791994037805993"
 content_type = "application/octet-stream"
 
 [[outputs]]
