@@ -96,7 +96,9 @@ const upload = multer({
   // Preserve an absolute ceiling in addition to the streaming per-type cap.
   // The extra multipart fields/headers are bounded separately below.
   limits: {
-    fileSize: FILE_SIZE_LIMITS.video,
+    // Busboy rejects at >= fileSize. Leave headroom so the streaming storage
+    // enforces the inclusive per-type limit and returns its friendly error.
+    fileSize: MAX_UPLOAD_REQUEST_BYTES,
     files: 1,
     fields: 8,
     parts: 9,
@@ -389,8 +391,8 @@ router.post(
 
         const data = (await comfyRes.json()) as {
           name: string;
-          subfolder: string;
-          type: string;
+          subfolder?: string;
+          type?: string;
         };
 
         await recordInputOwner(data.name, userId, data.subfolder ?? subfolder, req.file.mimetype, comfyUrl);

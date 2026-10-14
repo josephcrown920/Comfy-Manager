@@ -10,7 +10,7 @@ const MB = 1024 * 1024;
 const FILE_SIZE_LIMITS = {
   image: 20 * MB,
   audio: 100 * MB,
-  video: 250 * MB,
+  video: 100 * MB,
   other: 20 * MB,
 } as const;
 
@@ -38,7 +38,7 @@ function fileSizeLimit(file: File): { bytes: number; label: string } {
 }
 
 function acceptedSizeDescription(accept?: string): string {
-  if (!accept) return "Maximum size: images 20 MB, audio 100 MB, video 250 MB.";
+  if (!accept) return "Maximum size: images 20 MB, audio 100 MB, video 100 MB.";
 
   const normalized = accept.toLowerCase();
   const limits: string[] = [];
@@ -49,7 +49,7 @@ function acceptedSizeDescription(accept?: string): string {
     limits.push("audio 100 MB");
   }
   if (normalized.includes("video/") || /\.(mp4|mov|webm|mkv|avi|m4v)\b/.test(normalized)) {
-    limits.push("video 250 MB");
+    limits.push("video 100 MB");
   }
 
   return limits.length > 0

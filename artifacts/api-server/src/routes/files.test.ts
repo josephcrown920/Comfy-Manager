@@ -1,0 +1,146 @@
+import express from "express";
+import { once } from "node:events";
+import { request, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  reserveUpload: vi.fn(),
+  fetchComfy: vi.fn(),
+  getComfyUrl: vi.fn(),
+  recordInputOwner: vi.fn(),
+}));
+
+// Keep the actual router, storage engine and multipart parser. Only external
+// services and identity are replaced: these tests never use a DB or rent a GPU.
+vi.mock("@workspace/db", () => ({ db: {}, outputsTable: {} }));
+vi.mock("@workspace/api-zod", () => ({ ImportOutputBody: {}, ImportOutputResponse: {} }));
+vi.mock("./settings", () => ({ getComfyUrl: mocks.getComfyUrl }));
+vi.mock("./comfy", () => ({ fetchComfy: mocks.fetchComfy }));
+vi.mock("../lib/access-control", () => ({ getAuthenticatedUserId: () => "upload-test-user" }));
+vi.mock("../lib/worker-routing", () => ({ getJobWorkerUrl: vi.fn() }));
+vi.mock("../lib/perform-media", () => ({ recordInputOwner: mocks.recordInputOwner }));
+vi.mock("../lib/resource-quotas", () => ({
+  MAX_UPLOAD_BYTES_PER_DAY: 1024 * 1024 * 1024,
+  MAX_UPLOAD_REQUESTS_PER_DAY: 100,
+  reserveUpload: mocks.reserveUpload,
+}));
+vi.mock("../middlewares/requireAuth", () => ({
+  requireAuth: (_req: unknown, _res: unknown, next: () => void) => next(),
+}));
+
+import router from "./files";
+
+const MB = 1024 * 1024;
+// Intentional literal contract values, not imported from implementation.
+const media = [
+  { type: "image/png", name: "reference.png", limit: 20 * MB, label: "Images", signature: Buffer.from("89504e470d0a1a0a", "hex") },
+  { type: "audio/mpeg", name: "voice.mp3", limit: 100 * MB, label: "Audio files", signature: Buffer.from("ID3") },
+  { type: "video/mp4", name: "motion.mp4", limit: 100 * MB, label: "Videos", signature: Buffer.from("\0\0\0\x18ftypisom") },
+] as const;
+
+let server: Server;
+let port: number;
+
+/**
+ * Stream fixed-size chunks, including a valid media signature, through real
+ * HTTP multipart parsing. No huge fixtures on disk or mocked multer sizes.
+ */
+async function postFile(
+  file: (typeof media)[number],
+  size: number,
+  withContentLength: boolean,
+): Promise<{ status: number; body: { error?: string; name?: string } }> {
+  const boundary = "aurora-upload-boundary";
+  const prefix = Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${file.name}"\r\nContent-Type: ${file.type}\r\n\r\n`,
+  );
+  const suffix = Buffer.from(`\r\n--${boundary}--\r\n`);
+  const req = request({
+    hostname: "127.0.0.1",
+    port,
+    path: "/api/files/upload",
+    method: "POST",
+    headers: {
+      "content-type": `multipart/form-data; boundary=${boundary}`,
+      ...(withContentLength ? { "content-length": prefix.length + size + suffix.length } : {}),
+    },
+  });
+  const response = new Promise<{ status: number; body: { error?: string; name?: string } }>((resolve, reject) => {
+    req.on("error", reject);
+    req.on("response", (res) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      res.on("error", reject);
+      res.on("end", () => resolve({
+        status: res.statusCode!,
+        body: JSON.parse(Buffer.concat(chunks).toString()),
+      }));
+    });
+  });
+  req.write(prefix);
+  req.write(file.signature);
+  const chunk = Buffer.alloc(256 * 1024);
+  let remaining = size - file.signature.length;
+  while (remaining > 0) {
+    const length = Math.min(remaining, chunk.length);
+    if (!req.write(chunk.subarray(0, length))) await once(req, "drain");
+    remaining -= length;
+  }
+  req.end(suffix);
+  return response;
+}
+
+beforeAll(async () => {
+  const app = express();
+  app.use("/api", router);
+  server = app.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  port = (server.address() as AddressInfo).port;
+});
+
+afterAll(async () => {
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => error ? reject(error) : resolve());
+    server.closeIdleConnections();
+  });
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.reserveUpload.mockResolvedValue(true);
+  mocks.recordInputOwner.mockResolvedValue(undefined);
+  mocks.getComfyUrl.mockResolvedValue("http://worker.invalid");
+  mocks.fetchComfy.mockResolvedValue({
+    ok: true,
+    json: async () => ({ name: "stored-file", type: "input" }),
+  });
+});
+
+describe.each(media)("$type upload boundary", (file) => {
+  it.each([true, false])("accepts exactly the limit (Content-Length: %s)", async (withContentLength) => {
+    const result = await postFile(file, file.limit, withContentLength);
+    expect(result).toEqual({ status: 200, body: {
+      name: "stored-file", type: "input",
+      subfolder: file.type.startsWith("audio/") ? "audio" : "",
+    } });
+    expect(mocks.reserveUpload).toHaveBeenCalledExactlyOnceWith("upload-test-user", file.limit);
+    expect(mocks.fetchComfy).toHaveBeenCalledOnce();
+    expect(mocks.recordInputOwner).toHaveBeenCalledExactlyOnceWith(
+      "stored-file", "upload-test-user",
+      file.type.startsWith("audio/") ? "audio" : "",
+      file.type, "http://worker.invalid",
+    );
+  });
+
+  it.each([true, false])("rejects one byte over with friendly 413 (Content-Length: %s)", async (withContentLength) => {
+    const result = await postFile(file, file.limit + 1, withContentLength);
+    expect(result).toEqual({ status: 413, body: {
+      error: `${file.label} must be ${file.limit / MB} MB or smaller. "${file.name}" is too large.`,
+    } });
+    expect(mocks.reserveUpload).not.toHaveBeenCalled();
+    expect(mocks.getComfyUrl).not.toHaveBeenCalled();
+    expect(mocks.fetchComfy).not.toHaveBeenCalled();
+    expect(mocks.recordInputOwner).not.toHaveBeenCalled();
+  });
+});
