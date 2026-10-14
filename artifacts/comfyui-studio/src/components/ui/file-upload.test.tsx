@@ -11,7 +11,11 @@ class FakeXMLHttpRequest {
   responseText = JSON.stringify({ name: "stored-file" });
   listeners = new Map<string, () => void>();
   open = vi.fn();
-  send = vi.fn((_body: FormData) => this.listeners.get("load")?.());
+  send = vi.fn((_body: FormData) => {
+    this.status = nextUploadResponse.status;
+    this.responseText = JSON.stringify(nextUploadResponse.body);
+    this.listeners.get("load")?.();
+  });
   addEventListener = vi.fn((event: string, listener: () => void) => {
     this.listeners.set(event, listener);
   });
@@ -19,6 +23,10 @@ class FakeXMLHttpRequest {
 
 const xhrConstructor = vi.fn(function () { return new FakeXMLHttpRequest(); });
 const MB = 1024 * 1024;
+let nextUploadResponse: { status: number; body: unknown } = {
+  status: 200,
+  body: { name: "stored-file" },
+};
 const media = [
   { type: "image/png", name: "reference.png", limit: 20 * MB, label: "Images", accept: "image/*" },
   { type: "audio/mpeg", name: "voice.mp3", limit: 100 * MB, label: "Audio files", accept: "audio/*" },
@@ -42,6 +50,7 @@ function selectFile(container: HTMLElement, type: string, name: string, size: nu
 
 beforeEach(() => {
   vi.clearAllMocks();
+  nextUploadResponse = { status: 200, body: { name: "stored-file" } };
   vi.stubGlobal("XMLHttpRequest", xhrConstructor);
 });
 afterEach(() => {
@@ -99,5 +108,46 @@ describe.each(media)("$type selection boundary", (file) => {
     expect(input.value).toBe("");
     expect(screen.getByText("Previously uploaded: existing-file")).toBeVisible();
     expect(screen.queryByText(/Uploading/)).not.toBeInTheDocument();
+  });
+});
+
+describe("image format and retry behavior", () => {
+  it("advertises phone image formats and confirms the selected image after upload", async () => {
+    const onFileSelect = vi.fn();
+    const { container } = render(<FileUpload accept="image/*" onFileSelect={onFileSelect} />);
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const file = new File(["heic bytes"], "outfit-photo.HEIC", { type: "image/heic" });
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => expect(onFileSelect).toHaveBeenCalledExactlyOnceWith("stored-file"));
+    expect(input.accept).toContain("image/heic");
+    expect(input.accept).toContain(".heif");
+    expect(screen.getByRole("status")).toHaveTextContent("Selected: outfit-photo.HEIC");
+  });
+
+  it("shows an actionable error, clears the input, and retries the same file without calling the callback", async () => {
+    nextUploadResponse = {
+      status: 415,
+      body: { error: "This HEIC/HEIF photo could not be decoded. Export it as JPEG or PNG and retry." },
+    };
+    const onFileSelect = vi.fn();
+    const { container } = render(<FileUpload accept="image/*" onFileSelect={onFileSelect} />);
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const file = new File(["corrupt"], "outfit-photo.heic", { type: "image/heic" });
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/could not be decoded/i));
+    expect(onFileSelect).not.toHaveBeenCalled();
+    expect(input.value).toBe("");
+    expect(screen.queryByText(/Uploaded:/)).not.toBeInTheDocument();
+
+    nextUploadResponse = { status: 200, body: { name: "retried-outfit.jpg" } };
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => expect(onFileSelect).toHaveBeenCalledExactlyOnceWith("retried-outfit.jpg"));
+    expect(screen.getByText("Uploaded: retried-outfit.jpg")).toBeVisible();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { ImagePlus, Layers3, Loader2, Search, UploadCloud } from "lucide-react";
+import { IMAGE_FILE_ACCEPT } from "./ui/file-upload";
 
 export type ShotBoardSlot = {
   key: string;
@@ -133,7 +134,7 @@ export function ShotBoard({
             ref={inputRef}
             className="sr-only"
             type="file"
-            accept="image/*"
+            accept={IMAGE_FILE_ACCEPT}
             multiple
             aria-label="Attach multiple shot board reference images"
             onChange={(event) => {

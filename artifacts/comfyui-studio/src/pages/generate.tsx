@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileUpload } from "@/components/ui/file-upload";
+import { FileUpload, IMAGE_FILE_ACCEPT } from "@/components/ui/file-upload";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   ArrowLeft, Play, LayoutGrid, Code, AlertCircle, Bookmark, Trash2, Save, 
@@ -1042,7 +1042,7 @@ function MotionControlForm({ onBack }: { onBack: () => void }) {
           </div>
 
           <div className="rounded-2xl p-4 bg-[#09080D] border border-[#A779F5]/30">
-            <MotionUploadSlot label="Add your character" hint="Image with visible face and body" accept="image/*" onUploaded={setSourceImage} uploaded={!!sourceImage} />
+            <MotionUploadSlot label="Add your character" hint="Image with visible face and body" accept={IMAGE_FILE_ACCEPT} onUploaded={setSourceImage} uploaded={!!sourceImage} />
           </div>
 
           <div className="rounded-2xl px-5 py-4 space-y-6 bg-[#09080D] border border-[#A779F5]/30">

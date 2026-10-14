@@ -36,7 +36,12 @@ import {
   type WorkflowApp,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { FileUpload, uploadFile } from "@/components/ui/file-upload";
+import {
+  FileUpload,
+  IMAGE_FILE_ACCEPT,
+  isSupportedImageFile,
+  uploadFile,
+} from "@/components/ui/file-upload";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
@@ -52,6 +57,9 @@ import performerThumbnail from "@/assets/thumbnails/perform-anywhere-performer.j
 import stylingThumbnail from "@/assets/thumbnails/perform-anywhere-style.png";
 import vehicleThumbnail from "@/assets/thumbnails/perform-anywhere-vehicle.jpeg";
 import cityThumbnail from "@/assets/thumbnails/perform-anywhere-city.jpeg";
+import {
+  buildPerformAnywhereBatchInput,
+} from "@/lib/perform-anywhere-payload";
 
 const CAMERA_TREATMENTS = [
   { id: "wide-shot", label: "Wide shot", index: "01", copy: "Establish the world around the performance.", icon: MoveUpRight },
@@ -184,7 +192,7 @@ function ReferenceCard({
       </div>
       <div data-testid={`upload-reference-${slot.key}`} className="bg-[#09080D] rounded-xl border border-[#A779F5]/20 p-2">
         <FileUpload
-          accept="image/*"
+          accept={IMAGE_FILE_ACCEPT}
           onFileSelect={onUploaded}
           description={slot.description}
           previouslyUploadedName={value || undefined}
@@ -352,9 +360,7 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
 
   const handleBoardFiles = async (files: File[]) => {
     if (boardUploadPending || !isSignedIn) return;
-    const imageFiles = files.filter((file) => (
-      file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|avif)$/i.test(file.name)
-    ));
+    const imageFiles = files.filter(isSupportedImageFile);
     if (imageFiles.length === 0) {
       toast({
         title: "Add image references",
@@ -392,7 +398,7 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
     try {
       const uploaded: Array<{ key: ReferenceKey; filename: string }> = [];
       for (const [index, file] of filesToUpload.entries()) {
-        const filename = await uploadFile(file, () => undefined, "image/*");
+        const filename = await uploadFile(file, () => undefined, IMAGE_FILE_ACCEPT);
         const key = emptyKeys[index]!;
         uploaded.push({ key, filename });
         if (key === "location") setSelectedEnvironment(null);
@@ -442,25 +448,15 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
     }
     createBatch.mutate(
       {
-        data: {
+        data: buildPerformAnywhereBatchInput({
           name: `${activePreset.label} · ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}`,
-          batchType: "perform-anywhere-angles",
-          batchSize: 5,
-          masterAsset: references.identity,
-          identityAnchor: references.identity,
-          outfitAsset: preset === "luxury-interior" ? references.identity : references.outfit,
-          locationAsset: references.location,
-          poseAsset: references.pose,
-          propAsset: preset === "luxury-interior" ? references.location : references.prop,
-          scenePrompt: sceneDescription.trim(),
-          styleAnchor: visualDirection.trim(),
-          ...(depthAsset ? { depthAsset, depthStrength } : {}),
-          cameraTreatments: CAMERA_TREATMENTS.map((camera) => camera.id),
-          aspectRatios: ["16:9"],
-          colorGrades: ["cinematic-neutral"],
-          seedStrategy: "incremental",
-          baseSeed: 24681357,
-        },
+          preset,
+          references,
+          sceneDescription,
+          visualDirection,
+          depthAsset: depthAsset || undefined,
+          depthStrength,
+        }),
       },
       {
         onSuccess: (batch) => {
@@ -702,7 +698,7 @@ export default function PerformAnywhere({ appConfig }: { appConfig?: WorkflowApp
                 <p className="font-mono text-xs font-bold uppercase tracking-widest text-[#B7F54A]">Optional depth map</p>
                 <p className="mt-2 text-sm leading-relaxed text-[#BEB2CC]">Shared by all five angle stills as ControlNet guidance. The hosted motion providers do not receive the depth map directly; they animate the depth-guided still you select.</p>
                 <div className="mt-4 rounded-xl border border-[#A779F5]/20 p-2">
-                  <FileUpload accept="image/*" label="Depth map" description="A grayscale depth image. Leave empty to render without depth guidance." onFileSelect={setDepthAsset} previouslyUploadedName={depthAsset || undefined} />
+                  <FileUpload accept={IMAGE_FILE_ACCEPT} label="Depth map" description="A grayscale depth image. Leave empty to render without depth guidance." onFileSelect={setDepthAsset} previouslyUploadedName={depthAsset || undefined} />
                 </div>
                 {depthAsset && (
                   <div className="mt-4 space-y-3">

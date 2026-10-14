@@ -1,4 +1,5 @@
 import express from "express";
+import { spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { request, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -91,6 +92,55 @@ async function postFile(
   return response;
 }
 
+async function postBufferFile(
+  file: { type: string; name: string; buffer: Buffer },
+  accept?: string,
+): Promise<{ status: number; body: { error?: string; name?: string } }> {
+  const boundary = "aurora-buffer-upload-boundary";
+  const prefix = Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${file.name}"\r\nContent-Type: ${file.type}\r\n\r\n`,
+  );
+  const suffix = Buffer.from(`\r\n--${boundary}--\r\n`);
+  const req = request({
+    hostname: "127.0.0.1",
+    port,
+    path: `/api/files/upload${accept ? `?accept=${encodeURIComponent(accept)}` : ""}`,
+    method: "POST",
+    headers: {
+      "content-type": `multipart/form-data; boundary=${boundary}`,
+      "content-length": prefix.length + file.buffer.length + suffix.length,
+    },
+  });
+  const response = new Promise<{ status: number; body: { error?: string; name?: string } }>((resolve, reject) => {
+    req.on("error", reject);
+    req.on("response", (res) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      res.on("error", reject);
+      res.on("end", () => resolve({
+        status: res.statusCode!,
+        body: JSON.parse(Buffer.concat(chunks).toString()),
+      }));
+    });
+  });
+  req.write(prefix);
+  req.write(file.buffer);
+  req.end(suffix);
+  return response;
+}
+
+function createHeicFixture(): Buffer {
+  const result = spawnSync("magick", ["-size", "2x2", "xc:skyblue", "heic:-"], {
+    maxBuffer: 2 * MB,
+  });
+  if (result.status !== 0 || result.stdout.length === 0) {
+    throw new Error("The mandatory HEIC upload fixture requires ImageMagick with HEIF support.");
+  }
+  return result.stdout;
+}
+
+const heicFixture = createHeicFixture();
+
 beforeAll(async () => {
   const app = express();
   app.use("/api", router);
@@ -142,5 +192,66 @@ describe.each(media)("$type upload boundary", (file) => {
     expect(mocks.getComfyUrl).not.toHaveBeenCalled();
     expect(mocks.fetchComfy).not.toHaveBeenCalled();
     expect(mocks.recordInputOwner).not.toHaveBeenCalled();
+  });
+});
+
+describe("phone image formats", () => {
+  it("normalizes a valid HEIC photo to a safe JPEG upload", async () => {
+    const result = await postBufferFile({
+      type: "image/heic",
+      name: "outfit-photo.heic",
+      buffer: heicFixture!,
+    }, "image/*");
+
+    expect(result).toEqual({
+      status: 200,
+      body: { name: "stored-file", type: "input", subfolder: "" },
+    });
+    expect(mocks.reserveUpload).toHaveBeenCalledExactlyOnceWith("upload-test-user", heicFixture!.length);
+    expect(mocks.fetchComfy).toHaveBeenCalledOnce();
+    expect(mocks.recordInputOwner).toHaveBeenCalledExactlyOnceWith(
+      "stored-file",
+      "upload-test-user",
+      "",
+      "image/jpeg",
+      "http://worker.invalid",
+    );
+
+    const requestOptions = mocks.fetchComfy.mock.calls[0]?.[2] as { body: FormData };
+    const uploaded = requestOptions.body.get("image") as File;
+    expect(uploaded.type).toBe("image/jpeg");
+    expect(uploaded.name).toMatch(/^[0-9a-f-]+\.jpg$/);
+  });
+
+  it("rejects a corrupt HEIC photo with a format-specific retry message", async () => {
+    const corruptHeic = Buffer.from("00000018667479706865696300000000", "hex");
+    const result = await postBufferFile({
+      type: "image/heic",
+      name: "outfit-photo.heic",
+      buffer: corruptHeic,
+    }, "image/*");
+
+    expect(result.status).toBe(415);
+    expect(result.body.error).toMatch(/HEIC\/HEIF.*(decoded|corrupt|JPEG)/i);
+    expect(mocks.reserveUpload).not.toHaveBeenCalled();
+    expect(mocks.fetchComfy).not.toHaveBeenCalled();
+    expect(mocks.recordInputOwner).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported image bytes before quota reservation or worker access", async () => {
+    const result = await postBufferFile({
+      type: "image/bmp",
+      name: "unsupported.bmp",
+      buffer: Buffer.from("not an image"),
+    }, "image/*");
+
+    expect(result).toEqual({
+      status: 415,
+      body: {
+        error: "This image format is not supported or the file is corrupt. Use a valid JPEG, PNG, WebP, GIF, HEIC, HEIF, or AVIF image.",
+      },
+    });
+    expect(mocks.reserveUpload).not.toHaveBeenCalled();
+    expect(mocks.fetchComfy).not.toHaveBeenCalled();
   });
 });

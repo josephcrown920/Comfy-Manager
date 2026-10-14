@@ -1,8 +1,8 @@
-import React, { useRef, useState } from "react";
+import React, { useId, useRef, useState } from "react";
 import { Button } from "./button";
 import { Input } from "./input";
 import { Label } from "./label";
-import { Loader2, UploadCloud, CheckCircle2 } from "lucide-react";
+import { Loader2, UploadCloud, CheckCircle2, CircleAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "./progress";
 
@@ -13,6 +13,11 @@ const FILE_SIZE_LIMITS = {
   video: 100 * MB,
   other: 20 * MB,
 } as const;
+
+export const IMAGE_FILE_ACCEPT =
+  "image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.gif,.avif,.heic,.heif";
+
+const IMAGE_FILE_EXTENSIONS = /\.(png|jpe?g|webp|gif|avif|heic|heif)$/i;
 
 interface FileUploadProps {
   accept?: string;
@@ -25,7 +30,7 @@ interface FileUploadProps {
 }
 
 function fileSizeLimit(file: File): { bytes: number; label: string } {
-  if (file.type.startsWith("image/")) {
+  if (file.type.startsWith("image/") || IMAGE_FILE_EXTENSIONS.test(file.name)) {
     return { bytes: FILE_SIZE_LIMITS.image, label: "Images" };
   }
   if (file.type.startsWith("audio/")) {
@@ -42,7 +47,7 @@ function acceptedSizeDescription(accept?: string): string {
 
   const normalized = accept.toLowerCase();
   const limits: string[] = [];
-  if (normalized.includes("image/") || /\.(png|jpe?g|webp|gif|bmp|tiff?|avif|heic)\b/.test(normalized)) {
+  if (normalized.includes("image/") || /\.(png|jpe?g|webp|gif|bmp|tiff?|avif|heic|heif)\b/.test(normalized)) {
     limits.push("images 20 MB");
   }
   if (normalized.includes("audio/") || /\.(mp3|wav|flac|aac|m4a|ogg|opus)\b/.test(normalized)) {
@@ -55,6 +60,20 @@ function acceptedSizeDescription(accept?: string): string {
   return limits.length > 0
     ? `Maximum size: ${limits.join(", ")}.`
     : "Maximum file size: 20 MB.";
+}
+
+function browserAccept(accept?: string): string | undefined {
+  if (!accept) return undefined;
+  return accept
+    .split(",")
+    .map((pattern) => pattern.trim())
+    .filter(Boolean)
+    .flatMap((pattern) => pattern.toLowerCase() === "image/*" ? IMAGE_FILE_ACCEPT.split(",") : [pattern])
+    .join(",");
+}
+
+export function isSupportedImageFile(file: Pick<File, "type" | "name">): boolean {
+  return file.type.toLowerCase().startsWith("image/") || IMAGE_FILE_EXTENSIONS.test(file.name);
 }
 
 export function FileUpload({
@@ -70,16 +89,28 @@ export function FileUpload({
   const [progress, setProgress] = useState(0);
   const [uploadedName, setUploadedName] = useState<string>(previouslyUploadedName ?? "");
   const [isPreviouslyUploaded, setIsPreviouslyUploaded] = useState(Boolean(previouslyUploadedName));
+  const [selectedFileName, setSelectedFileName] = useState("");
+  const [selectedFileIsImage, setSelectedFileIsImage] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef("");
+  const previousUploadedNamePropRef = useRef(previouslyUploadedName);
+  const lastNotifiedUploadRef = useRef("");
+  const statusId = useId();
+  const progressStatusId = useId();
   const { toast } = useToast();
 
   React.useEffect(() => {
-    if (!previouslyUploadedName) return;
-
+    if (previouslyUploadedName === previousUploadedNamePropRef.current) return;
+    previousUploadedNamePropRef.current = previouslyUploadedName;
+    if (previouslyUploadedName === lastNotifiedUploadRef.current) return;
     setUploadedName(previouslyUploadedName ?? "");
-    setIsPreviouslyUploaded(true);
+    setIsPreviouslyUploaded(Boolean(previouslyUploadedName));
+    if (!previouslyUploadedName) {
+      setSelectedFileName("");
+      setSelectedFileIsImage(false);
+    }
   }, [previouslyUploadedName]);
 
   React.useEffect(() => {
@@ -92,13 +123,22 @@ export function FileUpload({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const previousName = uploadedName;
     const sizeLimit = fileSizeLimit(file);
+    setErrorMessage("");
     if (file.size > sizeLimit.bytes) {
       toast({
         title: "File too large",
         description: `${sizeLimit.label} must be ${sizeLimit.bytes / MB} MB or smaller.`,
         variant: "destructive",
       });
+      setSelectedFileName("");
+      setSelectedFileIsImage(false);
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = "";
+        setPreviewUrl("");
+      }
       e.target.value = "";
       return;
     }
@@ -107,7 +147,10 @@ export function FileUpload({
     setProgress(0);
     setUploadedName("");
     setIsPreviouslyUploaded(false);
-    if (preview) {
+    setSelectedFileName(file.name);
+    const isImage = isSupportedImageFile(file);
+    setSelectedFileIsImage(isImage);
+    if ((preview || isImage) && typeof URL.createObjectURL === "function") {
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
       previewUrlRef.current = URL.createObjectURL(file);
       setPreviewUrl(previewUrlRef.current);
@@ -116,12 +159,20 @@ export function FileUpload({
     try {
       const comfyName = await uploadFile(file, (pct) => setProgress(pct), accept);
       setUploadedName(comfyName);
+      setErrorMessage("");
+      lastNotifiedUploadRef.current = comfyName;
       onFileSelect(comfyName);
       toast({ title: "File uploaded", description: `Stored as: ${comfyName}` });
     } catch (err: any) {
+      const message = err?.message ?? "Unknown error";
+      setUploadedName(previousName);
+      setIsPreviouslyUploaded(Boolean(previousName));
+      setSelectedFileName("");
+      setSelectedFileIsImage(false);
+      setErrorMessage(message);
       toast({
         title: "Upload failed",
-        description: err.message ?? "Unknown error",
+        description: message,
         variant: "destructive",
       });
       // Reset the input so the user can retry the same file
@@ -140,7 +191,7 @@ export function FileUpload({
     <div className="flex flex-col gap-2">
       {label && <Label>{label}</Label>}
       <div className="flex flex-col gap-2">
-        {preview && previewUrl && (
+        {preview && previewUrl && !selectedFileIsImage && (
           <div className="overflow-hidden rounded-xl border border-border bg-background">
             <video
               src={previewUrl}
@@ -158,7 +209,7 @@ export function FileUpload({
           type="file"
           className="hidden"
           ref={fileInputRef}
-          accept={accept}
+          accept={browserAccept(accept)}
           onChange={handleFileChange}
         />
         <Button
@@ -167,6 +218,8 @@ export function FileUpload({
           className="w-full h-24 border-dashed bg-muted/20 hover:bg-muted/50 flex flex-col gap-2"
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
+          aria-busy={isUploading}
+          aria-describedby={`${statusId} ${progressStatusId}`}
         >
           {isUploading ? (
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -187,7 +240,42 @@ export function FileUpload({
         </Button>
 
         {isUploading && (
-          <Progress value={progress} className="h-1.5" />
+          <>
+            <Progress value={progress} className="h-1.5" />
+            <p id={progressStatusId} role="status" aria-live="polite" className="sr-only">
+              Uploading {selectedFileName || "file"}… {progress}%
+            </p>
+          </>
+        )}
+        {previewUrl && selectedFileIsImage && (
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-background p-2">
+            <img
+              src={previewUrl}
+              alt={selectedFileName ? `Selected image: ${selectedFileName}` : "Selected image preview"}
+              className="h-14 w-14 rounded-lg object-cover"
+            />
+            <p className="min-w-0 truncate text-xs text-muted-foreground">{selectedFileName}</p>
+          </div>
+        )}
+        {errorMessage && (
+          <p
+            id={statusId}
+            role="alert"
+            className="flex items-start gap-2 text-xs text-destructive"
+          >
+            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{errorMessage} Choose the file again to retry.</span>
+          </p>
+        )}
+        {!errorMessage && !isUploading && uploadedName && selectedFileName && (
+          <p
+            id={statusId}
+            role="status"
+            aria-live="polite"
+            className="text-xs text-muted-foreground"
+          >
+            Selected: <span className="font-medium text-foreground">{selectedFileName}</span>
+          </p>
         )}
       </div>
       <p className="text-xs text-muted-foreground">

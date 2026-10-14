@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer, { MulterError } from "multer";
 import { randomUUID } from "node:crypto";
+import { spawn } from "node:child_process";
 import { recordInputOwner } from "../lib/perform-media";
 import { db, outputsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
@@ -29,8 +30,30 @@ const FILE_SIZE_LIMITS = {
 const MAX_UPLOAD_REQUEST_BYTES = FILE_SIZE_LIMITS.video + MB;
 const MAX_CONCURRENT_UPLOADS = 2;
 const MAX_CONCURRENT_UPLOADS_PER_USER = 1;
+const MAX_NORMALIZED_IMAGE_BYTES = FILE_SIZE_LIMITS.image;
+const NORMALIZATION_TIMEOUT_MS = 30_000;
 const activeUploadsByUser = new Map<string, number>();
 let activeUploads = 0;
+
+const HEIF_BRANDS = new Set([
+  "heic",
+  "heix",
+  "hevc",
+  "hevx",
+  "heif",
+  "heis",
+  "hevm",
+  "hevs",
+]);
+const AVIF_BRANDS = new Set(["avif", "avis"]);
+const IMAGE_EXTENSIONS = /\.(png|jpe?g|webp|gif|avif|heic|heif)$/i;
+const HEIF_EXTENSIONS = /\.(heic|heif)$/i;
+const AVIF_EXTENSIONS = /\.avif$/i;
+
+type DetectedMedia = "image" | "heif" | "avif" | "audio" | "video";
+type NormalizedImage =
+  | { ok: true; buffer: Buffer }
+  | { ok: false; reason: "unavailable" | "invalid" | "too-large" };
 
 class UploadSizeError extends Error {
   constructor(
@@ -147,11 +170,27 @@ function formatMegabytes(bytes: number): string {
   return `${bytes / MB} MB`;
 }
 
-function isSupportedMedia(file: {
+function hasFtypBrand(bytes: Buffer, brands: ReadonlySet<string>): boolean {
+  if (!hasFtypBox(bytes) || bytes.length < 16) return false;
+
+  const declaredSize = bytes.readUInt32BE(0);
+  const boxEnd = Math.min(
+    bytes.length,
+    declaredSize >= 16 ? declaredSize : bytes.length,
+  );
+  for (let offset = 8; offset + 4 <= boxEnd; offset += 4) {
+    if (brands.has(bytes.subarray(offset, offset + 4).toString("ascii"))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function detectMedia(file: {
   mimetype: string;
   originalname: string;
   buffer: Buffer;
-}): boolean {
+}): DetectedMedia | null {
   const bytes = file.buffer;
   const name = file.originalname.toLowerCase();
   const mime = file.mimetype.toLowerCase();
@@ -162,6 +201,8 @@ function isSupportedMedia(file: {
     bytes.subarray(0, 6).toString("ascii") === "GIF89a" ||
     (bytes.subarray(0, 4).toString("ascii") === "RIFF" &&
       bytes.subarray(8, 12).toString("ascii") === "WEBP");
+  const isHeif = hasFtypBrand(bytes, HEIF_BRANDS);
+  const isAvif = hasFtypBrand(bytes, AVIF_BRANDS);
   const isAudio =
     bytes.subarray(0, 3).toString("ascii") === "ID3" ||
     (bytes.subarray(0, 4).toString("ascii") === "RIFF" &&
@@ -178,22 +219,206 @@ function isSupportedMedia(file: {
   if (isImage)
     return (
       mime.startsWith("image/") ||
-      /\.(png|jpe?g|webp|gif|bmp|tiff?|avif|heic)$/i.test(name)
-    );
+      IMAGE_EXTENSIONS.test(name)
+    )
+      ? "image"
+      : null;
+  if (isHeif) {
+    return mime.startsWith("image/") || HEIF_EXTENSIONS.test(name) ? "heif" : null;
+  }
+  if (isAvif) {
+    return mime.startsWith("image/") || AVIF_EXTENSIONS.test(name) ? "avif" : null;
+  }
   if (isAudio)
     return (
       mime.startsWith("audio/") ||
       /\.(mp3|wav|flac|aac|m4a|ogg|opus)$/i.test(name)
-    );
+    )
+      ? "audio"
+      : null;
   if (isVideo)
     return (
       mime.startsWith("video/") || /\.(mp4|mov|webm|mkv|avi|m4v)$/i.test(name)
-    );
-  return false;
+    )
+      ? "video"
+      : null;
+  return null;
 }
 
 function hasFtypBox(bytes: Buffer): boolean {
   return bytes.subarray(4, 8).toString("ascii") === "ftyp";
+}
+
+function looksLikeHeif(file: { mimetype: string; originalname: string }): boolean {
+  return (
+    file.mimetype.toLowerCase().includes("heic") ||
+    file.mimetype.toLowerCase().includes("heif") ||
+    HEIF_EXTENSIONS.test(file.originalname)
+  );
+}
+
+function looksLikeAvif(file: { mimetype: string; originalname: string }): boolean {
+  return file.mimetype.toLowerCase() === "image/avif" || AVIF_EXTENSIONS.test(file.originalname);
+}
+
+function inferredMimeFromName(name: string): string | null {
+  const extension = name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+  if (!extension) return null;
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "png") return "image/png";
+  if (extension === "webp") return "image/webp";
+  if (extension === "gif") return "image/gif";
+  if (extension === "avif") return "image/avif";
+  if (extension === "heic") return "image/heic";
+  if (extension === "heif") return "image/heif";
+  if (extension === "mp3") return "audio/mpeg";
+  if (extension === "wav") return "audio/wav";
+  if (extension === "mp4") return "video/mp4";
+  if (extension === "mov") return "video/quicktime";
+  if (extension === "webm") return "video/webm";
+  return null;
+}
+
+function safeExtension(
+  file: { mimetype: string; originalname: string },
+  media: DetectedMedia,
+): string {
+  if (media === "heif" || media === "avif") return "jpg";
+  if (media === "image") {
+    if (file.mimetype.toLowerCase() === "image/png" || /\.png$/i.test(file.originalname)) return "png";
+    if (file.mimetype.toLowerCase() === "image/webp" || /\.webp$/i.test(file.originalname)) return "webp";
+    if (file.mimetype.toLowerCase() === "image/gif" || /\.gif$/i.test(file.originalname)) return "gif";
+    return "jpg";
+  }
+  const extension = file.originalname.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+  const allowed = media === "audio"
+    ? new Set(["mp3", "wav", "flac", "aac", "m4a", "ogg", "opus"])
+    : new Set(["mp4", "mov", "webm", "mkv", "avi", "m4v"]);
+  return extension && allowed.has(extension)
+    ? extension
+    : media === "audio"
+      ? "audio"
+      : "video";
+}
+
+function safeUploadFilename(
+  file: { mimetype: string; originalname: string },
+  media: DetectedMedia,
+): string {
+  return `${randomUUID()}.${safeExtension(file, media)}`;
+}
+
+function normalizeImageWithMagick(
+  buffer: Buffer,
+  inputFormat: "heic" | "heif" | "avif",
+): Promise<NormalizedImage> {
+  return new Promise((resolve) => {
+    let settled = false;
+    let outputSize = 0;
+    const output: Buffer[] = [];
+    const child = spawn(
+      "magick",
+      [
+        "-limit",
+        "memory",
+        "256MiB",
+        "-limit",
+        "map",
+        "256MiB",
+        "-limit",
+        "disk",
+        "0",
+        `${inputFormat}:-`,
+        "-auto-orient",
+        "-strip",
+        "-colorspace",
+        "sRGB",
+        "-quality",
+        "92",
+        "jpeg:-",
+      ],
+      { stdio: ["pipe", "pipe", "ignore"] },
+    );
+
+    const finish = (result: NormalizedImage) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve(result);
+    };
+    const timeout = setTimeout(() => {
+      child.kill("SIGKILL");
+      finish({ ok: false, reason: "unavailable" });
+    }, NORMALIZATION_TIMEOUT_MS);
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      if (settled) return;
+      outputSize += chunk.length;
+      if (outputSize > MAX_NORMALIZED_IMAGE_BYTES) {
+        child.kill("SIGKILL");
+        finish({ ok: false, reason: "too-large" });
+        return;
+      }
+      output.push(chunk);
+    });
+    child.on("error", () => finish({ ok: false, reason: "unavailable" }));
+    child.on("close", (code) => {
+      if (code !== 0 || outputSize === 0) {
+        finish({ ok: false, reason: "invalid" });
+        return;
+      }
+      const normalized = Buffer.concat(output, outputSize);
+      const isJpeg = normalized.subarray(0, 3).equals(Buffer.from("ffd8ff", "hex"));
+      finish(isJpeg ? { ok: true, buffer: normalized } : { ok: false, reason: "invalid" });
+    });
+    child.stdin.on("error", () => finish({ ok: false, reason: "unavailable" }));
+    child.stdin.end(buffer);
+  });
+}
+
+function normalizedImageError(
+  media: "heif" | "avif",
+  result: Extract<NormalizedImage, { ok: false }>,
+): string {
+  const format = media === "heif" ? "HEIC/HEIF" : "AVIF";
+  if (result.reason === "too-large") {
+    return `${format} conversion produced an image larger than ${formatMegabytes(MAX_NORMALIZED_IMAGE_BYTES)}. Choose a smaller photo and retry.`;
+  }
+  if (result.reason === "unavailable") {
+    return `${format} photos are recognized, but this server cannot convert them right now. Export the photo as JPEG or PNG and retry.`;
+  }
+  return `This ${format} photo could not be decoded. Export it as JPEG or PNG and retry with the new file.`;
+}
+
+async function prepareUpload(
+  file: {
+    mimetype: string;
+    originalname: string;
+    buffer: Buffer;
+  },
+  media: DetectedMedia,
+): Promise<
+  | { ok: true; buffer: Buffer; mimetype: string; filename: string }
+  | { ok: false; error: string }
+> {
+  if (media === "heif" || media === "avif") {
+    const normalized = await normalizeImageWithMagick(file.buffer, media);
+    if (!normalized.ok) {
+      return { ok: false, error: normalizedImageError(media, normalized) };
+    }
+    return {
+      ok: true,
+      buffer: normalized.buffer,
+      mimetype: "image/jpeg",
+      filename: safeUploadFilename(file, media),
+    };
+  }
+  return {
+    ok: true,
+    buffer: file.buffer,
+    mimetype: file.mimetype || (media === "image" ? "image/jpeg" : "application/octet-stream"),
+    filename: safeUploadFilename(file, media),
+  };
 }
 
 function tryStartUpload(userId: string): boolean {
@@ -233,15 +458,19 @@ function validateAccept(
 
   const mimetype = file.mimetype.toLowerCase();
   const name = file.originalname.toLowerCase();
+  const inferredMime = inferredMimeFromName(name);
+  const candidateMimes = [mimetype, inferredMime].filter(
+    (value): value is string => Boolean(value),
+  );
 
   const ok = patterns.some((pattern) => {
     if (pattern.startsWith(".")) {
       return name.endsWith(pattern);
     }
     if (pattern.endsWith("/*")) {
-      return mimetype.startsWith(pattern.slice(0, -1));
+      return candidateMimes.some((candidate) => candidate.startsWith(pattern.slice(0, -1)));
     }
-    return mimetype === pattern;
+    return candidateMimes.includes(pattern);
   });
 
   if (ok) return null;
@@ -324,13 +553,22 @@ router.post(
         }
       }
 
-      if (!isSupportedMedia(req.file)) {
+      const media = detectMedia(req.file);
+      if (!media) {
+        const error = looksLikeHeif(req.file)
+          ? "This HEIC/HEIF photo is invalid or corrupt. Export it as JPEG or PNG and retry."
+          : looksLikeAvif(req.file)
+            ? "This AVIF photo is invalid or corrupt. Export it as JPEG or PNG and retry."
+            : "This image format is not supported or the file is corrupt. Use a valid JPEG, PNG, WebP, GIF, HEIC, HEIF, or AVIF image.";
         res
           .status(415)
-          .json({
-            error:
-              "Only recognized image, audio, or video files can be uploaded.",
-          });
+          .json({ error });
+        return;
+      }
+
+      const prepared = await prepareUpload(req.file, media);
+      if (!prepared.ok) {
+        res.status(415).json({ error: prepared.error });
         return;
       }
 
@@ -343,7 +581,7 @@ router.post(
           return;
         }
       } catch (err) {
-        console.error("upload quota check failed:", err);
+        req.log.warn({ err }, "Upload quota check failed");
         res
           .status(503)
           .json({
@@ -355,16 +593,16 @@ router.post(
       // getComfyUrl always returns a URL (defaults to localhost:8188 when unconfigured)
       const comfyUrl = await getComfyUrl();
 
-      const { subfolder } = comfyUploadParams(req.file.mimetype);
+      const { subfolder } = comfyUploadParams(prepared.mimetype);
 
       try {
         const formData = new FormData();
         formData.append(
           "image",
-          new Blob([new Uint8Array(req.file.buffer)], {
-            type: req.file.mimetype,
+          new Blob([new Uint8Array(prepared.buffer)], {
+            type: prepared.mimetype,
           }),
-          `${randomUUID()}-${req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-140)}`,
+          prepared.filename,
         );
         // Tell ComfyUI which subfolder to store the file in
         if (subfolder) {
@@ -395,7 +633,7 @@ router.post(
           type?: string;
         };
 
-        await recordInputOwner(data.name, userId, data.subfolder ?? subfolder, req.file.mimetype, comfyUrl);
+        await recordInputOwner(data.name, userId, data.subfolder ?? subfolder, prepared.mimetype, comfyUrl);
         res.json({
           name: data.name,
           subfolder: data.subfolder ?? subfolder,
@@ -404,7 +642,7 @@ router.post(
       } catch (err: any) {
         res
           .status(502)
-          .json({ error: `Could not reach ComfyUI: ${err.message}` });
+          .json({ error: `Could not reach ComfyUI: ${err instanceof Error ? err.message : "the worker returned an unknown error"}` });
       }
     } finally {
       finishUpload(userId);
