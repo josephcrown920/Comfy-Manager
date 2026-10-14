@@ -8,3 +8,4 @@
 - [Admin content model](admin-content.md) — persist presentation metadata in settings, keep bytes in App Storage, and keep executable workflows code-defined.
 - [Workflow Apps scope](workflow-apps-scope.md) — shared apps require sign-in; port features into Aurora rather than replacing its auth or execution stack.
 - [Upload boundary semantics](upload-boundaries.md) — Busboy rejects at equality; preserve inclusive limits with parser headroom and real multipart boundary tests.
+- [Offline workflow checks](workflow-offline-validation.md) — keep contracts independent of templates; static passing checks do not establish live node-pack compatibility.
